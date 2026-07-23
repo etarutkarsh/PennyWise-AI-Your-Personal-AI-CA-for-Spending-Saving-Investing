@@ -13,7 +13,9 @@ COPY src ./src
 RUN mvn -B package -DskipTests
 
 # --- Runtime stage -------------------------------------------------------
-FROM eclipse-temurin:17-jre-alpine
+# jammy (Ubuntu-based), not alpine, because the alpine variant of this image
+# isn't published for every CPU architecture (e.g. Apple Silicon Macs).
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
 COPY --from=build /app/target/pennywise-backend.jar app.jar
