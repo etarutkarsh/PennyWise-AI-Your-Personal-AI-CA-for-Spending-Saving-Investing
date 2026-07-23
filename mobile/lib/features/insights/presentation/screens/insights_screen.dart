@@ -18,6 +18,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
   String? _error;
   List<String> _insights = [];
   List<String> _recommendations = [];
+  List<String> _predictions = [];
   double _totalDebit = 0;
   double _totalCredit = 0;
   double _salary = 0;
@@ -60,12 +61,17 @@ class _InsightsScreenState extends State<InsightsScreen> {
           totalSpent: _totalDebit,
           topCategory: topCat,
         ),
+        AppServices.instance.ai.getSpendingPredictions(
+          avgSpendingByCategory: _spendingByCategory,
+          avgMonthlyTotal: _totalDebit,
+        ),
       ]);
 
       if (mounted) {
         setState(() {
           _insights = results[0];
           _recommendations = results[1];
+          _predictions = results[2];
         });
       }
     } catch (e) {
@@ -128,6 +134,10 @@ class _InsightsScreenState extends State<InsightsScreen> {
                       const SizedBox(height: 16),
                       _RecommendationsSection(
                           recommendations: _recommendations),
+                      if (_predictions.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        _PredictionsSection(predictions: _predictions),
+                      ],
                       if (_spendingByCategory.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         _CategoryBreakdown(
@@ -467,6 +477,54 @@ class _CategoryBreakdown extends StatelessWidget {
                   ),
                 );
               }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PredictionsSection extends StatelessWidget {
+  const _PredictionsSection({required this.predictions});
+  final List<String> predictions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            Icon(Icons.schedule_outlined, color: AppColors.secondary, size: 20),
+            SizedBox(width: 8),
+            Text('Next Month Predictions',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Card(
+          color: AppColors.secondary.withValues(alpha: 0.05),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              children: predictions
+                  .map((p) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.arrow_forward_ios_rounded,
+                                size: 12, color: AppColors.secondary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(p,
+                                  style: const TextStyle(fontSize: 13, height: 1.4)),
+                            ),
+                          ],
+                        ),
+                      ))
+                  .toList(),
             ),
           ),
         ),

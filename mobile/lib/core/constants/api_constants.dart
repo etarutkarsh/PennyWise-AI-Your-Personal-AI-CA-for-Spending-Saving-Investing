@@ -1,6 +1,3 @@
-/// Central place for backend endpoint configuration.
-/// Point [baseUrl] at your local Spring Boot instance during development
-/// (see backend/src/main/resources/application.yml for the port/context-path).
 class ApiConstants {
   ApiConstants._();
 
@@ -16,6 +13,9 @@ class ApiConstants {
   static const String goals = '/goals';
   static const String affordability = '/affordability';
   static const String healthScore = '/dashboard/health-score';
+  static const String investments = '/investments';
+  static const String chatHistory = '/ai/chat/history';
+  static const String chat = '/ai/chat';
 
   static const String accessTokenKey = 'pennywise_access_token';
   static const String refreshTokenKey = 'pennywise_refresh_token';

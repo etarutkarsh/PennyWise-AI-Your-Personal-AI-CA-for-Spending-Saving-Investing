@@ -33,6 +33,9 @@ class AiService {
 
   Future<String?> _getKey() => _storage.read(key: ApiConstants.openAiKeyStorageKey);
 
+  /// Public accessor for the stored key — used by ChatScreen to send as header.
+  Future<String?> getStoredKey() => _getKey();
+
   Future<String> _chat(String systemPrompt, String userMessage) async {
     final key = await _getKey();
     if (key == null || key.isEmpty) throw Exception('No OpenAI API key set.');
@@ -174,6 +177,45 @@ class AiService {
         'Save at least 20% of your salary (₹${(salary * 0.2).toStringAsFixed(0)}) each month.',
         'Cut subscriptions you haven\'t used in 30 days.',
         'Move savings to a high-yield liquid fund on payday.',
+      ];
+
+  /// Returns spending predictions for next month based on last 3 months of data.
+  Future<List<String>> getSpendingPredictions({
+    required Map<String, double> avgSpendingByCategory,
+    required double avgMonthlyTotal,
+  }) async {
+    if (!await hasKey()) return _staticPredictions(avgMonthlyTotal);
+
+    final breakdown = avgSpendingByCategory.entries
+        .map((e) => '${e.key}: ₹${e.value.toStringAsFixed(0)}/mo avg')
+        .join(', ');
+
+    try {
+      final reply = await _chat(
+        'You are PennyWise, a finance AI for Indian users. '
+        'Predict next month\'s spending based on the 3-month averages. '
+        'Return exactly 4 predictions, each on a new line starting with "•". '
+        'Format: "• You\'ll likely spend ₹X on Y next month" or similar. Under 20 words each.',
+        'Average monthly total: ₹${avgMonthlyTotal.toStringAsFixed(0)}\n'
+        'Average by category: $breakdown',
+      );
+      return reply
+          .split('\n')
+          .where((l) => l.trim().startsWith('•'))
+          .map((l) => l.replaceFirst('•', '').trim())
+          .where((l) => l.isNotEmpty)
+          .take(4)
+          .toList();
+    } catch (_) {
+      return _staticPredictions(avgMonthlyTotal);
+    }
+  }
+
+  List<String> _staticPredictions(double avg) => [
+        'Your total spending next month will likely be around ₹${avg.toStringAsFixed(0)}.',
+        'Track your top spending category closely to stay under budget.',
+        'Consider setting a monthly limit for discretionary spending.',
+        'Review subscriptions — they tend to creep up month over month.',
       ];
 
   static const _staticTips = [

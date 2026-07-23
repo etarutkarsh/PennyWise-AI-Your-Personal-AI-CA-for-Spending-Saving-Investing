@@ -19,6 +19,10 @@ class _LearnScreenState extends State<LearnScreen> {
   List<String> _completedQuizzes = [];
   List<String> _achievements = [];
   double _salary = 50000;
+  String _levelName = 'Bronze';
+  String _levelEmoji = '🥉';
+  int _nextLevelXp = 200;
+  int _streak = 0;
 
   @override
   void initState() {
@@ -31,12 +35,18 @@ class _LearnScreenState extends State<LearnScreen> {
     final quizzes = await UserPrefsStorage.getCompletedQuizzes();
     final achievements = await UserPrefsStorage.getAchievements();
     final salary = await UserPrefsStorage.getSalary();
+    final level = await UserPrefsStorage.getLevel();
+    final streak = await UserPrefsStorage.getStreak();
     if (mounted) {
       setState(() {
         _xp = xp;
         _completedQuizzes = quizzes;
         _achievements = achievements;
         _salary = salary;
+        _levelName = level.$1;
+        _levelEmoji = level.$2;
+        _nextLevelXp = level.$4;
+        _streak = streak;
       });
     }
   }
@@ -47,14 +57,24 @@ class _LearnScreenState extends State<LearnScreen> {
       appBar: AppBar(
         title: const Text('Learn'),
         actions: [
+          if (_streak > 0)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Chip(
+                avatar: const Text('🔥', style: TextStyle(fontSize: 12)),
+                label: Text('$_streak day',
+                    style: const TextStyle(fontSize: 11)),
+                backgroundColor: AppColors.danger.withValues(alpha: 0.1),
+                padding: EdgeInsets.zero,
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Chip(
-              avatar: const Icon(Icons.bolt_rounded,
-                  size: 16, color: AppColors.accent),
-              label: Text('$_xp XP',
+              avatar: Text(_levelEmoji, style: const TextStyle(fontSize: 12)),
+              label: Text('$_levelName · $_xp XP',
                   style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 12)),
+                      fontWeight: FontWeight.w700, fontSize: 11)),
               backgroundColor: AppColors.accent.withValues(alpha: 0.12),
             ),
           ),
@@ -69,6 +89,9 @@ class _LearnScreenState extends State<LearnScreen> {
               completedCount: _completedQuizzes.length,
               totalCount: _modules.length,
               xp: _xp,
+              levelName: _levelName,
+              levelEmoji: _levelEmoji,
+              nextLevelXp: _nextLevelXp,
             ),
             const SizedBox(height: 20),
             if (_achievements.isNotEmpty) ...[
@@ -163,14 +186,23 @@ class _ProgressBanner extends StatelessWidget {
     required this.completedCount,
     required this.totalCount,
     required this.xp,
+    required this.levelName,
+    required this.levelEmoji,
+    required this.nextLevelXp,
   });
   final int completedCount;
   final int totalCount;
   final int xp;
+  final String levelName;
+  final String levelEmoji;
+  final int nextLevelXp;
 
   @override
   Widget build(BuildContext context) {
-    final fraction = totalCount > 0 ? completedCount / totalCount : 0.0;
+    final prevLevelXp = levelName == 'Bronze' ? 0 : levelName == 'Silver' ? 200 : levelName == 'Gold' ? 500 : 1000;
+    final levelFraction = nextLevelXp > prevLevelXp
+        ? ((xp - prevLevelXp) / (nextLevelXp - prevLevelXp)).clamp(0.0, 1.0)
+        : 1.0;
 
     return Card(
       color: AppColors.secondary,
@@ -181,20 +213,19 @@ class _ProgressBanner extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Text('🎓',
-                    style: TextStyle(fontSize: 28)),
+                Text(levelEmoji, style: const TextStyle(fontSize: 28)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$completedCount of $totalCount modules done',
+                      Text('$levelName · $xp XP',
                           style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 15)),
                       const SizedBox(height: 2),
-                      Text('$xp XP earned',
+                      Text('$completedCount of $totalCount modules done · ${nextLevelXp - xp} XP to next level',
                           style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.7),
                               fontSize: 12)),
@@ -207,13 +238,17 @@ class _ProgressBanner extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
               child: LinearProgressIndicator(
-                value: fraction,
+                value: levelFraction,
                 minHeight: 8,
                 backgroundColor: Colors.white.withValues(alpha: 0.2),
-                valueColor:
-                    const AlwaysStoppedAnimation(AppColors.accent),
+                valueColor: const AlwaysStoppedAnimation(AppColors.accent),
               ),
             ),
+            const SizedBox(height: 4),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text('$xp XP', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
+              Text('$nextLevelXp XP', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
+            ]),
           ],
         ),
       ),
