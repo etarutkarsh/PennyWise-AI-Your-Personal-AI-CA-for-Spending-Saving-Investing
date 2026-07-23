@@ -1,0 +1,61 @@
+# Runs the whole backend stack (Postgres + Redis + the Spring Boot app)
+# in containers so nothing needs to be installed on the host machine.
+#
+# Usage:
+#   cp .env.example .env      # first time only, then edit values if you want
+#   docker compose up --build
+#
+# The API will be reachable at http://localhost:8080/api
+# (health check: http://localhost:8080/api/actuator/health)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pennywise
+      POSTGRES_USER: ${DB_USERNAME:-pennywise}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pennywise}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pennywise_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-pennywise} -d pennywise"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/pennywise
+      DB_USERNAME: ${DB_USERNAME:-pennywise}
+      DB_PASSWORD: ${DB_PASSWORD:-pennywise}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production-min-256-bits-long}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - "8080:8080"
+
+volumes:
+  pennywise_pgdata:

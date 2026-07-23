@@ -58,17 +58,32 @@ This is a scaffold, not a finished product. The following is real, working logic
 
 ## Running the backend
 
+### Option A - Docker (recommended, nothing to install)
+
+Requires only **Docker Desktop**. Builds the JDK 17 + Maven image, Postgres, and Redis
+for you - your host machine stays untouched.
+
+```bash
+cp .env.example .env        # first time only; edit values if you want
+docker compose up --build
+```
+
+Flyway runs the migrations automatically on startup. Health check:
+`http://localhost:8080/api/actuator/health`. Stop with `docker compose down`
+(add `-v` to also wipe the Postgres volume).
+
+### Option B - native
+
 Requires **JDK 17+**, Maven, PostgreSQL, and Redis running locally (see
 `backend/src/main/resources/application.yml` for connection defaults - override via
-`DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `JWT_SECRET`, `OPENAI_API_KEY` env vars).
+`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST`, `JWT_SECRET`, `OPENAI_API_KEY`
+env vars).
 
 ```bash
 cd backend
-createdb pennywise          # or point DATASOURCE_URL elsewhere
+createdb pennywise          # or point DB_URL elsewhere
 mvn spring-boot:run
 ```
-
-Flyway runs the migrations automatically on startup. Health check: `GET /api/actuator/health`.
 
 ## Running the mobile app
 
@@ -90,9 +105,7 @@ your machine's LAN IP for a physical device, or `localhost` for iOS simulator.)
    `TransactionsScreen`, and `GoalsScreen`.
 2. Add SMS parsing on Android (Feature 1) using the `another_telephony` package
    already declared in `pubspec.yaml`.
-3. Stand up Docker Compose for local Postgres + Redis so `mvn spring-boot:run` works
-   out of the box.
-4. Start Phase 2: AI categorization, spending insights, financial health score
+3. Start Phase 2: AI categorization, spending insights, financial health score
    calculation, notifications.
 
 See the original PRD's Section 17 (Roadmap) for the full phased plan.

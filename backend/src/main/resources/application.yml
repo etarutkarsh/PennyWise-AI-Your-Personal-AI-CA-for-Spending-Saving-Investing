@@ -8,7 +8,7 @@ spring:
     name: pennywise-backend
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/pennywise
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pennywise}
     username: ${DB_USERNAME:pennywise}
     password: ${DB_PASSWORD:pennywise}
     driver-class-name: org.postgresql.Driver
