@@ -15,7 +15,9 @@ class ApiConstants {
   static const String budgets = '/budgets';
   static const String goals = '/goals';
   static const String affordability = '/affordability';
+  static const String healthScore = '/dashboard/health-score';
 
   static const String accessTokenKey = 'pennywise_access_token';
   static const String refreshTokenKey = 'pennywise_refresh_token';
+  static const String openAiKeyStorageKey = 'pennywise_openai_key';
 }

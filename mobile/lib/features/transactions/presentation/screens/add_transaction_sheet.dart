@@ -19,6 +19,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   String? _selectedCategoryId;
   List<CategoryModel> _categories = [];
   bool _isSubmitting = false;
+  bool _isSuggestingCategory = false;
 
   @override
   void initState() {
@@ -29,21 +30,36 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   Future<void> _loadCategories() async {
     try {
       final cats = await AppServices.instance.categories.getAll();
-      if (mounted) {
-        setState(() {
-          // Filter to show expense categories for DEBIT, income for CREDIT
-          _categories = cats;
-        });
-      }
-    } catch (_) {
-      // Categories are optional — submit will still work without category
-    }
+      if (mounted) setState(() => _categories = cats);
+    } catch (_) {}
   }
 
   List<CategoryModel> get _filteredCategories => _categories
       .where((c) =>
           _direction == 'DEBIT' ? c.type == 'EXPENSE' : c.type == 'INCOME')
       .toList();
+
+  Future<void> _suggestCategory() async {
+    final merchant = _merchantController.text.trim();
+    if (merchant.isEmpty || _filteredCategories.isEmpty) return;
+
+    setState(() => _isSuggestingCategory = true);
+    try {
+      final suggestion = await AppServices.instance.ai
+          .suggestCategory(merchant, _filteredCategories);
+      if (suggestion != null && mounted) {
+        setState(() => _selectedCategoryId = suggestion);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Category suggested by AI'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSuggestingCategory = false);
+    }
+  }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -106,7 +122,6 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
               ],
             ),
             const SizedBox(height: 4),
-            // Spent / Received toggle
             SegmentedButton<String>(
               segments: const [
                 ButtonSegment(
@@ -144,13 +159,36 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
                       : null,
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              controller: _merchantController,
-              textInputAction: TextInputAction.done,
-              decoration: const InputDecoration(
-                labelText: 'Merchant / note (optional)',
-                prefixIcon: Icon(Icons.store_outlined),
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _merchantController,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'Merchant / note (optional)',
+                      prefixIcon: Icon(Icons.store_outlined),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'AI: suggest category',
+                  child: IconButton.filledTonal(
+                    onPressed:
+                        _isSuggestingCategory ? null : _suggestCategory,
+                    icon: _isSuggestingCategory
+                        ? const SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.auto_awesome_rounded,
+                            color: AppColors.primary),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
             if (_filteredCategories.isNotEmpty)

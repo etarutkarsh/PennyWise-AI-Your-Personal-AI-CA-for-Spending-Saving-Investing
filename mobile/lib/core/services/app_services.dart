@@ -1,6 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../constants/api_constants.dart';
+import 'ai_service.dart';
 import 'network/api_client.dart';
 import 'storage/token_storage.dart';
 import '../../data/repositories/auth_repository.dart';
@@ -9,6 +9,7 @@ import '../../data/repositories/goal_repository.dart';
 import '../../data/repositories/budget_repository.dart';
 import '../../data/repositories/affordability_repository.dart';
 import '../../data/repositories/category_repository.dart';
+import '../../data/repositories/health_score_repository.dart';
 
 /// Global service locator. Call [AppServices.init()] in main() before runApp.
 /// Access everywhere via [AppServices.instance].
@@ -24,6 +25,8 @@ class AppServices {
   late final BudgetRepository budgets;
   late final AffordabilityRepository affordability;
   late final CategoryRepository categories;
+  late final HealthScoreRepository healthScore;
+  late final AiService ai;
 
   Future<void> init() async {
     const secureStorage = FlutterSecureStorage(
@@ -37,6 +40,8 @@ class AppServices {
     budgets = BudgetRepository(apiClient);
     affordability = AffordabilityRepository(apiClient);
     categories = CategoryRepository(apiClient);
+    healthScore = HealthScoreRepository(apiClient);
+    ai = AiService(secureStorage);
   }
 }
 
@@ -44,7 +49,6 @@ class AppServices {
 String friendlyError(Object error) {
   // ignore: avoid_dynamic_calls
   try {
-    // DioException with a JSON body from our GlobalExceptionHandler
     final dynamic e = error;
     final dynamic resp = e.response;
     if (resp != null) {
