@@ -2,19 +2,60 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/dashboard_summary.dart';
 import '../widgets/summary_card.dart';
+import 'budget_detail_screen.dart';
+import 'investment_detail_screen.dart';
+import 'salary_detail_screen.dart';
+import 'savings_detail_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  double _salary = 50000;
+  bool _loadedSalary = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSalary();
+  }
+
+  Future<void> _loadSalary() async {
+    final saved = await UserPrefsStorage.getSalary();
+    if (mounted) {
+      setState(() {
+        _salary = saved;
+        _loadedSalary = true;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // TODO: replace with DashboardBloc state once /transactions, /budgets,
-    // /goals are wired up through the repository layer.
-    const summary = DashboardSummary.placeholder;
     final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
+    // Derive savings and investments from salary using 50-30-20 rule
+    final savings = _salary * 0.12;
+    final investments = _salary * 0.08;
+    final remainingBudget = _salary - savings - investments - (_salary * 0.50);
+
+    // Build summary with real salary
+    final summary = DashboardSummary(
+      salary: _salary,
+      savings: savings,
+      investments: investments,
+      remainingBudget: remainingBudget,
+      financialHealthScore: DashboardSummary.placeholder.financialHealthScore,
+      dailyTip: DashboardSummary.placeholder.dailyTip,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -27,45 +68,77 @@ class DashboardScreen extends StatelessWidget {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          // TODO: context.read<DashboardBloc>().add(DashboardRefreshRequested());
-        },
+        onRefresh: _loadSalary,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.5,
-              children: [
-                SummaryCard(
-                  label: 'Salary',
-                  amount: currency.format(summary.salary),
-                  icon: Icons.account_balance_wallet_outlined,
-                ),
-                SummaryCard(
-                  label: 'Savings',
-                  amount: currency.format(summary.savings),
-                  icon: Icons.savings_outlined,
-                  color: AppColors.success,
-                ),
-                SummaryCard(
-                  label: 'Investments',
-                  amount: currency.format(summary.investments),
-                  icon: Icons.trending_up_rounded,
-                  color: AppColors.secondary,
-                ),
-                SummaryCard(
-                  label: 'Remaining Budget',
-                  amount: currency.format(summary.remainingBudget),
-                  icon: Icons.pie_chart_outline_rounded,
-                  color: AppColors.accent,
-                ),
-              ],
-            ),
+            if (!_loadedSalary)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else ...[
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.35,
+                children: [
+                  SummaryCard(
+                    label: 'Salary',
+                    amount: currency.format(summary.salary),
+                    icon: Icons.account_balance_wallet_outlined,
+                    description: 'Your monthly take-home pay',
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SalaryDetailScreen(salary: _salary),
+                      ),
+                    ),
+                  ),
+                  SummaryCard(
+                    label: 'Savings',
+                    amount: currency.format(summary.savings),
+                    icon: Icons.savings_outlined,
+                    description: 'Your safety net & future fund',
+                    color: AppColors.success,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => SavingsDetailScreen(salary: _salary, savings: summary.savings),
+                      ),
+                    ),
+                  ),
+                  SummaryCard(
+                    label: 'Investments',
+                    amount: currency.format(summary.investments),
+                    icon: Icons.trending_up_rounded,
+                    description: 'Your wealth-building engine',
+                    color: AppColors.secondary,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => InvestmentDetailScreen(
+                          salary: _salary,
+                          investments: summary.investments,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SummaryCard(
+                    label: 'Remaining Budget',
+                    amount: currency.format(summary.remainingBudget),
+                    icon: Icons.pie_chart_outline_rounded,
+                    description: 'What\'s yours to spend freely',
+                    color: AppColors.accent,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BudgetDetailScreen(remainingBudget: summary.remainingBudget),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 20),
             _FinancialHealthScoreCard(score: summary.financialHealthScore),
             const SizedBox(height: 20),

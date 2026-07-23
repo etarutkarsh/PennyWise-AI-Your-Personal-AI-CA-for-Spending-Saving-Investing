@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 
 import 'core/router/app_router.dart';
+import 'core/services/app_services.dart';
 import 'core/theme/app_theme.dart';
 
-// TODO(Phase 1 wiring): initialize Firebase (firebase_core), Hive
-// (hive_flutter) and register the ApiClient/TokenStorage/repositories with
-// a service locator or provider tree before runApp. Left out of this
-// scaffold so the app builds without requiring Firebase project config.
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AppServices.instance.init();
   runApp(const PennyWiseApp());
 }
 

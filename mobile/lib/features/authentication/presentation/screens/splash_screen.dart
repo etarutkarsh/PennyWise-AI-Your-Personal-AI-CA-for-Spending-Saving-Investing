@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -14,11 +15,17 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // TODO: check TokenStorage for a valid session and route straight to
-    // /dashboard when one exists, instead of always going through /login.
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) context.go('/login');
-    });
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    // Minimum splash display time
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
+
+    final hasSession = await AppServices.instance.auth.hasSession();
+    if (!mounted) return;
+    context.go(hasSession ? '/dashboard' : '/login');
   }
 
   @override
@@ -43,6 +50,11 @@ class _SplashScreenState extends State<SplashScreen> {
             Text(
               'Your Personal AI CA',
               style: TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+            SizedBox(height: 40),
+            CircularProgressIndicator(
+              color: AppColors.primary,
+              strokeWidth: 2,
             ),
           ],
         ),

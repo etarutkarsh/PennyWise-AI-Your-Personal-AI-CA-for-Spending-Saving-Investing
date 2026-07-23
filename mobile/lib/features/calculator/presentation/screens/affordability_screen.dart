@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/affordability_result.dart';
 
-/// Feature 4 - Affordability Checker: "Can I actually afford this?"
-/// Calls POST /affordability/check on the backend (AffordabilityController)
-/// and renders the verdict/reason/wait-time it returns.
 class AffordabilityScreen extends StatefulWidget {
   const AffordabilityScreen({super.key});
 
@@ -20,6 +18,7 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
   final _priceController = TextEditingController();
   bool _isLoading = false;
   AffordabilityResult? _result;
+  String? _error;
 
   @override
   void dispose() {
@@ -33,25 +32,19 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
     setState(() {
       _isLoading = true;
       _result = null;
+      _error = null;
     });
-
-    // TODO: replace with a real call through ApiClient:
-    //   final response = await apiClient.dio.post('/affordability/check', data: {
-    //     'itemName': _itemController.text,
-    //     'price': double.parse(_priceController.text),
-    //   });
-    //   final result = AffordabilityResult.fromJson(response.data);
-    await Future.delayed(const Duration(milliseconds: 800));
-    final result = AffordabilityResult(
-      verdict: 'WAIT_AND_SAVE',
-      reason: 'Buying this today would reduce your emergency fund below the recommended safety level.',
-      recommendedWaitMonths: 5,
-      recommendedMonthlySavings: 15000,
-      expectedPurchaseDate: DateTime.now().add(const Duration(days: 150)),
-      investmentSuggestion: 'liquid_fund',
-    );
-
-    if (mounted) setState(() { _isLoading = false; _result = result; });
+    try {
+      final result = await AppServices.instance.affordability.check(
+        _itemController.text.trim(),
+        double.parse(_priceController.text.trim()),
+      );
+      if (mounted) setState(() => _result = result);
+    } catch (e) {
+      if (mounted) setState(() => _error = friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -63,38 +56,87 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  TextFormField(
-                    controller: _itemController,
-                    decoration: const InputDecoration(labelText: 'What do you want to buy?'),
-                    validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Tell me what you want to buy',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _itemController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'What do you want to buy?',
+                          hintText: 'e.g. iPhone 16, New laptop, PS5',
+                          prefixIcon: Icon(Icons.shopping_bag_outlined),
+                        ),
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _priceController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _check(),
+                        decoration: const InputDecoration(
+                          labelText: 'Price',
+                          prefixText: '₹ ',
+                          prefixIcon: Icon(Icons.currency_rupee_rounded),
+                        ),
+                        validator: (v) =>
+                            (v == null || double.tryParse(v.trim()) == null)
+                                ? 'Enter a valid price'
+                                : null,
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _check,
+                        icon: _isLoading
+                            ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.psychology_outlined),
+                        label: Text(_isLoading ? 'Analysing...' : 'Check affordability'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _priceController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Price', prefixText: '₹ '),
-                    validator: (v) => (v == null || double.tryParse(v) == null) ? 'Enter a valid price' : null,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _check,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('Check affordability'),
-                  ),
-                ],
+                ),
               ),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: AppColors.danger),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(_error!,
+                          style: const TextStyle(color: AppColors.danger)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (_result != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               _VerdictCard(result: _result!),
             ],
           ],
@@ -111,37 +153,100 @@ class _VerdictCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-    final (label, color, icon) = switch (result.verdict) {
-      'SAFE_TO_BUY' => ('Safe to buy', AppColors.success, Icons.check_circle_outline_rounded),
-      'DONT_BUY' => ("Don't buy", AppColors.danger, Icons.cancel_outlined),
-      _ => ('Wait and save', AppColors.warning, Icons.hourglass_bottom_rounded),
+    final currency =
+        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
+    final (label, color, icon, emoji) = switch (result.verdict) {
+      'SAFE_TO_BUY' => (
+          'Safe to Buy',
+          AppColors.success,
+          Icons.check_circle_outline_rounded,
+          '✅'
+        ),
+      'DONT_BUY' => (
+          "Don't Buy Right Now",
+          AppColors.danger,
+          Icons.cancel_outlined,
+          '❌'
+        ),
+      _ => (
+          'Wait & Save',
+          AppColors.warning,
+          Icons.hourglass_bottom_rounded,
+          '⏳'
+        ),
     };
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Icon(icon, color: color),
-                const SizedBox(width: 8),
-                Text(label, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: color)),
+                Text(emoji, style: const TextStyle(fontSize: 28)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 20,
+                        color: color),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            Text(result.reason),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(result.reason,
+                  style: const TextStyle(fontSize: 14, height: 1.5)),
+            ),
             if (result.recommendedWaitMonths != null) ...[
-              const Divider(height: 24),
-              _InfoRow(label: 'Wait', value: '${result.recommendedWaitMonths} months'),
-              if (result.recommendedMonthlySavings != null)
-                _InfoRow(label: 'Save', value: '${currency.format(result.recommendedMonthlySavings)}/month'),
-              if (result.expectedPurchaseDate != null)
-                _InfoRow(label: 'Expected purchase date', value: DateFormat.yMMMd().format(result.expectedPurchaseDate!)),
-              if (result.investmentSuggestion != null)
-                _InfoRow(label: 'Park savings in', value: result.investmentSuggestion!.replaceAll('_', ' ')),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 12),
+              _InfoRow(
+                icon: Icons.schedule_outlined,
+                label: 'Wait',
+                value: '${result.recommendedWaitMonths} months',
+                color: color,
+              ),
+              if (result.recommendedMonthlySavings != null) ...[
+                const SizedBox(height: 10),
+                _InfoRow(
+                  icon: Icons.savings_outlined,
+                  label: 'Save monthly',
+                  value: currency.format(result.recommendedMonthlySavings),
+                  color: AppColors.primary,
+                ),
+              ],
+              if (result.expectedPurchaseDate != null) ...[
+                const SizedBox(height: 10),
+                _InfoRow(
+                  icon: Icons.event_outlined,
+                  label: 'Expected date',
+                  value: DateFormat.yMMMd().format(result.expectedPurchaseDate!),
+                  color: AppColors.secondary,
+                ),
+              ],
+              if (result.investmentSuggestion != null) ...[
+                const SizedBox(height: 10),
+                _InfoRow(
+                  icon: Icons.account_balance_outlined,
+                  label: 'Park savings in',
+                  value: result.investmentSuggestion!
+                      .replaceAll('_', ' ')
+                      .toUpperCase(),
+                  color: AppColors.accent,
+                ),
+              ],
             ],
           ],
         ),
@@ -151,22 +256,30 @@ class _VerdictCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
+  final IconData icon;
   final String label;
   final String value;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: AppColors.textSecondary)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-        ],
-      ),
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 10),
+        Text(label,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        const Spacer(),
+        Text(value,
+            style: TextStyle(fontWeight: FontWeight.w700, color: color, fontSize: 13)),
+      ],
     );
   }
 }

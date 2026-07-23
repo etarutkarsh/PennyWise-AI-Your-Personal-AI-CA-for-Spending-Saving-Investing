@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/services/app_services.dart';
+import '../../../../core/theme/app_colors.dart';
+
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
 
@@ -15,6 +18,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   String _userType = 'professional';
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -28,9 +32,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      // TODO: wire to AuthBloc -> AuthRepository -> POST /auth/register
-      await Future.delayed(const Duration(milliseconds: 600));
+      await AppServices.instance.auth.register(
+        fullName: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        userType: _userType,
+      );
       if (mounted) context.go('/onboarding/goal-setup');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(friendlyError(e)),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -41,53 +58,89 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Create account')),
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
-            child: ListView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Full name'),
-                  validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Full name',
+                    prefixIcon: Icon(Icons.person_outline_rounded),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                  validator: (v) => (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                  validator: (v) =>
+                      (v == null || !v.contains('@')) ? 'Enter a valid email' : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                  validator: (v) => (v == null || v.length < 8) ? 'Min 8 characters' : null,
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    helperText: 'At least 8 characters',
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.length < 8) ? 'Minimum 8 characters' : null,
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: _userType,
-                  decoration: const InputDecoration(labelText: 'I am a...'),
+                  decoration: const InputDecoration(
+                    labelText: 'I am a...',
+                    prefixIcon: Icon(Icons.badge_outlined),
+                  ),
                   items: const [
                     DropdownMenuItem(value: 'student', child: Text('Student')),
-                    DropdownMenuItem(value: 'professional', child: Text('Working professional')),
-                    DropdownMenuItem(value: 'freelancer', child: Text('Freelancer')),
+                    DropdownMenuItem(
+                        value: 'professional',
+                        child: Text('Working professional')),
+                    DropdownMenuItem(
+                        value: 'freelancer', child: Text('Freelancer')),
                     DropdownMenuItem(value: 'family', child: Text('Family')),
                   ],
                   onChanged: (v) => setState(() => _userType = v ?? _userType),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
                 ElevatedButton(
                   onPressed: _isLoading ? null : _submit,
                   child: _isLoading
                       ? const SizedBox(
                           height: 20,
                           width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
                         )
                       : const Text('Create account'),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => context.pop(),
+                  child: const Text('Already have an account? Log in'),
                 ),
               ],
             ),

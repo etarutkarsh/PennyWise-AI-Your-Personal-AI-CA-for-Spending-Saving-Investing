@@ -1,8 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/services/app_services.dart';
+import '../../../../core/theme/app_colors.dart';
+
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
+
+  Future<void> _logout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Log out?'),
+        content: const Text('You will need to log in again to access your account.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Log out',
+                style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await AppServices.instance.auth.logout();
+      if (context.mounted) context.go('/login');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,13 +58,12 @@ class SettingsScreen extends StatelessWidget {
             leading: Icon(Icons.privacy_tip_outlined),
             title: Text('Privacy & data controls'),
           ),
+          const Divider(),
           ListTile(
-            leading: const Icon(Icons.logout_rounded),
-            title: const Text('Log out'),
-            onTap: () {
-              // TODO: TokenStorage.clear() then context.go('/login');
-              context.go('/login');
-            },
+            leading: const Icon(Icons.logout_rounded, color: AppColors.danger),
+            title: const Text('Log out',
+                style: TextStyle(color: AppColors.danger)),
+            onTap: () => _logout(context),
           ),
         ],
       ),
