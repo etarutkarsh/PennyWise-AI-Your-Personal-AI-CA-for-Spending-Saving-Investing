@@ -164,6 +164,8 @@ class _AiKeySheetState extends State<_AiKeySheet> {
   final _controller = TextEditingController();
   bool _obscure = true;
   bool _isSaving = false;
+  bool _isTesting = false;
+  String? _testResult;
 
   @override
   void dispose() {
@@ -174,14 +176,33 @@ class _AiKeySheetState extends State<_AiKeySheet> {
   Future<void> _save() async {
     final key = _controller.text.trim();
     if (key.isEmpty) return;
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+      _testResult = null;
+    });
     await AppServices.instance.ai.saveKey(key);
-    widget.onSaved();
-    if (mounted) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('AI key saved — insights unlocked!')),
-      );
+
+    // Test the key before closing
+    try {
+      await AppServices.instance.ai.testConnection();
+      widget.onSaved();
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('AI key saved & verified — insights unlocked!')),
+        );
+      }
+    } catch (e) {
+      final msg = e.toString().contains('401')
+          ? 'Invalid key — check it and try again.'
+          : e.toString().contains('429')
+              ? 'Rate limited — you may have no credits. Check your OpenAI account.'
+              : 'Connection failed: ${e.toString().replaceFirst('Exception:', '').trim()}';
+      if (mounted) setState(() => _testResult = msg);
+      // Key is saved even if test fails — user can still try
+      widget.onSaved();
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -247,6 +268,34 @@ class _AiKeySheetState extends State<_AiKeySheet> {
             ),
           ),
           const SizedBox(height: 16),
+          if (_testResult != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _testResult!.startsWith('Invalid') || _testResult!.startsWith('Rate') || _testResult!.startsWith('Connection')
+                    ? AppColors.danger.withValues(alpha: 0.1)
+                    : AppColors.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _testResult!.startsWith('Invalid') || _testResult!.startsWith('Rate') || _testResult!.startsWith('Connection')
+                        ? Icons.error_outline_rounded
+                        : Icons.check_circle_outline_rounded,
+                    size: 16,
+                    color: _testResult!.startsWith('Invalid') || _testResult!.startsWith('Rate') || _testResult!.startsWith('Connection')
+                        ? AppColors.danger
+                        : AppColors.success,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(_testResult!, style: const TextStyle(fontSize: 12))),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
           ElevatedButton(
             onPressed: _isSaving ? null : _save,
             child: _isSaving
@@ -256,10 +305,32 @@ class _AiKeySheetState extends State<_AiKeySheet> {
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white),
                   )
-                : const Text('Save Key'),
+                : const Text('Save & Test Key'),
           ),
           if (widget.hasKey) ...[
             const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: _isTesting ? null : () async {
+                setState(() { _isTesting = true; _testResult = null; });
+                try {
+                  await AppServices.instance.ai.testConnection();
+                  if (mounted) setState(() => _testResult = 'Connected! Your key is working.');
+                } catch (e) {
+                  final msg = e.toString().contains('401')
+                      ? 'Invalid key — check it and try again.'
+                      : e.toString().contains('429')
+                          ? 'Rate limited — you may have no credits. Check your OpenAI account.'
+                          : 'Connection failed: ${e.toString().replaceFirst('DioException', '').replaceFirst('Exception:', '').trim()}';
+                  if (mounted) setState(() => _testResult = msg);
+                } finally {
+                  if (mounted) setState(() => _isTesting = false);
+                }
+              },
+              child: _isTesting
+                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Test existing key'),
+            ),
+            const SizedBox(height: 4),
             TextButton(
               onPressed: _delete,
               child: const Text('Remove saved key',

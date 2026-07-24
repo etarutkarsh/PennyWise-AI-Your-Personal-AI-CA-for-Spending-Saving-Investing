@@ -36,6 +36,23 @@ class AiService {
   /// Public accessor for the stored key — used by ChatScreen to send as header.
   Future<String?> getStoredKey() => _getKey();
 
+  /// Sends a minimal test message to OpenAI. Throws on failure.
+  Future<void> testConnection() async {
+    final key = await _getKey();
+    if (key == null || key.isEmpty) throw Exception('No API key saved.');
+    await _dio.post(
+      '/chat/completions',
+      options: Options(headers: {'Authorization': 'Bearer $key'}),
+      data: {
+        'model': _model,
+        'messages': [
+          {'role': 'user', 'content': 'Say "ok"'},
+        ],
+        'max_tokens': 5,
+      },
+    );
+  }
+
   Future<String> _chat(String systemPrompt, String userMessage) async {
     final key = await _getKey();
     if (key == null || key.isEmpty) throw Exception('No OpenAI API key set.');

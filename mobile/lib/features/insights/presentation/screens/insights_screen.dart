@@ -123,7 +123,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                     children: [
-                      if (!_hasAiKey) _AiKeyBanner(),
+                      if (!_hasAiKey) _AiKeyBanner(onReload: _load),
                       _SpendingSummaryCard(
                         totalDebit: _totalDebit,
                         totalCredit: _totalCredit,
@@ -155,6 +155,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
 }
 
 class _AiKeyBanner extends StatelessWidget {
+  const _AiKeyBanner({required this.onReload});
+  final VoidCallback onReload;
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -177,7 +180,10 @@ class _AiKeyBanner extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () => context.push('/settings'),
+            onPressed: () async {
+              await context.push('/settings');
+              onReload();
+            },
             child: const Text('Settings'),
           ),
         ],
