@@ -6,7 +6,7 @@ class ApiConstants {
   static String get baseUrl {
     const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (envUrl.isNotEmpty) return envUrl;
-    return kIsWeb ? 'http://localhost:8080/api' : 'http://10.0.2.2:8080/api';
+    return kIsWeb ? 'http://localhost:8080/api' : 'http://192.168.0.120:8080/api';
   }
 
   static const String auth = '/auth';
