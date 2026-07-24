@@ -9,8 +9,8 @@ class AuthRepository {
 
   Future<void> login(String email, String password) async {
     final res = await _client.dio.post('/auth/login', data: {
-      'email': email,
-      'password': password,
+      'email': email.trim(),
+      'password': password.trim(),
     });
     await _storage.saveTokens(
       accessToken: res.data['accessToken'] as String,
@@ -25,9 +25,9 @@ class AuthRepository {
     required String userType,
   }) async {
     final res = await _client.dio.post('/auth/register', data: {
-      'fullName': fullName,
-      'email': email,
-      'password': password,
+      'fullName': fullName.trim(),
+      'email': email.trim(),
+      'password': password.trim(),
       'userType': userType.toUpperCase(),
     });
     await _storage.saveTokens(

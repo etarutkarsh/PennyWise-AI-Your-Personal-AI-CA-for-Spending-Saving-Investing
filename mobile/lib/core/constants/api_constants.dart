@@ -1,10 +1,13 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 class ApiConstants {
   ApiConstants._();
 
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8080/api',
-  );
+  static String get baseUrl {
+    const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
+    if (envUrl.isNotEmpty) return envUrl;
+    return kIsWeb ? 'http://localhost:8080/api' : 'http://10.0.2.2:8080/api';
+  }
 
   static const String auth = '/auth';
   static const String transactions = '/transactions';
