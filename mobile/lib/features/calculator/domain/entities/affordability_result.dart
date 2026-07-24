@@ -16,14 +16,19 @@ class AffordabilityResult {
   final DateTime? expectedPurchaseDate;
   final String? investmentSuggestion;
 
+  static DateTime? _parseDateNullable(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is String) return DateTime.parse(raw);
+    if (raw is List) return DateTime(raw[0] as int, raw[1] as int, raw[2] as int);
+    return null;
+  }
+
   factory AffordabilityResult.fromJson(Map<String, dynamic> json) => AffordabilityResult(
         verdict: json['verdict'] as String,
         reason: json['reason'] as String,
         recommendedWaitMonths: json['recommendedWaitMonths'] as int?,
         recommendedMonthlySavings: (json['recommendedMonthlySavings'] as num?)?.toDouble(),
-        expectedPurchaseDate: json['expectedPurchaseDate'] != null
-            ? DateTime.parse(json['expectedPurchaseDate'] as String)
-            : null,
+        expectedPurchaseDate: _parseDateNullable(json['expectedPurchaseDate']),
         investmentSuggestion: json['investmentSuggestion'] as String?,
       );
 }

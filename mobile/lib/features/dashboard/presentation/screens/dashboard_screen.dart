@@ -173,6 +173,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 MaterialPageRoute(builder: (_) => const InsightsScreen()),
               ),
               onChatTap: () => context.push('/chat'),
+              onNetWorthTap: () => context.push('/net-worth'),
             ),
             const SizedBox(height: 20),
             _AiTipCard(tip: summary.dailyTip),
@@ -339,45 +340,60 @@ class _QuickActions extends StatelessWidget {
     required this.onGoalsTap,
     required this.onInsightsTap,
     required this.onChatTap,
+    required this.onNetWorthTap,
   });
 
   final VoidCallback onAffordabilityTap;
   final VoidCallback onGoalsTap;
   final VoidCallback onInsightsTap;
   final VoidCallback onChatTap;
+  final VoidCallback onNetWorthTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
       children: [
-        Expanded(
+        SizedBox(
+          width: (MediaQuery.of(context).size.width - 56) / 2,
           child: _ActionChip(
             label: 'Can I afford?',
             icon: Icons.calculate_outlined,
             onTap: onAffordabilityTap,
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
+        SizedBox(
+          width: (MediaQuery.of(context).size.width - 56) / 2,
           child: _ActionChip(
-              label: 'Goals',
-              icon: Icons.flag_outlined,
-              onTap: onGoalsTap),
+            label: 'Goals',
+            icon: Icons.flag_outlined,
+            onTap: onGoalsTap,
+          ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
+        SizedBox(
+          width: (MediaQuery.of(context).size.width - 56) / 2,
           child: _ActionChip(
             label: 'AI Insights',
             icon: Icons.psychology_outlined,
             onTap: onInsightsTap,
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
+        SizedBox(
+          width: (MediaQuery.of(context).size.width - 56) / 2,
           child: _ActionChip(
-              label: 'Ask AI',
-              icon: Icons.chat_bubble_outline_rounded,
-              onTap: onChatTap),
+            label: 'Ask AI',
+            icon: Icons.chat_bubble_outline_rounded,
+            onTap: onChatTap,
+          ),
+        ),
+        SizedBox(
+          width: (MediaQuery.of(context).size.width - 56) / 2,
+          child: _ActionChip(
+            label: 'Net Worth',
+            icon: Icons.account_balance_wallet_rounded,
+            onTap: onNetWorthTap,
+          ),
         ),
       ],
     );
