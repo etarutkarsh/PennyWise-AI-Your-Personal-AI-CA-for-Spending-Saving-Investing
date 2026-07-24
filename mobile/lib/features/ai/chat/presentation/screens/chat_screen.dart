@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/services/app_services.dart';
@@ -24,11 +25,18 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<_ChatMessage> _messages = [];
   bool _isLoading = false;
   bool _loadingHistory = true;
+  bool _hasKey = false;
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
+    _checkKey();
+  }
+
+  Future<void> _checkKey() async {
+    final has = await AppServices.instance.ai.hasKey();
+    if (mounted) setState(() => _hasKey = has);
   }
 
   Future<void> _loadHistory() async {
@@ -150,6 +158,11 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           if (_loadingHistory) const LinearProgressIndicator(minHeight: 2),
+          if (!_loadingHistory && !_hasKey)
+            _NoKeyBanner(onSetKey: () async {
+              await context.push('/settings');
+              _checkKey();
+            }),
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
@@ -276,6 +289,45 @@ class _InputBar extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NoKeyBanner extends StatelessWidget {
+  const _NoKeyBanner({required this.onSetKey});
+  final VoidCallback onSetKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: AppColors.accent.withValues(alpha: 0.1),
+      child: Row(
+        children: [
+          const Icon(Icons.key_rounded, color: AppColors.accent, size: 18),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Add your OpenAI key to enable AI responses',
+              style: TextStyle(fontSize: 12, color: AppColors.accent),
+            ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            onPressed: onSetKey,
+            child: const Text('Add key',
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent)),
+          ),
+        ],
       ),
     );
   }

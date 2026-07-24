@@ -84,6 +84,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.notifications_none_rounded),
             onPressed: () => context.push('/notifications'),
           ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push('/settings'),
+          ),
         ],
       ),
       body: RefreshIndicator(

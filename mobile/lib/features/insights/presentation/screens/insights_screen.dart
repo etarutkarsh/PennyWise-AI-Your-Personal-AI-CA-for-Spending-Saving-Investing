@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/services/app_services.dart';
@@ -176,7 +177,7 @@ class _AiKeyBanner extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => context.push('/settings'),
             child: const Text('Settings'),
           ),
         ],
