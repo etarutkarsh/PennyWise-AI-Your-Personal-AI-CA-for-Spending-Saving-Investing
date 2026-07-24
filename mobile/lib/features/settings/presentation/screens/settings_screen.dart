@@ -109,6 +109,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: _openAiKeySheet,
           ),
           const Divider(indent: 16, endIndent: 16),
+          ListTile(
+            leading: const Icon(Icons.savings_outlined, color: AppColors.primary),
+            title: const Text('Savings Rules'),
+            subtitle: const Text('Automate round-ups, sweeps & fixed saves'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/savings-rules'),
+          ),
+          const Divider(indent: 16, endIndent: 16),
           const ListTile(
             leading: Icon(Icons.sms_outlined),
             title: Text('SMS & notification permissions'),

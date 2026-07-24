@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -111,6 +112,36 @@ class _LearnScreenState extends State<LearnScreen> {
             _SectionHeader(title: 'Daily Finance Tips'),
             const SizedBox(height: 10),
             const _DailyTipsCard(),
+            const SizedBox(height: 20),
+            _SectionHeader(title: 'Community'),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Center(
+                    child: Text('🏆', style: TextStyle(fontSize: 22)),
+                  ),
+                ),
+                title: const Text(
+                  'Leaderboard',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
+                subtitle: const Text(
+                  'See how you rank against other users',
+                  style: TextStyle(
+                      color: AppColors.textSecondary, fontSize: 12),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded,
+                    color: AppColors.textSecondary),
+                onTap: () => context.push('/leaderboard'),
+              ),
+            ),
           ],
         ),
       ),

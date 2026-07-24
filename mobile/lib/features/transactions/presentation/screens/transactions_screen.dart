@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/services/app_services.dart';
@@ -75,6 +76,13 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       appBar: AppBar(
         title: const Text('Transactions'),
         actions: [
+          Tooltip(
+            message: 'Import from SMS',
+            child: IconButton(
+              icon: const Icon(Icons.sms_outlined),
+              onPressed: () => context.push('/sms-import'),
+            ),
+          ),
           if (!_isLoading)
             IconButton(
               icon: const Icon(Icons.refresh_rounded),

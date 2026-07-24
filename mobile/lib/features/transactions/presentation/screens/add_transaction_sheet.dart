@@ -9,7 +9,16 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/category_model.dart';
 
 class AddTransactionSheet extends StatefulWidget {
-  const AddTransactionSheet({super.key});
+  const AddTransactionSheet({
+    super.key,
+    this.initialAmount,
+    this.initialMerchant,
+    this.initialDirection,
+  });
+
+  final double? initialAmount;
+  final String? initialMerchant;
+  final String? initialDirection;
 
   @override
   State<AddTransactionSheet> createState() => _AddTransactionSheetState();
@@ -17,9 +26,9 @@ class AddTransactionSheet extends StatefulWidget {
 
 class _AddTransactionSheetState extends State<AddTransactionSheet> {
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController();
-  final _merchantController = TextEditingController();
-  String _direction = 'DEBIT';
+  late final TextEditingController _amountController;
+  late final TextEditingController _merchantController;
+  late String _direction;
   String? _selectedCategoryId;
   List<CategoryModel> _categories = [];
   bool _isSubmitting = false;
@@ -29,6 +38,15 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
   @override
   void initState() {
     super.initState();
+    _amountController = TextEditingController(
+      text: widget.initialAmount != null
+          ? widget.initialAmount!.toStringAsFixed(
+              widget.initialAmount! % 1 == 0 ? 0 : 2)
+          : '',
+    );
+    _merchantController =
+        TextEditingController(text: widget.initialMerchant ?? '');
+    _direction = widget.initialDirection ?? 'DEBIT';
     _loadCategories();
   }
 

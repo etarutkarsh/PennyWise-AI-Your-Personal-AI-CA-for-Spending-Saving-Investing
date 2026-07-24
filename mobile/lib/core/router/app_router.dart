@@ -18,6 +18,9 @@ import '../../features/reports/presentation/screens/reports_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/transactions/presentation/screens/transactions_screen.dart';
 import '../../features/net_worth/presentation/screens/net_worth_screen.dart';
+import '../../features/savings_rules/presentation/screens/savings_rules_screen.dart';
+import '../../features/leaderboard/presentation/screens/leaderboard_screen.dart';
+import '../../features/sms/presentation/screens/sms_import_screen.dart';
 import 'main_shell.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -43,6 +46,9 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
     GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
     GoRoute(path: '/net-worth', builder: (context, state) => const NetWorthScreen()),
+    GoRoute(path: '/savings-rules', builder: (context, state) => const SavingsRulesScreen()),
+    GoRoute(path: '/leaderboard', builder: (context, state) => const LeaderboardScreen()),
+    GoRoute(path: '/sms-import', builder: (context, state) => const SmsImportScreen()),
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => MainShell(navigationShell: navigationShell),
       branches: [

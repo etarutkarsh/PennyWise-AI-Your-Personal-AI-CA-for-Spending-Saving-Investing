@@ -13,6 +13,8 @@ import '../../data/repositories/health_score_repository.dart';
 import '../../data/repositories/investment_repository.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/net_worth_repository.dart';
+import '../../data/repositories/savings_rule_repository.dart';
+import '../../data/repositories/leaderboard_repository.dart';
 
 /// Global service locator. Call [AppServices.init()] in main() before runApp.
 /// Access everywhere via [AppServices.instance].
@@ -32,6 +34,8 @@ class AppServices {
   late final InvestmentRepository investments;
   late final UserRepository user;
   late final NetWorthRepository netWorth;
+  late final SavingsRuleRepository savingsRules;
+  late final LeaderboardRepository leaderboard;
   late final AiService ai;
 
   Future<void> init() async {
@@ -50,6 +54,8 @@ class AppServices {
     investments = InvestmentRepository(apiClient);
     user = UserRepository(apiClient);
     netWorth = NetWorthRepository(apiClient);
+    savingsRules = SavingsRuleRepository(apiClient);
+    leaderboard = LeaderboardRepository(apiClient);
     ai = AiService(secureStorage);
   }
 }
