@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/services/app_services.dart';
 import '../../../../core/services/storage/user_prefs_storage.dart';
 
 /// Last step of the User Journey (PRD Section 6): Signup -> Salary ->
@@ -31,6 +32,9 @@ class _OnboardingGoalSetupScreenState extends State<OnboardingGoalSetupScreen> {
     final salary = double.tryParse(_salaryController.text.replaceAll(',', '')) ?? 50000.0;
     await UserPrefsStorage.saveSalary(salary);
     await UserPrefsStorage.addAchievement('onboarding_complete');
+    try {
+      await AppServices.instance.user.updateMe(monthlyIncome: salary);
+    } catch (_) {}
     if (mounted) context.go('/dashboard');
   }
 
