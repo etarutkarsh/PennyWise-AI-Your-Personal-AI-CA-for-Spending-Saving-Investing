@@ -3,17 +3,19 @@ package com.pennywise.service;
 import com.pennywise.dto.ChatMessageDto;
 import com.pennywise.dto.ChatRequest;
 import com.pennywise.entity.ChatMessage;
-import com.pennywise.entity.Goal;
-import com.pennywise.entity.Transaction;
 import com.pennywise.entity.User;
 import com.pennywise.repository.ChatMessageRepository;
 import com.pennywise.repository.GoalRepository;
 import com.pennywise.repository.TransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
@@ -27,20 +29,34 @@ import java.util.Map;
 @Service
 public class ChatService {
 
+    private static final Logger log = LoggerFactory.getLogger(ChatService.class);
+
     private final ChatMessageRepository chatMessageRepository;
     private final TransactionRepository transactionRepository;
     private final GoalRepository goalRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final FinancialGraphService financialGraphService;
     private final RestTemplate restTemplate = new RestTemplate();
+
+    @Value("${ai.openai.api-key:}")
+    private String configuredApiKey;
+
+    @Value("${ai.openai.base-url:http://host.docker.internal:20128/v1}")
+    private String openAiBaseUrl;
+
+    @Value("${ai.openai.model:auto}")
+    private String model;
 
     public ChatService(ChatMessageRepository chatMessageRepository,
                        TransactionRepository transactionRepository,
                        GoalRepository goalRepository,
-                       CurrentUserProvider currentUserProvider) {
+                       CurrentUserProvider currentUserProvider,
+                       FinancialGraphService financialGraphService) {
         this.chatMessageRepository = chatMessageRepository;
         this.transactionRepository = transactionRepository;
         this.goalRepository = goalRepository;
         this.currentUserProvider = currentUserProvider;
+        this.financialGraphService = financialGraphService;
     }
 
     public List<ChatMessageDto> getHistory() {
@@ -78,23 +94,14 @@ public class ChatService {
     }
 
     private String buildSystemPrompt(User user) {
-        YearMonth now = YearMonth.now();
-        Instant from = now.atDay(1).atStartOfDay().toInstant(ZoneOffset.UTC);
-        Instant to = now.atEndOfMonth().atTime(23, 59, 59).toInstant(ZoneOffset.UTC);
-
-        List<Transaction> txs = transactionRepository
-                .findByUserIdAndTransactionDateBetween(user.getId(), from, to);
-
-        BigDecimal totalDebit = txs.stream()
-                .filter(t -> t.getDirection().name().equals("DEBIT"))
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        List<Goal> goals = goalRepository.findByUserIdOrderByDeadlineAsc(user.getId());
-        StringBuilder goalsSummary = new StringBuilder();
-        for (Goal g : goals) {
-            goalsSummary.append(String.format("- %s: ₹%s saved of ₹%s target by %s\n",
-                    g.getName(), g.getCurrentSaved(), g.getTargetAmount(), g.getDeadline()));
+        // Build financial graph and use its compact text as context — fewer tokens, richer signal.
+        String graphContext;
+        try {
+            var graph = financialGraphService.build();
+            graphContext = financialGraphService.toPromptContext(graph);
+        } catch (Exception e) {
+            log.warn("Could not build financial graph for prompt context: {}", e.getMessage());
+            graphContext = "No financial data available yet.";
         }
 
         return String.format("""
@@ -103,44 +110,47 @@ public class ChatService {
                 (SIP, PPF, NPS, ELSS, FD, RD, gold, etc.) and Indian tax rules.
                 Keep answers concise (under 150 words), use ₹ for currency.
 
-                User's financial snapshot:
+                User profile:
                 - Monthly income: ₹%s
-                - Spent this month: ₹%s
                 - Risk appetite: %s
                 - User type: %s
-                - Active goals:
-                %s
 
+                %s
                 Answer the user's question using this context when relevant.
                 Never give exact stock tips. Always remind the user to consult a SEBI-registered advisor for large decisions.
                 """,
                 user.getMonthlyIncome() != null ? user.getMonthlyIncome() : "not set",
-                totalDebit,
                 user.getRiskAppetite() != null ? user.getRiskAppetite() : "medium",
                 user.getUserType() != null ? user.getUserType() : "professional",
-                goalsSummary.length() > 0 ? goalsSummary : "  No goals set yet\n"
+                graphContext
         );
     }
 
-    private String callOpenAi(List<Map<String, String>> messages, String apiKey) {
+    private String callOpenAi(List<Map<String, String>> messages, String requestKey) {
+        // Prefer key sent by client, fall back to server-configured key
+        String apiKey = (requestKey != null && !requestKey.isBlank()) ? requestKey : configuredApiKey;
+
         if (apiKey == null || apiKey.isBlank()) {
-            return "Please add your OpenAI API key in Settings → AI Assistant to enable the chat.";
+            return "No OpenAI API key configured. Add OPENAI_API_KEY to the server .env file.";
         }
+
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.setBearerAuth(apiKey);
 
             Map<String, Object> body = Map.of(
-                    "model", "gpt-4o-mini",
+                    "model", model,
                     "messages", messages,
                     "max_tokens", 400,
                     "temperature", 0.7
             );
 
+            String endpoint = openAiBaseUrl.replaceAll("/+$", "") + "/chat/completions";
+            log.debug("Calling AI endpoint: {}", endpoint);
             @SuppressWarnings("unchecked")
             Map<String, Object> response = restTemplate.postForObject(
-                    "https://api.openai.com/v1/chat/completions",
+                    endpoint,
                     new HttpEntity<>(body, headers),
                     Map.class
             );
@@ -155,7 +165,17 @@ public class ChatService {
                 }
             }
             return "I couldn't get a response right now. Please try again.";
+        } catch (HttpClientErrorException e) {
+            log.error("OpenAI API error {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 401) {
+                return "Invalid OpenAI API key. Please check the key in your server .env file.";
+            }
+            if (e.getStatusCode().value() == 429) {
+                return "OpenAI rate limit reached. Please wait a moment and try again.";
+            }
+            return "OpenAI error " + e.getStatusCode().value() + ": " + e.getResponseBodyAsString();
         } catch (Exception e) {
+            log.error("Unexpected error calling OpenAI", e);
             return "Something went wrong: " + e.getMessage();
         }
     }

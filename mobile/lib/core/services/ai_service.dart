@@ -3,25 +3,21 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../constants/api_constants.dart';
 import '../../data/models/category_model.dart';
+import 'network/api_client.dart';
 
-/// Calls OpenAI directly from the app using the user's own API key.
-/// The key is stored in FlutterSecureStorage — never sent to our backend.
+/// Routes AI calls through the PennyWise backend (which proxies to OmniRoute/OpenAI).
+/// Direct OpenAI calls from the browser caused CORS errors and exposed the API key.
 class AiService {
-  AiService(this._storage);
+  AiService(this._storage, this._apiClient);
 
   final FlutterSecureStorage _storage;
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://api.openai.com/v1',
-    connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(seconds: 30),
-  ));
+  final ApiClient _apiClient;
 
-  static const _model = 'gpt-4o-mini';
+  // Convenience getter — uses the authenticated Dio from ApiClient.
+  Dio get _dio => _apiClient.dio;
 
-  Future<bool> hasKey() async {
-    final key = await _storage.read(key: ApiConstants.openAiKeyStorageKey);
-    return key != null && key.trim().isNotEmpty;
-  }
+  /// Always true — AI key is now configured server-side via OPENAI_API_KEY in .env.
+  Future<bool> hasKey() async => true;
 
   Future<void> saveKey(String key) async {
     await _storage.write(key: ApiConstants.openAiKeyStorageKey, value: key.trim());
@@ -36,41 +32,22 @@ class AiService {
   /// Public accessor for the stored key — used by ChatScreen to send as header.
   Future<String?> getStoredKey() => _getKey();
 
-  /// Sends a minimal test message to OpenAI. Throws on failure.
+  /// Tests the backend AI connection. Throws on failure.
   Future<void> testConnection() async {
-    final key = await _getKey();
-    if (key == null || key.isEmpty) throw Exception('No API key saved.');
-    await _dio.post(
-      '/chat/completions',
-      options: Options(headers: {'Authorization': 'Bearer $key'}),
-      data: {
-        'model': _model,
-        'messages': [
-          {'role': 'user', 'content': 'Say "ok"'},
-        ],
-        'max_tokens': 5,
-      },
-    );
+    await _dio.post(ApiConstants.chat, data: {'message': 'Say "ok"'});
   }
 
   Future<String> _chat(String systemPrompt, String userMessage) async {
-    final key = await _getKey();
-    if (key == null || key.isEmpty) throw Exception('No OpenAI API key set.');
-
+    // Route through backend /ai/chat endpoint (which proxies to OmniRoute/OpenAI).
+    // The system prompt is prepended to the user message so context is preserved.
+    final prompt = systemPrompt.isNotEmpty
+        ? '[Context: $systemPrompt]\n\n$userMessage'
+        : userMessage;
     final response = await _dio.post(
-      '/chat/completions',
-      options: Options(headers: {'Authorization': 'Bearer $key'}),
-      data: {
-        'model': _model,
-        'messages': [
-          {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': userMessage},
-        ],
-        'max_tokens': 300,
-        'temperature': 0.7,
-      },
+      ApiConstants.chat,
+      data: {'message': prompt},
     );
-    return response.data['choices'][0]['message']['content'] as String;
+    return response.data['message'] as String;
   }
 
   /// Suggests the best matching category name for a merchant.

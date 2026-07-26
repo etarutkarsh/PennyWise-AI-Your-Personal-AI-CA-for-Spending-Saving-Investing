@@ -37,6 +37,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final salary = await UserPrefsStorage.getSalary();
     if (mounted) setState(() => _salary = salary);
 
+    // Sync local salary to backend if backend has no income on record.
+    if (salary > 0) {
+      AppServices.instance.user.getMe().then((user) {
+        if ((user.monthlyIncome ?? 0) <= 0) {
+          AppServices.instance.user.updateMe(monthlyIncome: salary);
+        }
+      }).catchError((_) {});
+    }
+
     // Load health score and daily tip in parallel
     final results = await Future.wait([
       AppServices.instance.healthScore

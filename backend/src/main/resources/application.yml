@@ -46,8 +46,8 @@ security:
 ai:
   openai:
     api-key: ${OPENAI_API_KEY:}
-    model: gpt-4o-mini
-    base-url: https://api.openai.com/v1
+    model: ${AI_MODEL:auto}
+    base-url: ${AI_BASE_URL:http://host.docker.internal:20128/v1}
 
 logging:
   level:

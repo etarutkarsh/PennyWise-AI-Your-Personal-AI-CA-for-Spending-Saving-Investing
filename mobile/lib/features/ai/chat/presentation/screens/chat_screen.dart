@@ -100,9 +100,12 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) setState(() => _messages.add(_ChatMessage(reply, false)));
     } catch (e) {
       if (mounted) {
-        setState(() => _messages.add(const _ChatMessage(
-            'Sorry, I couldn\'t get a response. Check your connection and try again.',
-            false)));
+        String errMsg = 'Sorry, I couldn\'t get a response. Check your connection and try again.';
+        if (e is DioException && e.response?.data != null) {
+          final data = e.response!.data;
+          if (data is Map && data['message'] != null) errMsg = data['message'] as String;
+        }
+        setState(() => _messages.add(_ChatMessage(errMsg, false)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

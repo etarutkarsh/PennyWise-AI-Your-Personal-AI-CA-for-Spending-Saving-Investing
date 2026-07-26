@@ -56,7 +56,7 @@ class AppServices {
     netWorth = NetWorthRepository(apiClient);
     savingsRules = SavingsRuleRepository(apiClient);
     leaderboard = LeaderboardRepository(apiClient);
-    ai = AiService(secureStorage);
+    ai = AiService(secureStorage, apiClient);
   }
 }
 
