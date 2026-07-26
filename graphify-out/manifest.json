@@ -1,0 +1,777 @@
+{
+  ".claude/settings.local.json": {
+    "mtime": 1785070445.909897,
+    "ast_hash": "b6abd2abc53259d8bce16f186c07495d",
+    "semantic_hash": "b6abd2abc53259d8bce16f186c07495d"
+  },
+  "backend/pom.xml": {
+    "mtime": 1784843476.2116303,
+    "ast_hash": "b1a13ef105c127c4686932a8eb4bd9f3",
+    "semantic_hash": "b1a13ef105c127c4686932a8eb4bd9f3"
+  },
+  "backend/src/main/java/com/pennywise/PennywiseApplication.java": {
+    "mtime": 1784842018.0527716,
+    "ast_hash": "0d4ec4498fa6dc0c6b7b42a19c7fae5c",
+    "semantic_hash": "0d4ec4498fa6dc0c6b7b42a19c7fae5c"
+  },
+  "backend/src/main/java/com/pennywise/ai/AffordabilityEngine.java": {
+    "mtime": 1784842018.0530427,
+    "ast_hash": "3243d1bd86e856dc4eb0205396c2e1f8",
+    "semantic_hash": "3243d1bd86e856dc4eb0205396c2e1f8"
+  },
+  "backend/src/main/java/com/pennywise/config/JpaAuditingConfig.java": {
+    "mtime": 1784842018.0532446,
+    "ast_hash": "9ede579cb80ddeba2c6959b27096eb08",
+    "semantic_hash": "9ede579cb80ddeba2c6959b27096eb08"
+  },
+  "backend/src/main/java/com/pennywise/config/security/JwtAuthFilter.java": {
+    "mtime": 1784842018.0534747,
+    "ast_hash": "261dd62a45e8959205982d14e9e38e26",
+    "semantic_hash": "261dd62a45e8959205982d14e9e38e26"
+  },
+  "backend/src/main/java/com/pennywise/config/security/JwtService.java": {
+    "mtime": 1784842018.0536096,
+    "ast_hash": "d72954fc2f42f02f68f39f8e7acf8692",
+    "semantic_hash": "d72954fc2f42f02f68f39f8e7acf8692"
+  },
+  "backend/src/main/java/com/pennywise/config/security/SecurityConfig.java": {
+    "mtime": 1784842018.053744,
+    "ast_hash": "4e844efa81b40d706634620a4975150d",
+    "semantic_hash": "4e844efa81b40d706634620a4975150d"
+  },
+  "backend/src/main/java/com/pennywise/controller/AffordabilityController.java": {
+    "mtime": 1784842018.0539563,
+    "ast_hash": "616f74b0f319a0426ed0237f1b9ab30a",
+    "semantic_hash": "616f74b0f319a0426ed0237f1b9ab30a"
+  },
+  "backend/src/main/java/com/pennywise/controller/AuthController.java": {
+    "mtime": 1784842018.0545282,
+    "ast_hash": "a35d2731f2811149067fed3fff7b029c",
+    "semantic_hash": "a35d2731f2811149067fed3fff7b029c"
+  },
+  "backend/src/main/java/com/pennywise/controller/BudgetController.java": {
+    "mtime": 1784842018.0548124,
+    "ast_hash": "e3468ec35b653f97ba9e2b28b289f8d7",
+    "semantic_hash": "e3468ec35b653f97ba9e2b28b289f8d7"
+  },
+  "backend/src/main/java/com/pennywise/controller/CategoryController.java": {
+    "mtime": 1784842018.0549471,
+    "ast_hash": "3d59d81eb47374754043cb88132d025b",
+    "semantic_hash": "3d59d81eb47374754043cb88132d025b"
+  },
+  "backend/src/main/java/com/pennywise/controller/ChatController.java": {
+    "mtime": 1784850449.2415247,
+    "ast_hash": "fc4f50e2e2b3f14411db714fe39fd1cc",
+    "semantic_hash": "fc4f50e2e2b3f14411db714fe39fd1cc"
+  },
+  "backend/src/main/java/com/pennywise/controller/GoalController.java": {
+    "mtime": 1784842018.055083,
+    "ast_hash": "37aaf4fa5509628f361ac121eef73a92",
+    "semantic_hash": "37aaf4fa5509628f361ac121eef73a92"
+  },
+  "backend/src/main/java/com/pennywise/controller/HealthScoreController.java": {
+    "mtime": 1784849882.738271,
+    "ast_hash": "9ed9f09b66cb37aa0410467bc04193ce",
+    "semantic_hash": "9ed9f09b66cb37aa0410467bc04193ce"
+  },
+  "backend/src/main/java/com/pennywise/controller/InvestmentPortfolioController.java": {
+    "mtime": 1784850445.628322,
+    "ast_hash": "637712c952ede55a5af8cda487547491",
+    "semantic_hash": "637712c952ede55a5af8cda487547491"
+  },
+  "backend/src/main/java/com/pennywise/controller/LeaderboardController.java": {
+    "mtime": 1784871459.9243205,
+    "ast_hash": "8f71b83c6504e96d95ec85d0ccf5c228",
+    "semantic_hash": "8f71b83c6504e96d95ec85d0ccf5c228"
+  },
+  "backend/src/main/java/com/pennywise/controller/NetWorthController.java": {
+    "mtime": 1784869646.617501,
+    "ast_hash": "d4bf1109df62fd9343e9b19d3f2ed6ee",
+    "semantic_hash": "d4bf1109df62fd9343e9b19d3f2ed6ee"
+  },
+  "backend/src/main/java/com/pennywise/controller/SavingsRuleController.java": {
+    "mtime": 1784871459.924787,
+    "ast_hash": "b64baa033f62290110b22ffe45169963",
+    "semantic_hash": "b64baa033f62290110b22ffe45169963"
+  },
+  "backend/src/main/java/com/pennywise/controller/TransactionController.java": {
+    "mtime": 1784842018.055354,
+    "ast_hash": "f24cdf63cbf3f8570d0dd932bfd66181",
+    "semantic_hash": "f24cdf63cbf3f8570d0dd932bfd66181"
+  },
+  "backend/src/main/java/com/pennywise/controller/UserController.java": {
+    "mtime": 1784869484.2127693,
+    "ast_hash": "ca24418cc1191a269be4af0bd339487e",
+    "semantic_hash": "ca24418cc1191a269be4af0bd339487e"
+  },
+  "backend/src/main/java/com/pennywise/dto/AffordabilityRequest.java": {
+    "mtime": 1784842018.0555732,
+    "ast_hash": "1e47e5c38cb9056954b5ecf7ed697151",
+    "semantic_hash": "1e47e5c38cb9056954b5ecf7ed697151"
+  },
+  "backend/src/main/java/com/pennywise/dto/AffordabilityResponse.java": {
+    "mtime": 1784842018.055701,
+    "ast_hash": "24dbba5490dc61895cc87cff64dfa12c",
+    "semantic_hash": "24dbba5490dc61895cc87cff64dfa12c"
+  },
+  "backend/src/main/java/com/pennywise/dto/AssetCreateRequest.java": {
+    "mtime": 1784869612.7262962,
+    "ast_hash": "f03011ecc6e7e8a7fd5e1e610f29f07b",
+    "semantic_hash": "f03011ecc6e7e8a7fd5e1e610f29f07b"
+  },
+  "backend/src/main/java/com/pennywise/dto/AssetDto.java": {
+    "mtime": 1784869609.2043302,
+    "ast_hash": "6ca336632771b341a6859185bd417d49",
+    "semantic_hash": "6ca336632771b341a6859185bd417d49"
+  },
+  "backend/src/main/java/com/pennywise/dto/BudgetCreateRequest.java": {
+    "mtime": 1784842018.055845,
+    "ast_hash": "78935631746ad0a1771b5618d5fd9e9c",
+    "semantic_hash": "78935631746ad0a1771b5618d5fd9e9c"
+  },
+  "backend/src/main/java/com/pennywise/dto/BudgetDto.java": {
+    "mtime": 1784842018.055976,
+    "ast_hash": "5eed98c9bc19622af4f36ceeacbdb8f0",
+    "semantic_hash": "5eed98c9bc19622af4f36ceeacbdb8f0"
+  },
+  "backend/src/main/java/com/pennywise/dto/CategoryDto.java": {
+    "mtime": 1784842018.0561051,
+    "ast_hash": "60852834a24375e1f197c499994bb7b8",
+    "semantic_hash": "60852834a24375e1f197c499994bb7b8"
+  },
+  "backend/src/main/java/com/pennywise/dto/ChatMessageDto.java": {
+    "mtime": 1784850400.643605,
+    "ast_hash": "37ae6d2c3ee8810bd034371c3482ca95",
+    "semantic_hash": "37ae6d2c3ee8810bd034371c3482ca95"
+  },
+  "backend/src/main/java/com/pennywise/dto/ChatRequest.java": {
+    "mtime": 1784850398.9888844,
+    "ast_hash": "c481f3ef494cd3a7018d5338ff9a0a22",
+    "semantic_hash": "c481f3ef494cd3a7018d5338ff9a0a22"
+  },
+  "backend/src/main/java/com/pennywise/dto/GoalCreateRequest.java": {
+    "mtime": 1784842018.0562246,
+    "ast_hash": "c08311ddd670e8cd4a6b63e6e94bd6e5",
+    "semantic_hash": "c08311ddd670e8cd4a6b63e6e94bd6e5"
+  },
+  "backend/src/main/java/com/pennywise/dto/GoalDto.java": {
+    "mtime": 1784842018.0563638,
+    "ast_hash": "e2311f03abfbb84a4129d4f6a02c7ecf",
+    "semantic_hash": "e2311f03abfbb84a4129d4f6a02c7ecf"
+  },
+  "backend/src/main/java/com/pennywise/dto/HealthScoreResponse.java": {
+    "mtime": 1784849814.9834836,
+    "ast_hash": "b43a929b316c12541cb8d8ba21b0db4e",
+    "semantic_hash": "b43a929b316c12541cb8d8ba21b0db4e"
+  },
+  "backend/src/main/java/com/pennywise/dto/InvestmentPortfolioCreateRequest.java": {
+    "mtime": 1784850397.4584887,
+    "ast_hash": "6ec1309cadcc15f060a196610f25a02e",
+    "semantic_hash": "6ec1309cadcc15f060a196610f25a02e"
+  },
+  "backend/src/main/java/com/pennywise/dto/InvestmentPortfolioDto.java": {
+    "mtime": 1784850395.5585566,
+    "ast_hash": "fd10a6b4ea48f40fa7c77ef4748d58d3",
+    "semantic_hash": "fd10a6b4ea48f40fa7c77ef4748d58d3"
+  },
+  "backend/src/main/java/com/pennywise/dto/LeaderboardEntryDto.java": {
+    "mtime": 1784871459.9251401,
+    "ast_hash": "02db84dbe5b91b4c863008e963dff77a",
+    "semantic_hash": "02db84dbe5b91b4c863008e963dff77a"
+  },
+  "backend/src/main/java/com/pennywise/dto/LiabilityCreateRequest.java": {
+    "mtime": 1784869619.4103703,
+    "ast_hash": "cdfd54d1f03209f861c62e7c2217ce3d",
+    "semantic_hash": "cdfd54d1f03209f861c62e7c2217ce3d"
+  },
+  "backend/src/main/java/com/pennywise/dto/LiabilityDto.java": {
+    "mtime": 1784869616.310467,
+    "ast_hash": "f146d02923359e5f210b460a1df3ea2b",
+    "semantic_hash": "f146d02923359e5f210b460a1df3ea2b"
+  },
+  "backend/src/main/java/com/pennywise/dto/NetWorthSummaryDto.java": {
+    "mtime": 1784869625.727801,
+    "ast_hash": "32b996aa11d0d1bafc0a41ae3ba6b773",
+    "semantic_hash": "32b996aa11d0d1bafc0a41ae3ba6b773"
+  },
+  "backend/src/main/java/com/pennywise/dto/SavingsRuleCreateRequest.java": {
+    "mtime": 1784871459.9254587,
+    "ast_hash": "8ee3ee64c7faeac237a69bbdd7254034",
+    "semantic_hash": "8ee3ee64c7faeac237a69bbdd7254034"
+  },
+  "backend/src/main/java/com/pennywise/dto/SavingsRuleDto.java": {
+    "mtime": 1784871459.925802,
+    "ast_hash": "558ca76fe109167c8b4d49065ee0072d",
+    "semantic_hash": "558ca76fe109167c8b4d49065ee0072d"
+  },
+  "backend/src/main/java/com/pennywise/dto/TransactionCreateRequest.java": {
+    "mtime": 1784842018.056575,
+    "ast_hash": "aa8fcebb618602a8dc2ad0642117b182",
+    "semantic_hash": "aa8fcebb618602a8dc2ad0642117b182"
+  },
+  "backend/src/main/java/com/pennywise/dto/TransactionDto.java": {
+    "mtime": 1784842018.0566967,
+    "ast_hash": "357d876828889b0602abca8a8a8b27a3",
+    "semantic_hash": "357d876828889b0602abca8a8a8b27a3"
+  },
+  "backend/src/main/java/com/pennywise/dto/UserDto.java": {
+    "mtime": 1784869470.3444636,
+    "ast_hash": "97f7ba452841133d3a85f06df2dfbef6",
+    "semantic_hash": "97f7ba452841133d3a85f06df2dfbef6"
+  },
+  "backend/src/main/java/com/pennywise/dto/UserUpdateRequest.java": {
+    "mtime": 1784869473.609719,
+    "ast_hash": "75524b250b0af4761fc3d8cfb4e1277e",
+    "semantic_hash": "75524b250b0af4761fc3d8cfb4e1277e"
+  },
+  "backend/src/main/java/com/pennywise/dto/auth/AuthResponse.java": {
+    "mtime": 1784842018.056978,
+    "ast_hash": "76c9dd43bd0b479e7482ddebb97a845c",
+    "semantic_hash": "76c9dd43bd0b479e7482ddebb97a845c"
+  },
+  "backend/src/main/java/com/pennywise/dto/auth/LoginRequest.java": {
+    "mtime": 1784842018.057166,
+    "ast_hash": "1c84755ae479b458f58983eff45c1ead",
+    "semantic_hash": "1c84755ae479b458f58983eff45c1ead"
+  },
+  "backend/src/main/java/com/pennywise/dto/auth/RegisterRequest.java": {
+    "mtime": 1784842018.0573375,
+    "ast_hash": "31b441734eb1399e7ca1d1bab5f9c868",
+    "semantic_hash": "31b441734eb1399e7ca1d1bab5f9c868"
+  },
+  "backend/src/main/java/com/pennywise/entity/Asset.java": {
+    "mtime": 1784869592.168712,
+    "ast_hash": "36cd7d93f47315176101553f1094536d",
+    "semantic_hash": "36cd7d93f47315176101553f1094536d"
+  },
+  "backend/src/main/java/com/pennywise/entity/BaseEntity.java": {
+    "mtime": 1784842018.057572,
+    "ast_hash": "7caade96d701540b80dfff0867158468",
+    "semantic_hash": "7caade96d701540b80dfff0867158468"
+  },
+  "backend/src/main/java/com/pennywise/entity/Budget.java": {
+    "mtime": 1784842018.0577044,
+    "ast_hash": "5bf3d9e5abec62d8066e203ca237c7f5",
+    "semantic_hash": "5bf3d9e5abec62d8066e203ca237c7f5"
+  },
+  "backend/src/main/java/com/pennywise/entity/Category.java": {
+    "mtime": 1784842018.0578284,
+    "ast_hash": "ed6334a96c72e7c189a17eb414165dad",
+    "semantic_hash": "ed6334a96c72e7c189a17eb414165dad"
+  },
+  "backend/src/main/java/com/pennywise/entity/ChatMessage.java": {
+    "mtime": 1784850384.46996,
+    "ast_hash": "83b378a9187f95e2832f59279b56794b",
+    "semantic_hash": "83b378a9187f95e2832f59279b56794b"
+  },
+  "backend/src/main/java/com/pennywise/entity/Goal.java": {
+    "mtime": 1784842018.0579631,
+    "ast_hash": "5c88ff86bdf479934ebe8100a2e7eefb",
+    "semantic_hash": "5c88ff86bdf479934ebe8100a2e7eefb"
+  },
+  "backend/src/main/java/com/pennywise/entity/InvestmentPortfolio.java": {
+    "mtime": 1784850382.5372286,
+    "ast_hash": "b822075ce95b10b7e4242e9e3752e857",
+    "semantic_hash": "b822075ce95b10b7e4242e9e3752e857"
+  },
+  "backend/src/main/java/com/pennywise/entity/Liability.java": {
+    "mtime": 1784869596.847825,
+    "ast_hash": "8761020b89a9e524a1c4666f26b8caf6",
+    "semantic_hash": "8761020b89a9e524a1c4666f26b8caf6"
+  },
+  "backend/src/main/java/com/pennywise/entity/SavingsRule.java": {
+    "mtime": 1784871459.9261248,
+    "ast_hash": "eedde0c23d4cce7df5773986635acd80",
+    "semantic_hash": "eedde0c23d4cce7df5773986635acd80"
+  },
+  "backend/src/main/java/com/pennywise/entity/Transaction.java": {
+    "mtime": 1784842018.0580974,
+    "ast_hash": "cda54dd8213263272a2d8e147e60edc9",
+    "semantic_hash": "cda54dd8213263272a2d8e147e60edc9"
+  },
+  "backend/src/main/java/com/pennywise/entity/User.java": {
+    "mtime": 1784842018.058232,
+    "ast_hash": "0d21c0f0806c7523410ec568274424c7",
+    "semantic_hash": "0d21c0f0806c7523410ec568274424c7"
+  },
+  "backend/src/main/java/com/pennywise/exception/DuplicateResourceException.java": {
+    "mtime": 1784842018.0585825,
+    "ast_hash": "30288a3c3b95ec68ad504062e8bf59be",
+    "semantic_hash": "30288a3c3b95ec68ad504062e8bf59be"
+  },
+  "backend/src/main/java/com/pennywise/exception/ErrorResponse.java": {
+    "mtime": 1784842018.058709,
+    "ast_hash": "17186a0b3488d3c4273b0f675c589fd8",
+    "semantic_hash": "17186a0b3488d3c4273b0f675c589fd8"
+  },
+  "backend/src/main/java/com/pennywise/exception/GlobalExceptionHandler.java": {
+    "mtime": 1784842018.0588384,
+    "ast_hash": "bc3ca5017def62a20032c7e6c918772c",
+    "semantic_hash": "bc3ca5017def62a20032c7e6c918772c"
+  },
+  "backend/src/main/java/com/pennywise/exception/ResourceNotFoundException.java": {
+    "mtime": 1784842018.058964,
+    "ast_hash": "85968a2367f4d0b4ad9db4914cf96df0",
+    "semantic_hash": "85968a2367f4d0b4ad9db4914cf96df0"
+  },
+  "backend/src/main/java/com/pennywise/repository/AssetRepository.java": {
+    "mtime": 1784869602.1426835,
+    "ast_hash": "d6470b5f48fffa9fab61fbfd9b774099",
+    "semantic_hash": "d6470b5f48fffa9fab61fbfd9b774099"
+  },
+  "backend/src/main/java/com/pennywise/repository/BudgetRepository.java": {
+    "mtime": 1784842018.0591726,
+    "ast_hash": "0322bcbb88f5be546cec3bc0baf734ac",
+    "semantic_hash": "0322bcbb88f5be546cec3bc0baf734ac"
+  },
+  "backend/src/main/java/com/pennywise/repository/CategoryRepository.java": {
+    "mtime": 1784842018.0593085,
+    "ast_hash": "7fe2729a934091d46719dfe8eedceccf",
+    "semantic_hash": "7fe2729a934091d46719dfe8eedceccf"
+  },
+  "backend/src/main/java/com/pennywise/repository/ChatMessageRepository.java": {
+    "mtime": 1784850390.1740208,
+    "ast_hash": "12bd20d589f5b1a2f8818b14c3613669",
+    "semantic_hash": "12bd20d589f5b1a2f8818b14c3613669"
+  },
+  "backend/src/main/java/com/pennywise/repository/GoalRepository.java": {
+    "mtime": 1784842018.059431,
+    "ast_hash": "b4e556e376d09759b799a1ce58475b9d",
+    "semantic_hash": "b4e556e376d09759b799a1ce58475b9d"
+  },
+  "backend/src/main/java/com/pennywise/repository/InvestmentPortfolioRepository.java": {
+    "mtime": 1784850388.5141327,
+    "ast_hash": "4db038489f051e050115cbfd27489ad8",
+    "semantic_hash": "4db038489f051e050115cbfd27489ad8"
+  },
+  "backend/src/main/java/com/pennywise/repository/LiabilityRepository.java": {
+    "mtime": 1784869605.3324172,
+    "ast_hash": "fe2762d788b39a902021830f9c853ad0",
+    "semantic_hash": "fe2762d788b39a902021830f9c853ad0"
+  },
+  "backend/src/main/java/com/pennywise/repository/SavingsRuleRepository.java": {
+    "mtime": 1784871459.92646,
+    "ast_hash": "41e20a12486835f505cacab188a80799",
+    "semantic_hash": "41e20a12486835f505cacab188a80799"
+  },
+  "backend/src/main/java/com/pennywise/repository/TransactionRepository.java": {
+    "mtime": 1784842018.0595503,
+    "ast_hash": "88b2a6cb0a14e49074e662daeda11ec4",
+    "semantic_hash": "88b2a6cb0a14e49074e662daeda11ec4"
+  },
+  "backend/src/main/java/com/pennywise/repository/UserRepository.java": {
+    "mtime": 1784842018.059666,
+    "ast_hash": "a4473d5a47494c27aa148629fda71baf",
+    "semantic_hash": "a4473d5a47494c27aa148629fda71baf"
+  },
+  "backend/src/main/java/com/pennywise/service/AffordabilityService.java": {
+    "mtime": 1784842018.0598638,
+    "ast_hash": "15080d4fcf9c93f6719fefc0770a876c",
+    "semantic_hash": "15080d4fcf9c93f6719fefc0770a876c"
+  },
+  "backend/src/main/java/com/pennywise/service/AuthService.java": {
+    "mtime": 1784842018.0599842,
+    "ast_hash": "74372ec982ee123e8d708faed4ff0b00",
+    "semantic_hash": "74372ec982ee123e8d708faed4ff0b00"
+  },
+  "backend/src/main/java/com/pennywise/service/BudgetService.java": {
+    "mtime": 1784842018.0601017,
+    "ast_hash": "1e5843fd63f9e0655f25d86e0e9f4fff",
+    "semantic_hash": "1e5843fd63f9e0655f25d86e0e9f4fff"
+  },
+  "backend/src/main/java/com/pennywise/service/CategoryService.java": {
+    "mtime": 1784842018.0602117,
+    "ast_hash": "10331765e8ddc59a2e188d28d80fc0ad",
+    "semantic_hash": "10331765e8ddc59a2e188d28d80fc0ad"
+  },
+  "backend/src/main/java/com/pennywise/service/ChatService.java": {
+    "mtime": 1785070495.8129451,
+    "ast_hash": "a078b5dd6dedb0002c1e21dd8e2ff771",
+    "semantic_hash": "a078b5dd6dedb0002c1e21dd8e2ff771"
+  },
+  "backend/src/main/java/com/pennywise/service/CurrentUserProvider.java": {
+    "mtime": 1784842018.0603235,
+    "ast_hash": "327cc94f3e09b971b2bae0abc231b50d",
+    "semantic_hash": "327cc94f3e09b971b2bae0abc231b50d"
+  },
+  "backend/src/main/java/com/pennywise/service/GoalService.java": {
+    "mtime": 1784842018.0604427,
+    "ast_hash": "903a0ce6378fc18469ba862a692f105e",
+    "semantic_hash": "903a0ce6378fc18469ba862a692f105e"
+  },
+  "backend/src/main/java/com/pennywise/service/HealthScoreService.java": {
+    "mtime": 1784849845.962656,
+    "ast_hash": "44830891edde27e61b554f07e80afb67",
+    "semantic_hash": "44830891edde27e61b554f07e80afb67"
+  },
+  "backend/src/main/java/com/pennywise/service/InvestmentPortfolioService.java": {
+    "mtime": 1784850414.7091925,
+    "ast_hash": "111ca61fb5f4ac512be33918e0cc276b",
+    "semantic_hash": "111ca61fb5f4ac512be33918e0cc276b"
+  },
+  "backend/src/main/java/com/pennywise/service/LeaderboardService.java": {
+    "mtime": 1784871459.9270463,
+    "ast_hash": "0f45eac94894b74e72204830f315c414",
+    "semantic_hash": "0f45eac94894b74e72204830f315c414"
+  },
+  "backend/src/main/java/com/pennywise/service/NetWorthService.java": {
+    "mtime": 1784869640.1544,
+    "ast_hash": "03c16ff4279e793a0d1db65a97cd2554",
+    "semantic_hash": "03c16ff4279e793a0d1db65a97cd2554"
+  },
+  "backend/src/main/java/com/pennywise/service/SavingsRuleService.java": {
+    "mtime": 1784871459.9273827,
+    "ast_hash": "fab7308c56e94d772dfa298935a96489",
+    "semantic_hash": "fab7308c56e94d772dfa298935a96489"
+  },
+  "backend/src/main/java/com/pennywise/service/TransactionService.java": {
+    "mtime": 1784842018.0605686,
+    "ast_hash": "f891b9baa35ae73228b5fb1188d81dda",
+    "semantic_hash": "f891b9baa35ae73228b5fb1188d81dda"
+  },
+  "backend/src/main/java/com/pennywise/service/UserService.java": {
+    "mtime": 1784869480.1647677,
+    "ast_hash": "3afcebc49d0bcf5578846c5585e5182f",
+    "semantic_hash": "3afcebc49d0bcf5578846c5585e5182f"
+  },
+  "backend/src/main/resources/db/migration/V1__init.sql": {
+    "mtime": 1784842018.061078,
+    "ast_hash": "31824977137f19102315876e7fce476f",
+    "semantic_hash": "31824977137f19102315876e7fce476f"
+  },
+  "backend/src/main/resources/db/migration/V2__seed_default_categories.sql": {
+    "mtime": 1784842018.0613332,
+    "ast_hash": "f3d772e3860e777333ac14c9a3f5b8fa",
+    "semantic_hash": "f3d772e3860e777333ac14c9a3f5b8fa"
+  },
+  "backend/src/main/resources/db/migration/V3__chat_history_updated_at.sql": {
+    "mtime": 1785071172.7850292,
+    "ast_hash": "acf415e3cd9830b5cc4dcaabbf369aba",
+    "semantic_hash": "acf415e3cd9830b5cc4dcaabbf369aba"
+  },
+  "backend/src/test/java/com/pennywise/ai/AffordabilityEngineTest.java": {
+    "mtime": 1784842018.0617898,
+    "ast_hash": "78b3173a817749e61d98b28bcba05f37",
+    "semantic_hash": "78b3173a817749e61d98b28bcba05f37"
+  },
+  "database/schema.sql": {
+    "mtime": 1784842018.06201,
+    "ast_hash": "31824977137f19102315876e7fce476f",
+    "semantic_hash": "31824977137f19102315876e7fce476f"
+  },
+  "mobile/lib/core/constants/api_constants.dart": {
+    "mtime": 1785070008.4601922,
+    "ast_hash": "51cd3c50653c63ef6fda2c095d4e3957",
+    "semantic_hash": "51cd3c50653c63ef6fda2c095d4e3957"
+  },
+  "mobile/lib/core/router/app_router.dart": {
+    "mtime": 1784871459.9279191,
+    "ast_hash": "175c6806421d1077a6982a32c8a2d30b",
+    "semantic_hash": "175c6806421d1077a6982a32c8a2d30b"
+  },
+  "mobile/lib/core/router/main_shell.dart": {
+    "mtime": 1784842018.0634189,
+    "ast_hash": "99487c4c4e763f23de72f00342ea2071",
+    "semantic_hash": "99487c4c4e763f23de72f00342ea2071"
+  },
+  "mobile/lib/core/services/ai_service.dart": {
+    "mtime": 1785071067.9214432,
+    "ast_hash": "239645cb306668eb5a7b5ce4e5e4c5a9",
+    "semantic_hash": "239645cb306668eb5a7b5ce4e5e4c5a9"
+  },
+  "mobile/lib/core/services/app_services.dart": {
+    "mtime": 1785071049.778042,
+    "ast_hash": "3e38f1522fcfbacd22ddc3d501566428",
+    "semantic_hash": "3e38f1522fcfbacd22ddc3d501566428"
+  },
+  "mobile/lib/core/services/network/api_client.dart": {
+    "mtime": 1784842018.0636408,
+    "ast_hash": "f4ca2e6399b98327c3d2c2a14d1a7ec1",
+    "semantic_hash": "f4ca2e6399b98327c3d2c2a14d1a7ec1"
+  },
+  "mobile/lib/core/services/sms_parser_service.dart": {
+    "mtime": 1784871459.9287121,
+    "ast_hash": "8a3fbde92f6242e67690b6bc77f2ac1f",
+    "semantic_hash": "8a3fbde92f6242e67690b6bc77f2ac1f"
+  },
+  "mobile/lib/core/services/storage/token_storage.dart": {
+    "mtime": 1784842018.0637949,
+    "ast_hash": "b63b806236414dc548ac14937a395ad0",
+    "semantic_hash": "b63b806236414dc548ac14937a395ad0"
+  },
+  "mobile/lib/core/services/storage/user_prefs_storage.dart": {
+    "mtime": 1784850486.8130777,
+    "ast_hash": "14af4e8010be1fd0787ceabb885b80bf",
+    "semantic_hash": "14af4e8010be1fd0787ceabb885b80bf"
+  },
+  "mobile/lib/core/theme/app_colors.dart": {
+    "mtime": 1784842018.063952,
+    "ast_hash": "24f3502129ee4d115b5ffd7601ae5ae9",
+    "semantic_hash": "24f3502129ee4d115b5ffd7601ae5ae9"
+  },
+  "mobile/lib/core/theme/app_theme.dart": {
+    "mtime": 1784842018.0640583,
+    "ast_hash": "5895a0fc7e1ff99fb10ea5945ec2fdbe",
+    "semantic_hash": "5895a0fc7e1ff99fb10ea5945ec2fdbe"
+  },
+  "mobile/lib/data/models/budget_model.dart": {
+    "mtime": 1784847316.4387844,
+    "ast_hash": "98c69bc34707bb088125e29efe12cd56",
+    "semantic_hash": "98c69bc34707bb088125e29efe12cd56"
+  },
+  "mobile/lib/data/models/category_model.dart": {
+    "mtime": 1784847310.8148916,
+    "ast_hash": "2b07c10ad15c6557223f91e666cf9e33",
+    "semantic_hash": "2b07c10ad15c6557223f91e666cf9e33"
+  },
+  "mobile/lib/data/models/investment_model.dart": {
+    "mtime": 1784850460.3661706,
+    "ast_hash": "1a6580778b1135be8eee66c757688e97",
+    "semantic_hash": "1a6580778b1135be8eee66c757688e97"
+  },
+  "mobile/lib/data/models/leaderboard_model.dart": {
+    "mtime": 1784871459.929009,
+    "ast_hash": "5aa456d5b7a264ef7bea95d79fba0faa",
+    "semantic_hash": "5aa456d5b7a264ef7bea95d79fba0faa"
+  },
+  "mobile/lib/data/models/savings_rule_model.dart": {
+    "mtime": 1784871459.929246,
+    "ast_hash": "b8cc13aa52a834cb3ffd3f39ea8ad834",
+    "semantic_hash": "b8cc13aa52a834cb3ffd3f39ea8ad834"
+  },
+  "mobile/lib/data/repositories/affordability_repository.dart": {
+    "mtime": 1784847297.2075875,
+    "ast_hash": "fe6212a6d90a346f7ab1f382f4ee56d7",
+    "semantic_hash": "fe6212a6d90a346f7ab1f382f4ee56d7"
+  },
+  "mobile/lib/data/repositories/auth_repository.dart": {
+    "mtime": 1784868945.4087806,
+    "ast_hash": "f984e67a15b31fc85524ac7fd81a3034",
+    "semantic_hash": "f984e67a15b31fc85524ac7fd81a3034"
+  },
+  "mobile/lib/data/repositories/budget_repository.dart": {
+    "mtime": 1784847305.4962656,
+    "ast_hash": "35340b8e9fe7ae6a8e535f04646d9046",
+    "semantic_hash": "35340b8e9fe7ae6a8e535f04646d9046"
+  },
+  "mobile/lib/data/repositories/category_repository.dart": {
+    "mtime": 1784847300.8858442,
+    "ast_hash": "5c29ed5a3d9d92d538fd4fe17b6d85d7",
+    "semantic_hash": "5c29ed5a3d9d92d538fd4fe17b6d85d7"
+  },
+  "mobile/lib/data/repositories/goal_repository.dart": {
+    "mtime": 1784847292.8869982,
+    "ast_hash": "04bd18d998abf54490c7be028d12b9db",
+    "semantic_hash": "04bd18d998abf54490c7be028d12b9db"
+  },
+  "mobile/lib/data/repositories/health_score_repository.dart": {
+    "mtime": 1784849887.8507953,
+    "ast_hash": "298920c38bd66b6cf53ce37ae9509f22",
+    "semantic_hash": "298920c38bd66b6cf53ce37ae9509f22"
+  },
+  "mobile/lib/data/repositories/investment_repository.dart": {
+    "mtime": 1784850465.5525475,
+    "ast_hash": "484331f8244e46431c29fc5c33263f16",
+    "semantic_hash": "484331f8244e46431c29fc5c33263f16"
+  },
+  "mobile/lib/data/repositories/leaderboard_repository.dart": {
+    "mtime": 1784871459.9296138,
+    "ast_hash": "1dd2a650a0a6e6cd3704e07ea47d5bee",
+    "semantic_hash": "1dd2a650a0a6e6cd3704e07ea47d5bee"
+  },
+  "mobile/lib/data/repositories/net_worth_repository.dart": {
+    "mtime": 1784869662.7227764,
+    "ast_hash": "291b404664629a6f999f02ac1077c1ec",
+    "semantic_hash": "291b404664629a6f999f02ac1077c1ec"
+  },
+  "mobile/lib/data/repositories/savings_rule_repository.dart": {
+    "mtime": 1784871459.9300115,
+    "ast_hash": "51171a89594e6c957413149f0d870d1c",
+    "semantic_hash": "51171a89594e6c957413149f0d870d1c"
+  },
+  "mobile/lib/data/repositories/transaction_repository.dart": {
+    "mtime": 1784847286.8808553,
+    "ast_hash": "2787acb7801f0a66520cfc603b766373",
+    "semantic_hash": "2787acb7801f0a66520cfc603b766373"
+  },
+  "mobile/lib/data/repositories/user_repository.dart": {
+    "mtime": 1784869502.778979,
+    "ast_hash": "2fb3f8ab0afe33282c921e2c5b12c186",
+    "semantic_hash": "2fb3f8ab0afe33282c921e2c5b12c186"
+  },
+  "mobile/lib/features/ai/chat/presentation/screens/chat_screen.dart": {
+    "mtime": 1785070016.1788971,
+    "ast_hash": "383bc163a0b623c18b34a9e3f7bbd4b0",
+    "semantic_hash": "383bc163a0b623c18b34a9e3f7bbd4b0"
+  },
+  "mobile/lib/features/authentication/presentation/screens/login_screen.dart": {
+    "mtime": 1784847342.831507,
+    "ast_hash": "2f4dc4c61a4f215316cefa5df8b4594a",
+    "semantic_hash": "2f4dc4c61a4f215316cefa5df8b4594a"
+  },
+  "mobile/lib/features/authentication/presentation/screens/onboarding_goal_setup_screen.dart": {
+    "mtime": 1784870218.9491158,
+    "ast_hash": "25a085bc3a26024a8f9d339916fe8b02",
+    "semantic_hash": "25a085bc3a26024a8f9d339916fe8b02"
+  },
+  "mobile/lib/features/authentication/presentation/screens/register_screen.dart": {
+    "mtime": 1784847358.4152808,
+    "ast_hash": "149e4fab89f91b742af9bd6fbff99683",
+    "semantic_hash": "149e4fab89f91b742af9bd6fbff99683"
+  },
+  "mobile/lib/features/authentication/presentation/screens/splash_screen.dart": {
+    "mtime": 1784847329.621178,
+    "ast_hash": "c6710df1612b0f3c1680bbb974cb1d7f",
+    "semantic_hash": "c6710df1612b0f3c1680bbb974cb1d7f"
+  },
+  "mobile/lib/features/budget/presentation/screens/budget_screen.dart": {
+    "mtime": 1784847691.1385546,
+    "ast_hash": "19ac9f27bdc3e256f7cd19e3eee5214b",
+    "semantic_hash": "19ac9f27bdc3e256f7cd19e3eee5214b"
+  },
+  "mobile/lib/features/calculator/domain/entities/affordability_result.dart": {
+    "mtime": 1784869465.4834783,
+    "ast_hash": "297f04aa68849ceafc255de128990944",
+    "semantic_hash": "297f04aa68849ceafc255de128990944"
+  },
+  "mobile/lib/features/calculator/presentation/screens/affordability_screen.dart": {
+    "mtime": 1784847390.5033693,
+    "ast_hash": "60e31055be067a7a15491da13e5d657b",
+    "semantic_hash": "60e31055be067a7a15491da13e5d657b"
+  },
+  "mobile/lib/features/dashboard/domain/entities/dashboard_summary.dart": {
+    "mtime": 1784842018.0667577,
+    "ast_hash": "cc7a8bd2be94621e2647e09b3133cd5d",
+    "semantic_hash": "cc7a8bd2be94621e2647e09b3133cd5d"
+  },
+  "mobile/lib/features/dashboard/presentation/screens/budget_detail_screen.dart": {
+    "mtime": 1784846259.7571,
+    "ast_hash": "681ce6bba6839512a2d2f10cfe9f3e1f",
+    "semantic_hash": "681ce6bba6839512a2d2f10cfe9f3e1f"
+  },
+  "mobile/lib/features/dashboard/presentation/screens/dashboard_screen.dart": {
+    "mtime": 1785073713.6154523,
+    "ast_hash": "cc776dbe3eba0253678ca111b8cb2a47",
+    "semantic_hash": "cc776dbe3eba0253678ca111b8cb2a47"
+  },
+  "mobile/lib/features/dashboard/presentation/screens/investment_detail_screen.dart": {
+    "mtime": 1784846195.6590836,
+    "ast_hash": "bf5726b2335087ec84da914e1452af39",
+    "semantic_hash": "bf5726b2335087ec84da914e1452af39"
+  },
+  "mobile/lib/features/dashboard/presentation/screens/salary_detail_screen.dart": {
+    "mtime": 1784846065.6487427,
+    "ast_hash": "df289208e324fb732efb300b4be9049e",
+    "semantic_hash": "df289208e324fb732efb300b4be9049e"
+  },
+  "mobile/lib/features/dashboard/presentation/screens/savings_detail_screen.dart": {
+    "mtime": 1784846123.9621415,
+    "ast_hash": "628c496361ca5b760adff245666bb021",
+    "semantic_hash": "628c496361ca5b760adff245666bb021"
+  },
+  "mobile/lib/features/dashboard/presentation/widgets/detail_screen_widgets.dart": {
+    "mtime": 1784846019.0076761,
+    "ast_hash": "49227f51a5e72465283e65094dfd7a9a",
+    "semantic_hash": "49227f51a5e72465283e65094dfd7a9a"
+  },
+  "mobile/lib/features/dashboard/presentation/widgets/summary_card.dart": {
+    "mtime": 1784845948.9942825,
+    "ast_hash": "f6701056c7995fce75c710e5623364d2",
+    "semantic_hash": "f6701056c7995fce75c710e5623364d2"
+  },
+  "mobile/lib/features/goals/domain/entities/goal_entity.dart": {
+    "mtime": 1784851353.6839871,
+    "ast_hash": "09f18b9ce91a2bd99183db3f7cbc368e",
+    "semantic_hash": "09f18b9ce91a2bd99183db3f7cbc368e"
+  },
+  "mobile/lib/features/goals/presentation/screens/goals_screen.dart": {
+    "mtime": 1784847482.7925513,
+    "ast_hash": "5e02a6f448862e16c3afc43e960481e6",
+    "semantic_hash": "5e02a6f448862e16c3afc43e960481e6"
+  },
+  "mobile/lib/features/insights/presentation/screens/insights_screen.dart": {
+    "mtime": 1784873321.4428577,
+    "ast_hash": "5482b65c88b84a6e8356c2307b813805",
+    "semantic_hash": "5482b65c88b84a6e8356c2307b813805"
+  },
+  "mobile/lib/features/investments/presentation/screens/investments_screen.dart": {
+    "mtime": 1784850567.3134744,
+    "ast_hash": "7f3d0d8804d5ebd7f3d7f13d50775d9b",
+    "semantic_hash": "7f3d0d8804d5ebd7f3d7f13d50775d9b"
+  },
+  "mobile/lib/features/leaderboard/presentation/screens/leaderboard_screen.dart": {
+    "mtime": 1784871459.9306245,
+    "ast_hash": "1ece67eb77e7946578629dd1c9cac764",
+    "semantic_hash": "1ece67eb77e7946578629dd1c9cac764"
+  },
+  "mobile/lib/features/learn/presentation/screens/learn_screen.dart": {
+    "mtime": 1784871459.9317799,
+    "ast_hash": "5890c603c29b9f445f979ea70a9e7a09",
+    "semantic_hash": "5890c603c29b9f445f979ea70a9e7a09"
+  },
+  "mobile/lib/features/learn/presentation/widgets/quiz_section.dart": {
+    "mtime": 1784845694.009049,
+    "ast_hash": "6e86a392dd8ac705def277e10f0a45ee",
+    "semantic_hash": "6e86a392dd8ac705def277e10f0a45ee"
+  },
+  "mobile/lib/features/net_worth/presentation/screens/net_worth_screen.dart": {
+    "mtime": 1784869744.1803808,
+    "ast_hash": "686d3a5b3d3091832b2ec7dace57afe7",
+    "semantic_hash": "686d3a5b3d3091832b2ec7dace57afe7"
+  },
+  "mobile/lib/features/notifications/presentation/screens/notifications_screen.dart": {
+    "mtime": 1784870281.3622572,
+    "ast_hash": "8aa4986e94aab1df827c4f0763553882",
+    "semantic_hash": "8aa4986e94aab1df827c4f0763553882"
+  },
+  "mobile/lib/features/profile/presentation/screens/profile_screen.dart": {
+    "mtime": 1784869545.5448453,
+    "ast_hash": "d9713bbf6c7414e62909d2d97c19c2a7",
+    "semantic_hash": "d9713bbf6c7414e62909d2d97c19c2a7"
+  },
+  "mobile/lib/features/reports/presentation/screens/reports_screen.dart": {
+    "mtime": 1784869586.3576832,
+    "ast_hash": "0092f4122f358e7ca7b4f7a380527b0b",
+    "semantic_hash": "0092f4122f358e7ca7b4f7a380527b0b"
+  },
+  "mobile/lib/features/savings_rules/presentation/screens/savings_rules_screen.dart": {
+    "mtime": 1784871459.9325376,
+    "ast_hash": "2f5e0556bfc00cbb62277f7bf8a57e95",
+    "semantic_hash": "2f5e0556bfc00cbb62277f7bf8a57e95"
+  },
+  "mobile/lib/features/settings/presentation/screens/settings_screen.dart": {
+    "mtime": 1784873275.1923194,
+    "ast_hash": "7e1dad8d4c64592cf6cd84f8ddb8b9ce",
+    "semantic_hash": "7e1dad8d4c64592cf6cd84f8ddb8b9ce"
+  },
+  "mobile/lib/features/sms/presentation/screens/sms_import_screen.dart": {
+    "mtime": 1784871459.935462,
+    "ast_hash": "d5d3b694f1b1c092590b010d26db179a",
+    "semantic_hash": "d5d3b694f1b1c092590b010d26db179a"
+  },
+  "mobile/lib/features/transactions/domain/entities/transaction_entity.dart": {
+    "mtime": 1784842018.0697014,
+    "ast_hash": "3fd1366e6106e0c8cb8a8ef7ffd2cefc",
+    "semantic_hash": "3fd1366e6106e0c8cb8a8ef7ffd2cefc"
+  },
+  "mobile/lib/features/transactions/presentation/screens/add_transaction_sheet.dart": {
+    "mtime": 1784871459.9361777,
+    "ast_hash": "aa98f925b84b9e32dd39939493b9706f",
+    "semantic_hash": "aa98f925b84b9e32dd39939493b9706f"
+  },
+  "mobile/lib/features/transactions/presentation/screens/transactions_screen.dart": {
+    "mtime": 1784871459.936875,
+    "ast_hash": "7d2d8873cc8ea5d09ae92421ec324c76",
+    "semantic_hash": "7d2d8873cc8ea5d09ae92421ec324c76"
+  },
+  "mobile/lib/main.dart": {
+    "mtime": 1784847321.1921926,
+    "ast_hash": "58e30591f1fe6c63d9be139bb4065b30",
+    "semantic_hash": "58e30591f1fe6c63d9be139bb4065b30"
+  },
+  "mobile/lib/shared/widgets/placeholder_screen.dart": {
+    "mtime": 1784842018.0705473,
+    "ast_hash": "94b9f3e7d02322142b03be936f076b7b",
+    "semantic_hash": "94b9f3e7d02322142b03be936f076b7b"
+  }
+}
