@@ -25,7 +25,7 @@ class TransactionRepository {
       'merchant': merchant,
       'direction': direction,
       'source': 'MANUAL',
-      'transactionDate': DateTime.now().toIso8601String().split('T')[0],
+      'transactionDate': DateTime.now().toUtc().toIso8601String(),
       if (categoryId != null) 'categoryId': categoryId,
       if (note != null && note.isNotEmpty) 'note': note,
     });

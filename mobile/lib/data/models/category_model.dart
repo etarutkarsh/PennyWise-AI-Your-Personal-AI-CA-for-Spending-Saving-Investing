@@ -15,6 +15,6 @@ class CategoryModel {
         id: json['id'] as String,
         name: json['name'] as String,
         icon: json['icon'] as String? ?? '💰',
-        type: json['type'] as String? ?? 'EXPENSE',
+        type: (json['type'] as String? ?? 'EXPENSE').toUpperCase(),
       );
 }

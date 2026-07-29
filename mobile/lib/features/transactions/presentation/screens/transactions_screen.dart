@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/transaction_entity.dart';
+import 'add_transaction_sheet.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -33,143 +34,23 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       final txns = await AppServices.instance.transactions.getAll();
       if (mounted) setState(() { _transactions = txns; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+      if (mounted) setState(() { _error = friendlyError(e); _loading = false; });
     }
   }
 
-  void _showAddTransaction() {
-    final merchantCtrl = TextEditingController();
-    final amountCtrl = TextEditingController();
-    String direction = 'DEBIT';
-    String? categoryId;
-
-    showModalBottomSheet(
+  void _showAddTransaction() async {
+    final tx = await showModalBottomSheet<TransactionEntity>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding: EdgeInsets.fromLTRB(
-              20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(
-                      color: AppColors.border,
-                      borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text('Log Transaction',
-                  style: GoogleFonts.dmSans(
-                      color: AppColors.textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800)),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setSheet(() => direction = 'DEBIT'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: direction == 'DEBIT'
-                              ? AppColors.danger.withValues(alpha: 0.15)
-                              : AppColors.surfaceElevated,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: direction == 'DEBIT'
-                                  ? AppColors.danger
-                                  : AppColors.border),
-                        ),
-                        child: Center(
-                          child: Text('Expense',
-                              style: GoogleFonts.dmSans(
-                                  color: direction == 'DEBIT'
-                                      ? AppColors.danger
-                                      : AppColors.textSecondary,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setSheet(() => direction = 'CREDIT'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          color: direction == 'CREDIT'
-                              ? AppColors.success.withValues(alpha: 0.15)
-                              : AppColors.surfaceElevated,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(
-                              color: direction == 'CREDIT'
-                                  ? AppColors.success
-                                  : AppColors.border),
-                        ),
-                        child: Center(
-                          child: Text('Income',
-                              style: GoogleFonts.dmSans(
-                                  color: direction == 'CREDIT'
-                                      ? AppColors.success
-                                      : AppColors.textSecondary,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: merchantCtrl,
-                style: GoogleFonts.dmSans(
-                    color: AppColors.textPrimary, fontSize: 14),
-                decoration: const InputDecoration(hintText: 'Merchant or description'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: amountCtrl,
-                keyboardType: TextInputType.number,
-                style: GoogleFonts.dmSans(
-                    color: AppColors.textPrimary, fontSize: 14),
-                decoration: const InputDecoration(hintText: 'Amount (₹)'),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    try {
-                      await AppServices.instance.transactions.create(
-                        merchant: merchantCtrl.text,
-                        amount: double.tryParse(amountCtrl.text) ?? 0,
-                        direction: direction,
-                        categoryId: categoryId,
-                      );
-                      if (ctx.mounted) Navigator.pop(ctx);
-                      _load();
-                    } catch (_) {}
-                  },
-                  child: Text('Log it',
-                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      builder: (_) => const AddTransactionSheet(),
     );
+    if (tx != null && mounted) {
+      setState(() => _transactions.insert(0, tx));
+    }
   }
 
   Map<String, List<TransactionEntity>> get _grouped {
