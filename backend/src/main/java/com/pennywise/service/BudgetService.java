@@ -5,6 +5,7 @@ import com.pennywise.dto.BudgetDto;
 import com.pennywise.entity.Budget;
 import com.pennywise.entity.Category;
 import com.pennywise.entity.User;
+import com.pennywise.exception.DuplicateResourceException;
 import com.pennywise.exception.ResourceNotFoundException;
 import com.pennywise.repository.BudgetRepository;
 import com.pennywise.repository.CategoryRepository;
@@ -43,11 +44,16 @@ public class BudgetService {
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
+        String period = request.getPeriod() != null ? request.getPeriod() : YearMonth.now().toString();
+        if (budgetRepository.findByUserIdAndCategoryIdAndPeriod(user.getId(), category.getId(), period).isPresent()) {
+            throw new DuplicateResourceException("Budget for " + category.getName() + " already exists this month");
+        }
+
         Budget budget = new Budget();
         budget.setUserId(user.getId());
         budget.setCategory(category);
         budget.setMonthlyLimit(request.getMonthlyLimit());
-        budget.setPeriod(request.getPeriod() != null ? request.getPeriod() : YearMonth.now().toString());
+        budget.setPeriod(period);
         if (request.getAlertThresholdPercent() != null) {
             budget.setAlertThresholdPercent(request.getAlertThresholdPercent());
         }
