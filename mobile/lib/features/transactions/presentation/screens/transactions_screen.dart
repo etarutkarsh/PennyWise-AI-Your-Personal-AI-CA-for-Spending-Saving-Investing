@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/transaction_entity.dart';
-import 'add_transaction_sheet.dart';
 
 class TransactionsScreen extends StatefulWidget {
   const TransactionsScreen({super.key});
@@ -16,8 +16,10 @@ class TransactionsScreen extends StatefulWidget {
 
 class _TransactionsScreenState extends State<TransactionsScreen> {
   List<TransactionEntity> _transactions = [];
-  bool _isLoading = true;
+  bool _loading = true;
   String? _error;
+
+  static final _dateFmt = DateFormat('dd MMM');
 
   @override
   void initState() {
@@ -26,254 +28,455 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; });
     try {
-      final data = await AppServices.instance.transactions.getAll();
-      if (mounted) setState(() => _transactions = data);
+      final txns = await AppServices.instance.transactions.getAll();
+      if (mounted) setState(() { _transactions = txns; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() => _error = friendlyError(e));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
   }
 
-  Future<void> _delete(TransactionEntity tx) async {
-    try {
-      await AppServices.instance.transactions.delete(tx.id);
-      setState(() => _transactions.remove(tx));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(friendlyError(e)),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    }
-  }
+  void _showAddTransaction() {
+    final merchantCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    String direction = 'DEBIT';
+    String? categoryId;
 
-  void _openAddSheet() async {
-    final created = await showModalBottomSheet<TransactionEntity>(
+    showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => const AddTransactionSheet(),
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(
+              20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('Log Transaction',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setSheet(() => direction = 'DEBIT'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: direction == 'DEBIT'
+                              ? AppColors.danger.withValues(alpha: 0.15)
+                              : AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: direction == 'DEBIT'
+                                  ? AppColors.danger
+                                  : AppColors.border),
+                        ),
+                        child: Center(
+                          child: Text('Expense',
+                              style: GoogleFonts.dmSans(
+                                  color: direction == 'DEBIT'
+                                      ? AppColors.danger
+                                      : AppColors.textSecondary,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => setSheet(() => direction = 'CREDIT'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: direction == 'CREDIT'
+                              ? AppColors.success.withValues(alpha: 0.15)
+                              : AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                              color: direction == 'CREDIT'
+                                  ? AppColors.success
+                                  : AppColors.border),
+                        ),
+                        child: Center(
+                          child: Text('Income',
+                              style: GoogleFonts.dmSans(
+                                  color: direction == 'CREDIT'
+                                      ? AppColors.success
+                                      : AppColors.textSecondary,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: merchantCtrl,
+                style: GoogleFonts.dmSans(
+                    color: AppColors.textPrimary, fontSize: 14),
+                decoration: const InputDecoration(hintText: 'Merchant or description'),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: amountCtrl,
+                keyboardType: TextInputType.number,
+                style: GoogleFonts.dmSans(
+                    color: AppColors.textPrimary, fontSize: 14),
+                decoration: const InputDecoration(hintText: 'Amount (₹)'),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      await AppServices.instance.transactions.create(
+                        merchant: merchantCtrl.text,
+                        amount: double.tryParse(amountCtrl.text) ?? 0,
+                        direction: direction,
+                        categoryId: categoryId,
+                      );
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      _load();
+                    } catch (_) {}
+                  },
+                  child: Text('Log it',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-    if (created != null) {
-      setState(() => _transactions.insert(0, created));
+  }
+
+  Map<String, List<TransactionEntity>> get _grouped {
+    final m = <String, List<TransactionEntity>>{};
+    for (final t in _transactions) {
+      final key = _dateFmt.format(t.transactionDate);
+      m.putIfAbsent(key, () => []).add(t);
     }
+    return m;
   }
 
   @override
   Widget build(BuildContext context) {
-    final currency =
-        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    final grouped = _grouped;
+    final days = grouped.keys.toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transactions'),
-        actions: [
-          Tooltip(
-            message: 'Import from SMS',
-            child: IconButton(
-              icon: const Icon(Icons.sms_outlined),
-              onPressed: () => context.push('/sms-import'),
-            ),
-          ),
-          if (!_isLoading)
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _load,
-            ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _buildBody(currency),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openAddSheet,
-        icon: const Icon(Icons.add),
-        label: const Text('Add manually'),
-      ),
-    );
-  }
-
-  Widget _buildBody(NumberFormat currency) {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.wifi_off_rounded,
-                  size: 48, color: AppColors.textSecondary),
-              const SizedBox(height: 12),
-              Text(_error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary)),
-              const SizedBox(height: 16),
-              ElevatedButton(onPressed: _load, child: const Text('Retry')),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: AppColors.orange,
+          backgroundColor: AppColors.surface,
+          onRefresh: _load,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Activity',
+                              style: GoogleFonts.dmSans(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800)),
+                          Text('${_transactions.length} transactions',
+                              style: GoogleFonts.dmSans(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14)),
+                        ],
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: () => context.push('/sms-import'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.sms_outlined,
+                                  color: AppColors.orange, size: 16),
+                              const SizedBox(width: 6),
+                              Text('SMS',
+                                  style: GoogleFonts.dmSans(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: _showAddTransaction,
+                        child: Container(
+                          width: 42, height: 42,
+                          decoration: BoxDecoration(
+                            color: AppColors.orange,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(Icons.add_rounded,
+                              color: Colors.white, size: 22),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              if (_loading)
+                const SliverFillRemaining(
+                  child: Center(
+                      child: CircularProgressIndicator(color: AppColors.orange)),
+                )
+              else if (_error != null)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Could not load',
+                            style: GoogleFonts.dmSans(
+                                color: AppColors.textSecondary)),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                            onPressed: _load, child: const Text('Retry')),
+                      ],
+                    ),
+                  ),
+                )
+              else if (_transactions.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 72, height: 72,
+                          decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(22)),
+                          child: const Icon(Icons.receipt_long_outlined,
+                              color: AppColors.textSecondary, size: 32),
+                        ),
+                        const SizedBox(height: 16),
+                        Text('No activity yet',
+                            style: GoogleFonts.dmSans(
+                                color: AppColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 6),
+                        Text('Log a transaction or import from SMS',
+                            style: GoogleFonts.dmSans(
+                                color: AppColors.textSecondary,
+                                fontSize: 14)),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: _showAddTransaction,
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Log Transaction'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((_, i) {
+                      final day = days[i];
+                      final txns = grouped[day]!;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10, top: 4),
+                            child: Text(day,
+                                style: GoogleFonts.dmSans(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600)),
+                          ),
+                          ...txns.map((t) => _TxnCard(
+                              txn: t,
+                              onDelete: () async {
+                                await AppServices.instance.transactions
+                                    .delete(t.id);
+                                _load();
+                              })),
+                          const SizedBox(height: 8),
+                        ],
+                      );
+                    }, childCount: days.length),
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           ),
         ),
-      );
-    }
-    if (_transactions.isEmpty) {
-      return const _EmptyState();
-    }
-
-    // Group by date
-    final grouped = <String, List<TransactionEntity>>{};
-    for (final tx in _transactions) {
-      final key = DateFormat('EEE, d MMM').format(tx.transactionDate);
-      grouped.putIfAbsent(key, () => []).add(tx);
-    }
-    final days = grouped.keys.toList();
-
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 100),
-      itemCount: days.length,
-      itemBuilder: (context, dayIndex) {
-        final day = days[dayIndex];
-        final txs = grouped[day]!;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-              child: Text(
-                day,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textSecondary,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            ...txs.map((tx) => _TransactionTile(
-                  tx: tx,
-                  currency: currency,
-                  onDelete: () => _delete(tx),
-                )),
-          ],
-        );
-      },
+      ),
     );
   }
 }
 
-class _TransactionTile extends StatelessWidget {
-  final TransactionEntity tx;
-  final NumberFormat currency;
+class _TxnCard extends StatelessWidget {
+  const _TxnCard({required this.txn, required this.onDelete});
+  final TransactionEntity txn;
   final VoidCallback onDelete;
 
-  const _TransactionTile({
-    required this.tx,
-    required this.currency,
-    required this.onDelete,
-  });
+  static final _currency =
+      NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
+  bool get _isDebit => txn.direction == 'DEBIT';
+
+  Color get _amountColor =>
+      _isDebit ? AppColors.danger : AppColors.success;
+
+  String get _letter =>
+      txn.merchant.isNotEmpty ? txn.merchant[0].toUpperCase() : '?';
+
+  Color get _letterBg => _isDebit
+      ? AppColors.questRose
+      : AppColors.questGreen;
+
+  Color get _letterColor => _isDebit
+      ? const Color(0xFFC62828)
+      : const Color(0xFF0F9D58);
 
   @override
   Widget build(BuildContext context) {
-    final isDebit = tx.direction == 'DEBIT';
     return Dismissible(
-      key: Key(tx.id),
+      key: Key(txn.id.toString()),
       direction: DismissDirection.endToStart,
       background: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(18),
+        ),
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 16),
-        color: AppColors.danger,
-        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+        padding: const EdgeInsets.only(right: 20),
+        child: const Icon(Icons.delete_outline_rounded,
+            color: AppColors.danger, size: 22),
       ),
       confirmDismiss: (_) async {
         return await showDialog<bool>(
           context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Delete transaction?'),
-            content: Text('Remove "${tx.merchant}"?'),
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20)),
+            title: Text('Delete?',
+                style: GoogleFonts.dmSans(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700)),
+            content: Text('Remove this transaction?',
+                style: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary)),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel')),
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text('Cancel',
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textSecondary))),
               TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: const Text('Delete',
-                      style: TextStyle(color: AppColors.danger))),
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text('Delete',
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w700))),
             ],
           ),
-        );
+        ) ?? false;
       },
       onDismissed: (_) => onDelete(),
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: (isDebit ? AppColors.danger : AppColors.success)
-                .withValues(alpha: 0.1),
-            child: Icon(
-              isDebit
-                  ? Icons.arrow_upward_rounded
-                  : Icons.arrow_downward_rounded,
-              color: isDebit ? AppColors.danger : AppColors.success,
-              size: 18,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                  color: _letterBg,
+                  borderRadius: BorderRadius.circular(13)),
+              child: Center(
+                child: Text(_letter,
+                    style: GoogleFonts.dmSans(
+                        color: _letterColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800)),
+              ),
             ),
-          ),
-          title: Text(tx.merchant,
-              style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text(
-            '${tx.categoryName} • ${tx.source}',
-            style:
-                const TextStyle(color: AppColors.textSecondary, fontSize: 11),
-          ),
-          trailing: Text(
-            '${isDebit ? '-' : '+'}${currency.format(tx.amount)}',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: isDebit ? AppColors.danger : AppColors.success,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(txn.merchant,
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(txn.categoryName,
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textSecondary, fontSize: 11)),
+                ],
+              ),
             ),
-          ),
+            Text(
+              '${_isDebit ? '-' : '+'}${_currency.format(txn.amount)}',
+              style: GoogleFonts.dmSans(
+                color: _amountColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: const [
-        SizedBox(height: 120),
-        Icon(Icons.receipt_long_outlined,
-            size: 56, color: AppColors.textSecondary),
-        SizedBox(height: 16),
-        Text(
-          'No transactions yet',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-        ),
-        SizedBox(height: 8),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 48),
-          child: Text(
-            'Grant SMS/notification access so PennyWise can auto-detect spending, '
-            'or tap the button below to add one manually.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-        ),
-      ],
     );
   }
 }

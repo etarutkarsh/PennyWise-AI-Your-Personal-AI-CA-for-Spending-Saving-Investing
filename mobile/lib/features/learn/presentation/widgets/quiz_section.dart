@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -92,27 +93,32 @@ class _QuizSectionState extends State<QuizSection> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           children: [
-            const Icon(Icons.quiz_outlined, color: AppColors.primary),
+            const Icon(Icons.quiz_outlined, color: AppColors.orange),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 widget.title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: GoogleFonts.dmSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.orange.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 'Q${_currentIndex + 1}/${widget.questions.length}',
-                style: const TextStyle(
-                  color: AppColors.primary,
+                style: GoogleFonts.dmSans(
+                  color: AppColors.orange,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -125,23 +131,42 @@ class _QuizSectionState extends State<QuizSection> {
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
             value: progress,
-            backgroundColor: AppColors.background,
-            valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+            backgroundColor: AppColors.border,
+            valueColor: const AlwaysStoppedAnimation(AppColors.orange),
             minHeight: 6,
           ),
         ),
         const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.06),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.primary.withOpacity(0.15)),
-          ),
-          child: Text(
-            q.question,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, height: 1.4),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(width: 4, color: AppColors.orange),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        q.question,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          height: 1.4,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -165,11 +190,20 @@ class _QuizSectionState extends State<QuizSection> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
               onPressed: _nextQuestion,
               child: Text(
                 _currentIndex < widget.questions.length - 1
                     ? 'Next Question →'
                     : 'See My Results',
+                style: GoogleFonts.dmSans(fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -195,41 +229,50 @@ class _QuizSectionState extends State<QuizSection> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.primary.withOpacity(0.08),
-            AppColors.success.withOpacity(0.06),
+            AppColors.success.withValues(alpha: 0.12),
+            AppColors.orange.withValues(alpha: 0.08),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(emoji, style: const TextStyle(fontSize: 44)),
           const SizedBox(height: 8),
           Text(
             '$_score / ${widget.questions.length} Correct!',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+            style: GoogleFonts.dmSans(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textSecondary, height: 1.4),
+            style: GoogleFonts.dmSans(
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             decoration: BoxDecoration(
-              color: AppColors.accent.withOpacity(0.15),
+              color: AppColors.amber.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.amber.withValues(alpha: 0.3)),
             ),
             child: Text(
               '+${_score * 10} XP earned! ⚡',
-              style: const TextStyle(
+              style: GoogleFonts.dmSans(
                 fontWeight: FontWeight.w800,
-                color: AppColors.accent,
+                color: AppColors.amber,
                 fontSize: 15,
               ),
             ),
@@ -243,26 +286,32 @@ class _QuizSectionState extends State<QuizSection> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.success.withOpacity(0.08),
+        color: AppColors.success.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.success.withOpacity(0.3)),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 32),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Quiz Already Completed! ✅',
-                  style: TextStyle(fontWeight: FontWeight.w700),
+                  style: GoogleFonts.dmSans(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   'You\'ve aced this quiz. Come back tomorrow for new challenges!',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  style: GoogleFonts.dmSans(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -296,27 +345,32 @@ class _OptionTile extends StatelessWidget {
     Color bgColor;
     Color letterBg;
     Color letterText;
+    Color textColor;
 
     if (!isAnswered) {
-      borderColor = Colors.grey.withOpacity(0.3);
-      bgColor = Colors.transparent;
-      letterBg = AppColors.background;
+      borderColor = AppColors.border;
+      bgColor = AppColors.surface;
+      letterBg = AppColors.surfaceElevated;
       letterText = AppColors.textSecondary;
+      textColor = AppColors.textPrimary;
     } else if (isCorrect) {
       borderColor = AppColors.success;
-      bgColor = AppColors.success.withOpacity(0.08);
+      bgColor = AppColors.success.withValues(alpha: 0.10);
       letterBg = AppColors.success;
       letterText = Colors.white;
+      textColor = AppColors.success;
     } else if (isSelected) {
       borderColor = AppColors.danger;
-      bgColor = AppColors.danger.withOpacity(0.07);
+      bgColor = AppColors.danger.withValues(alpha: 0.10);
       letterBg = AppColors.danger;
       letterText = Colors.white;
+      textColor = AppColors.danger;
     } else {
-      borderColor = Colors.grey.withOpacity(0.2);
-      bgColor = Colors.transparent;
-      letterBg = AppColors.background;
+      borderColor = AppColors.border;
+      bgColor = AppColors.surface;
+      letterBg = AppColors.surfaceElevated;
       letterText = AppColors.textSecondary;
+      textColor = AppColors.textSecondary;
     }
 
     return Padding(
@@ -355,14 +409,11 @@ class _OptionTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   text,
-                  style: TextStyle(
-                    color: isAnswered && isCorrect
-                        ? AppColors.success
-                        : isAnswered && isSelected
-                            ? AppColors.danger
-                            : AppColors.textPrimary,
-                    fontWeight:
-                        isAnswered && (isCorrect || isSelected) ? FontWeight.w600 : FontWeight.normal,
+                  style: GoogleFonts.dmSans(
+                    color: textColor,
+                    fontWeight: (isAnswered && (isCorrect || isSelected))
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -393,22 +444,37 @@ class _ExplanationBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
               Icon(icon, color: color, size: 16),
               const SizedBox(width: 6),
-              Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 13)),
+              Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(explanation, style: const TextStyle(fontSize: 13, height: 1.4)),
+          Text(
+            explanation,
+            style: GoogleFonts.dmSans(
+              fontSize: 13,
+              height: 1.4,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );

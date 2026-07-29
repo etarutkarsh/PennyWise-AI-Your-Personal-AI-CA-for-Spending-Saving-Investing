@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/services/app_services.dart';
@@ -13,111 +13,104 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatMessage {
-  const _ChatMessage(this.text, this.fromUser);
-  final String text;
-  final bool fromUser;
-}
-
 class _ChatScreenState extends State<ChatScreen> {
-  final _controller = TextEditingController();
-  final _scrollController = ScrollController();
-  final List<_ChatMessage> _messages = [];
-  bool _isLoading = false;
-  bool _loadingHistory = true;
-  bool _hasKey = false;
+  final _msgCtrl = TextEditingController();
+  final _scrollCtrl = ScrollController();
+  final List<_Message> _messages = [];
+  bool _loading = false;
+  bool _typing = false;
+  String? _openAiKey;
+
+  static const _suggestions = [
+    'How can I save more this month?',
+    'Should I invest in mutual funds?',
+    'What\'s the 50-30-20 rule?',
+    'How do I build an emergency fund?',
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
-    _checkKey();
   }
 
-  Future<void> _checkKey() async {
-    final has = await AppServices.instance.ai.hasKey();
-    if (mounted) setState(() => _hasKey = has);
+  @override
+  void dispose() {
+    _msgCtrl.dispose();
+    _scrollCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _loadHistory() async {
     try {
-      final res = await AppServices.instance.apiClient.dio.get(ApiConstants.chatHistory);
-      final list = res.data as List;
+      final token = await AppServices.instance.tokenStorage.accessToken;
+      if (token == null) return;
+      final resp = await Dio().get(
+        '${ApiConstants.baseUrl}/ai/chat/history',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      final history = (resp.data as List?) ?? [];
       if (mounted) {
         setState(() {
-          _messages.clear();
-          if (list.isEmpty) {
-            _messages.add(const _ChatMessage(
-              'Hi! I\'m PennyWise, your AI personal finance CA. '
-              'Ask me anything — "Should I invest in gold?", '
-              '"How do I build an emergency fund?", '
-              '"Can I afford a MacBook Pro?"',
-              false,
-            ));
-          } else {
-            for (final m in list) {
-              _messages.add(_ChatMessage(m['message'] as String, m['role'] == 'user'));
-            }
-          }
-          _loadingHistory = false;
+          _messages.addAll(history.map((m) => _Message(
+                text: m['message'] as String? ?? '',
+                isUser: m['role'] == 'user',
+              )));
         });
         _scrollToBottom();
       }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _loadingHistory = false;
-          _messages.add(const _ChatMessage(
-            'Hi! I\'m PennyWise, your AI personal finance CA. Ask me anything!',
-            false,
-          ));
-        });
-      }
-    }
+    } catch (_) {}
   }
 
-  Future<void> _send() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty || _isLoading) return;
-    _controller.clear();
+  Future<void> _send([String? preset]) async {
+    final text = (preset ?? _msgCtrl.text).trim();
+    if (text.isEmpty || _loading) return;
+    _msgCtrl.clear();
     setState(() {
-      _messages.add(_ChatMessage(text, true));
-      _isLoading = true;
+      _messages.add(_Message(text: text, isUser: true));
+      _typing = true;
+      _loading = true;
     });
     _scrollToBottom();
 
     try {
-      final key = await AppServices.instance.ai.hasKey()
-          ? await AppServices.instance.ai.getStoredKey()
-          : null;
-
-      final res = await AppServices.instance.apiClient.dio.post(
-        ApiConstants.chat,
-        data: {'message': text},
-        options: key != null ? Options(headers: {'X-OpenAI-Key': key}) : null,
+      final token = await AppServices.instance.tokenStorage.accessToken;
+      final resp = await Dio().post(
+        '${ApiConstants.baseUrl}/ai/chat',
+        data: {'message': text, if (_openAiKey != null) 'openAiKey': _openAiKey},
+        options: Options(headers: {
+          if (token != null) 'Authorization': 'Bearer $token',
+        }),
       );
-      final reply = res.data['message'] as String;
-      if (mounted) setState(() => _messages.add(_ChatMessage(reply, false)));
+      final reply = resp.data['response'] as String? ?? '…';
+      if (mounted) {
+        setState(() {
+          _messages.add(_Message(text: reply, isUser: false));
+          _typing = false;
+          _loading = false;
+        });
+        _scrollToBottom();
+      }
     } catch (e) {
       if (mounted) {
-        String errMsg = 'Sorry, I couldn\'t get a response. Check your connection and try again.';
-        if (e is DioException && e.response?.data != null) {
-          final data = e.response!.data;
-          if (data is Map && data['message'] != null) errMsg = data['message'] as String;
-        }
-        setState(() => _messages.add(_ChatMessage(errMsg, false)));
+        setState(() {
+          _messages.add(_Message(
+              text: 'Could not reach AI. Check your connection and try again.',
+              isUser: false,
+              isError: true));
+          _typing = false;
+          _loading = false;
+        });
+        _scrollToBottom();
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-      _scrollToBottom();
     }
   }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+      if (_scrollCtrl.hasClients) {
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -125,92 +118,227 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    super.dispose();
+  void _showKeyDialog() {
+    final ctrl = TextEditingController(text: _openAiKey ?? '');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('OpenAI Key',
+            style: GoogleFonts.dmSans(
+                color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: ctrl,
+          obscureText: true,
+          style: GoogleFonts.dmSans(color: AppColors.textPrimary),
+          decoration: const InputDecoration(hintText: 'sk-...'),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('Cancel',
+                  style: GoogleFonts.dmSans(color: AppColors.textSecondary))),
+          TextButton(
+              onPressed: () {
+                setState(() => _openAiKey = ctrl.text.trim());
+                Navigator.pop(ctx);
+              },
+              child: Text('Save',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.orange, fontWeight: FontWeight.w700))),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ask PennyWise'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline_rounded),
-            onPressed: () => showDialog(
-              context: context,
-              builder: (_) => AlertDialog(
-                title: const Text('About AI Chat'),
-                content: const Text(
-                    'PennyWise answers financial questions using your spending, '
-                    'goals, and salary as context.\n\n'
-                    'Add your OpenAI key in Settings → AI Assistant to enable it.'),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Got it')),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Ask AI',
+                          style: GoogleFonts.dmSans(
+                              color: AppColors.textPrimary,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800)),
+                      Text('Your financial CA',
+                          style: GoogleFonts.dmSans(
+                              color: AppColors.textSecondary, fontSize: 14)),
+                    ],
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: _showKeyDialog,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.key_outlined,
+                              color: _openAiKey != null
+                                  ? AppColors.success
+                                  : AppColors.textSecondary,
+                              size: 16),
+                          const SizedBox(width: 6),
+                          Text('API Key',
+                              style: GoogleFonts.dmSans(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (_loadingHistory) const LinearProgressIndicator(minHeight: 2),
-          if (!_loadingHistory && !_hasKey)
-            _NoKeyBanner(onSetKey: () async {
-              await context.push('/settings');
-              _checkKey();
-            }),
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_isLoading ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _messages.length) return const _TypingIndicator();
-                return _MessageBubble(msg: _messages[index]);
-              },
+            const SizedBox(height: 16),
+
+            // Messages
+            Expanded(
+              child: _messages.isEmpty
+                  ? _EmptyState(onSuggestionTap: _send, suggestions: _suggestions)
+                  : ListView.builder(
+                      controller: _scrollCtrl,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: _messages.length + (_typing ? 1 : 0),
+                      itemBuilder: (_, i) {
+                        if (i == _messages.length) {
+                          return const _TypingBubble();
+                        }
+                        return _MessageBubble(msg: _messages[i]);
+                      },
+                    ),
             ),
-          ),
-          _InputBar(controller: _controller, onSend: _send, isLoading: _isLoading),
-        ],
+
+            // Input bar
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: const Border(
+                    top: BorderSide(color: AppColors.border)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _msgCtrl,
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textPrimary, fontSize: 14),
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _send(),
+                      decoration: InputDecoration(
+                        hintText: 'Ask anything about your money…',
+                        hintStyle: GoogleFonts.dmSans(
+                            color: AppColors.textMuted, fontSize: 14),
+                        filled: true,
+                        fillColor: AppColors.surfaceElevated,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(22),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () => _send(),
+                    child: Container(
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: _loading ? AppColors.border : AppColors.orange,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: _loading
+                          ? const Center(
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.textSecondary),
+                              ),
+                            )
+                          : const Icon(Icons.arrow_upward_rounded,
+                              color: Colors.white, size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _Message {
+  const _Message(
+      {required this.text, required this.isUser, this.isError = false});
+  final String text;
+  final bool isUser;
+  final bool isError;
 }
 
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({required this.msg});
-  final _ChatMessage msg;
+  final _Message msg;
 
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: msg.fromUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+        constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.78),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: msg.fromUser ? AppColors.primary : AppColors.surface,
+          color: msg.isUser
+              ? AppColors.orange
+              : msg.isError
+                  ? AppColors.danger.withValues(alpha: 0.12)
+                  : AppColors.surface,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(14),
-            topRight: const Radius.circular(14),
-            bottomLeft: Radius.circular(msg.fromUser ? 14 : 4),
-            bottomRight: Radius.circular(msg.fromUser ? 4 : 14),
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(msg.isUser ? 18 : 4),
+            bottomRight: Radius.circular(msg.isUser ? 4 : 18),
           ),
+          border: msg.isUser
+              ? null
+              : Border.all(color: AppColors.border),
         ),
         child: Text(
           msg.text,
-          style: TextStyle(
-            color: msg.fromUser ? Colors.white : AppColors.textPrimary,
+          style: GoogleFonts.dmSans(
+            color: msg.isUser
+                ? Colors.white
+                : msg.isError
+                    ? AppColors.danger
+                    : AppColors.textPrimary,
             fontSize: 14,
-            height: 1.4,
+            height: 1.5,
           ),
         ),
       ),
@@ -218,78 +346,38 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _TypingIndicator extends StatelessWidget {
-  const _TypingIndicator();
+class _TypingBubble extends StatelessWidget {
+  const _TypingBubble();
 
   @override
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(width: 40, child: LinearProgressIndicator(minHeight: 2, color: AppColors.primary)),
-            SizedBox(width: 8),
-            Text('PennyWise is thinking…',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InputBar extends StatelessWidget {
-  const _InputBar({required this.controller, required this.onSend, required this.isLoading});
-  final TextEditingController controller;
-  final VoidCallback onSend;
-  final bool isLoading;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          border: Border(top: BorderSide(color: AppColors.textSecondary.withValues(alpha: 0.15))),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomRight: Radius.circular(18),
+            bottomLeft: Radius.circular(4),
+          ),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                maxLines: null,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSend(),
-                decoration: InputDecoration(
-                  hintText: 'Ask a financial question…',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: AppColors.background,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.filled(
-              onPressed: isLoading ? null : onSend,
-              icon: isLoading
-                  ? const SizedBox(width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.send_rounded),
-              style: IconButton.styleFrom(backgroundColor: AppColors.primary),
-            ),
+            for (int i = 0; i < 3; i++) ...[
+              Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                      color: AppColors.textSecondary,
+                      shape: BoxShape.circle)),
+              if (i < 2) const SizedBox(width: 4),
+            ],
           ],
         ),
       ),
@@ -297,39 +385,76 @@ class _InputBar extends StatelessWidget {
   }
 }
 
-class _NoKeyBanner extends StatelessWidget {
-  const _NoKeyBanner({required this.onSetKey});
-  final VoidCallback onSetKey;
+class _EmptyState extends StatelessWidget {
+  const _EmptyState(
+      {required this.onSuggestionTap, required this.suggestions});
+  final void Function(String) onSuggestionTap;
+  final List<String> suggestions;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: AppColors.accent.withValues(alpha: 0.1),
-      child: Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
         children: [
-          const Icon(Icons.key_rounded, color: AppColors.accent, size: 18),
-          const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Add your OpenAI key to enable AI responses',
-              style: TextStyle(fontSize: 12, color: AppColors.accent),
+          const SizedBox(height: 32),
+          Container(
+            width: 72, height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.orange.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(24),
             ),
+            child: const Icon(Icons.psychology_outlined,
+                color: AppColors.orange, size: 34),
           ),
-          TextButton(
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            onPressed: onSetKey,
-            child: const Text('Add key',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.accent)),
+          const SizedBox(height: 16),
+          Text(
+            'Your AI Financial CA',
+            style: GoogleFonts.dmSans(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w800),
           ),
+          const SizedBox(height: 6),
+          Text(
+            'Ask anything about saving, investing, or budgeting.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.dmSans(
+                color: AppColors.textSecondary, fontSize: 14),
+          ),
+          const SizedBox(height: 32),
+          Text('Try asking:',
+              style: GoogleFonts.dmSans(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          ...suggestions.map((s) => GestureDetector(
+                onTap: () => onSuggestionTap(s),
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(s,
+                            style: GoogleFonts.dmSans(
+                                color: AppColors.textPrimary,
+                                fontSize: 14)),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded,
+                          color: AppColors.textMuted, size: 14),
+                    ],
+                  ),
+                ),
+              )),
         ],
       ),
     );

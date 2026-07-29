@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/services/app_services.dart';
@@ -14,8 +15,20 @@ class GoalsScreen extends StatefulWidget {
 
 class _GoalsScreenState extends State<GoalsScreen> {
   List<GoalEntity> _goals = [];
-  bool _isLoading = true;
+  bool _loading = true;
   String? _error;
+
+  final _goalTypes = [
+    ('🏠', 'House', AppColors.questBlue, const Color(0xFF1565C0)),
+    ('🚗', 'Car', AppColors.questGreen, const Color(0xFF0F9D58)),
+    ('✈️', 'Vacation', AppColors.questYellow, const Color(0xFFE65100)),
+    ('💻', 'Laptop', AppColors.questPurple, const Color(0xFF6A1B9A)),
+    ('💒', 'Wedding', AppColors.questRose, const Color(0xFFC62828)),
+    ('🛡️', 'Emergency Fund', AppColors.questPeach, const Color(0xFFBF5820)),
+    ('🎯', 'Retirement', AppColors.questGreen, const Color(0xFF1B5E20)),
+    ('📚', 'Education', AppColors.questBlue, const Color(0xFF0D47A1)),
+    ('✨', 'Custom', AppColors.surfaceElevated, AppColors.textSecondary),
+  ];
 
   @override
   void initState() {
@@ -24,430 +37,427 @@ class _GoalsScreenState extends State<GoalsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; });
     try {
-      final data = await AppServices.instance.goals.getAll();
-      if (mounted) setState(() => _goals = data);
+      final goals = await AppServices.instance.goals.getAll();
+      if (mounted) setState(() { _goals = goals; _loading = false; });
     } catch (e) {
-      if (mounted) setState(() => _error = friendlyError(e));
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
   }
 
-  void _openCreateSheet() async {
-    final created = await showModalBottomSheet<GoalEntity>(
+  void _showAddGoal() {
+    final nameCtrl = TextEditingController();
+    final targetCtrl = TextEditingController();
+    final savedCtrl = TextEditingController();
+    final deadlineCtrl = TextEditingController();
+    String selectedType = 'Custom';
+
+    showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => const _CreateGoalSheet(),
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(
+              20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('New Quest',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 48,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: _goalTypes.map((t) {
+                    final selected = selectedType == t.$2;
+                    return GestureDetector(
+                      onTap: () => setSheet(() => selectedType = t.$2),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: selected ? AppColors.orange : AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                              color: selected ? AppColors.orange : AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            Text(t.$1),
+                            const SizedBox(width: 6),
+                            Text(t.$2,
+                                style: GoogleFonts.dmSans(
+                                    color: selected
+                                        ? Colors.white
+                                        : AppColors.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 14),
+              _DarkField(controller: nameCtrl, hint: 'Quest name'),
+              const SizedBox(height: 10),
+              _DarkField(
+                  controller: targetCtrl,
+                  hint: 'Target amount (₹)',
+                  keyboardType: TextInputType.number),
+              const SizedBox(height: 10),
+              _DarkField(
+                  controller: savedCtrl,
+                  hint: 'Already saved (₹)',
+                  keyboardType: TextInputType.number),
+              const SizedBox(height: 10),
+              _DarkField(controller: deadlineCtrl, hint: 'Deadline (YYYY-MM-DD)'),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      await AppServices.instance.goals.create(
+                        name: nameCtrl.text,
+                        goalType: selectedType,
+                        targetAmount: double.tryParse(targetCtrl.text) ?? 0,
+                        deadline: DateTime.tryParse(deadlineCtrl.text) ??
+                            DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      _load();
+                    } catch (_) {}
+                  },
+                  child: Text('Start Quest',
+                      style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-    if (created != null) {
-      setState(() => _goals.add(created));
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Goals'),
-        actions: [
-          if (!_isLoading)
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _load,
-            ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: _buildBody(),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openCreateSheet,
-        icon: const Icon(Icons.add),
-        label: const Text('New goal'),
-      ),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) return const Center(child: CircularProgressIndicator());
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.wifi_off_rounded,
-                  size: 48, color: AppColors.textSecondary),
-              const SizedBox(height: 12),
-              Text(_error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary)),
-              const SizedBox(height: 16),
-              ElevatedButton(onPressed: _load, child: const Text('Retry')),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: AppColors.orange,
+          backgroundColor: AppColors.surface,
+          onRefresh: _load,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: Row(
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Your Quests',
+                              style: GoogleFonts.dmSans(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w800)),
+                          Text('${_goals.length} active goals',
+                              style: GoogleFonts.dmSans(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14)),
+                        ],
+                      ),
+                      const Spacer(),
+                      GestureDetector(
+                        onTap: _showAddGoal,
+                        child: Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: AppColors.orange,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Icon(Icons.add_rounded,
+                              color: Colors.white, size: 22),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 20)),
+              if (_loading)
+                const SliverFillRemaining(
+                  child: Center(
+                      child: CircularProgressIndicator(color: AppColors.orange)),
+                )
+              else if (_error != null)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Could not load quests',
+                            style: GoogleFonts.dmSans(
+                                color: AppColors.textSecondary)),
+                        const SizedBox(height: 12),
+                        ElevatedButton(
+                            onPressed: _load, child: const Text('Retry')),
+                      ],
+                    ),
+                  ),
+                )
+              else if (_goals.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(22),
+                          ),
+                          child: const Icon(Icons.flag_outlined,
+                              color: AppColors.textSecondary, size: 32),
+                        ),
+                        const SizedBox(height: 16),
+                        Text('No quests yet',
+                            style: GoogleFonts.dmSans(
+                                color: AppColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 6),
+                        Text('Set a financial goal to get started',
+                            style: GoogleFonts.dmSans(
+                                color: AppColors.textSecondary, fontSize: 14)),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          onPressed: _showAddGoal,
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Start a Quest'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, i) => _GoalQuestCard(
+                          goal: _goals[i], onUpdate: _load),
+                      childCount: _goals.length,
+                    ),
+                  ),
+                ),
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           ),
         ),
-      );
-    }
-    if (_goals.isEmpty) {
-      return ListView(
-        children: [
-          const SizedBox(height: 100),
-          const Icon(Icons.flag_outlined,
-              size: 56, color: AppColors.textSecondary),
-          const SizedBox(height: 16),
-          const Text(
-            'No goals yet',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 48),
-            child: Text(
-              'Set a goal — MacBook, vacation, emergency fund — and PennyWise '
-              'will tell you exactly how much to save each month.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 48),
-            child: ElevatedButton(
-              onPressed: _openCreateSheet,
-              child: const Text('Create my first goal'),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-      itemCount: _goals.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, i) => _GoalCard(goal: _goals[i]),
+      ),
     );
   }
 }
 
-class _GoalCard extends StatelessWidget {
-  const _GoalCard({required this.goal});
-
+class _GoalQuestCard extends StatelessWidget {
+  const _GoalQuestCard({required this.goal, required this.onUpdate});
   final GoalEntity goal;
+  final VoidCallback onUpdate;
 
-  @override
-  Widget build(BuildContext context) {
-    final currency =
-        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-    final progress = (goal.progressPercent / 100).clamp(0.0, 1.0);
-    final daysLeft =
-        goal.deadline.difference(DateTime.now()).inDays.clamp(0, 9999);
-    final isAchieved = goal.progressPercent >= 100;
+  static final _currency =
+      NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    goal.name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 16),
-                  ),
-                ),
-                if (isAchieved)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('🏆 Achieved!',
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.success,
-                            fontWeight: FontWeight.w700)),
-                  )
-                else
-                  Text(
-                    '$daysLeft days left',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 10,
-                backgroundColor: AppColors.background,
-                valueColor: AlwaysStoppedAnimation(
-                  isAchieved ? AppColors.success : AppColors.primary,
-                ),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  currency.format(goal.currentSaved),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, color: AppColors.primary),
-                ),
-                Text(
-                  '${(goal.progressPercent).toStringAsFixed(0)}% of ${currency.format(goal.targetAmount)}',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ],
-            ),
-            if (!isAchieved &&
-                goal.recommendedMonthlyContribution > 0) ...[
-              const Divider(height: 20),
-              Row(
-                children: [
-                  const Icon(Icons.auto_graph_rounded,
-                      size: 16, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Save ${currency.format(goal.recommendedMonthlyContribution)}/month '
-                      'via ${goal.investmentSuggestion.replaceAll('_', ' ')} '
-                      '→ reach by ${DateFormat.yMMM().format(goal.deadline)}',
-                      style: const TextStyle(fontSize: 12, height: 1.4),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Create goal bottom sheet ────────────────────────────────────────────────
-
-class _CreateGoalSheet extends StatefulWidget {
-  const _CreateGoalSheet();
-
-  @override
-  State<_CreateGoalSheet> createState() => _CreateGoalSheetState();
-}
-
-class _CreateGoalSheetState extends State<_CreateGoalSheet> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _amountController = TextEditingController();
-  String _goalType = 'CUSTOM';
-  DateTime _deadline = DateTime.now().add(const Duration(days: 365));
-  String _priority = 'MEDIUM';
-  bool _isSaving = false;
-
-  static const _goalTypes = [
-    ('HOUSE', '🏠', 'House'),
-    ('CAR', '🚗', 'Car'),
-    ('VACATION', '✈️', 'Vacation'),
-    ('LAPTOP', '💻', 'Laptop'),
-    ('WEDDING', '💍', 'Wedding'),
-    ('EMERGENCY_FUND', '🛡️', 'Emergency Fund'),
-    ('RETIREMENT', '🌴', 'Retirement'),
-    ('EDUCATION', '📚', 'Education'),
-    ('CUSTOM', '⭐', 'Custom'),
-  ];
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _amountController.dispose();
-    super.dispose();
+  Color get _bgColor {
+    switch (goal.goalType.toLowerCase()) {
+      case 'house': return AppColors.questBlue;
+      case 'car': return AppColors.questGreen;
+      case 'vacation': return AppColors.questYellow;
+      case 'laptop': return AppColors.questPurple;
+      case 'wedding': return AppColors.questRose;
+      default: return AppColors.questPeach;
+    }
   }
 
-  Future<void> _pickDeadline() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _deadline,
-      firstDate: DateTime.now().add(const Duration(days: 30)),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 30)),
-    );
-    if (picked != null) setState(() => _deadline = picked);
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
-    try {
-      final goal = await AppServices.instance.goals.create(
-        name: _nameController.text.trim(),
-        goalType: _goalType,
-        targetAmount: double.parse(_amountController.text.trim()),
-        deadline: _deadline,
-        priority: _priority,
-      );
-      if (mounted) Navigator.of(context).pop(goal);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(friendlyError(e)),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
+  Color get _letterColor {
+    switch (goal.goalType.toLowerCase()) {
+      case 'house': return const Color(0xFF1565C0);
+      case 'car': return const Color(0xFF0F9D58);
+      case 'vacation': return const Color(0xFFE65100);
+      case 'laptop': return const Color(0xFF6A1B9A);
+      case 'wedding': return const Color(0xFFC62828);
+      default: return const Color(0xFFBF5820);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final df = DateFormat.yMMMd();
+    final pct = goal.targetAmount > 0
+        ? (goal.currentSaved / goal.targetAmount).clamp(0.0, 1.0)
+        : 0.0;
+    final isComplete = pct >= 1.0;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
       ),
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Text('New Goal',
-                      style: Theme.of(context).textTheme.titleMedium),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                    color: _bgColor,
+                    borderRadius: BorderRadius.circular(15)),
+                child: Center(
+                  child: Text(
+                    goal.name.isNotEmpty
+                        ? goal.name[0].toUpperCase()
+                        : '?',
+                    style: GoogleFonts.dmSans(
+                        color: _letterColor,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800),
                   ),
-                ],
-              ),
-              const SizedBox(height: 4),
-
-              // Goal type chips
-              const Text('What are you saving for?',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textSecondary,
-                      fontSize: 12)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: _goalTypes.map((t) {
-                  final (value, emoji, label) = t;
-                  final selected = _goalType == value;
-                  return FilterChip(
-                    label: Text('$emoji $label'),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _goalType = value),
-                    selectedColor: AppColors.primary.withValues(alpha: 0.15),
-                    checkmarkColor: AppColors.primary,
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 14),
-
-              TextFormField(
-                controller: _nameController,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Goal name',
-                  hintText: 'e.g. MacBook Pro, Goa trip',
-                  prefixIcon: Icon(Icons.flag_outlined),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _amountController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: 'Target amount',
-                  prefixText: '₹ ',
-                  prefixIcon: Icon(Icons.currency_rupee_rounded),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(goal.name,
+                        style: GoogleFonts.dmSans(
+                            color: AppColors.textPrimary,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${_currency.format(goal.currentSaved)} of ${_currency.format(goal.targetAmount)}',
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textSecondary, fontSize: 12),
+                    ),
+                  ],
                 ),
-                validator: (v) =>
-                    (v == null || double.tryParse(v.trim()) == null)
-                        ? 'Enter a valid amount'
-                        : null,
               ),
-              const SizedBox(height: 12),
-
-              // Deadline picker
-              InkWell(
-                onTap: _pickDeadline,
-                borderRadius: BorderRadius.circular(8),
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Target date',
-                    prefixIcon: Icon(Icons.event_outlined),
-                    suffixIcon: Icon(Icons.chevron_right),
+              if (isComplete)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(df.format(_deadline)),
+                  child: Text('Complete!',
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.success,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700)),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.orange,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${(pct * 100).toInt()}%',
+                    style: GoogleFonts.dmSans(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700),
+                  ),
                 ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Stack(
+            children: [
+              Container(
+                height: 6,
+                decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(6)),
               ),
-              const SizedBox(height: 12),
-
-              // Priority
-              DropdownButtonFormField<String>(
-                value: _priority,
-                decoration: const InputDecoration(
-                  labelText: 'Priority',
-                  prefixIcon: Icon(Icons.priority_high_rounded),
+              FractionallySizedBox(
+                widthFactor: pct,
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: isComplete ? AppColors.success : AppColors.orange,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'HIGH', child: Text('🔴 High')),
-                  DropdownMenuItem(value: 'MEDIUM', child: Text('🟡 Medium')),
-                  DropdownMenuItem(value: 'LOW', child: Text('🟢 Low')),
-                ],
-                onChanged: (v) => setState(() => _priority = v ?? 'MEDIUM'),
-              ),
-              const SizedBox(height: 20),
-
-              ElevatedButton(
-                onPressed: _isSaving ? null : _save,
-                child: _isSaving
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Text('Create Goal'),
               ),
             ],
           ),
-        ),
+          if (goal.recommendedMonthlyContribution > 0) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Save ${_currency.format(goal.recommendedMonthlyContribution)}/month to hit target',
+              style: GoogleFonts.dmSans(
+                  color: AppColors.textSecondary, fontSize: 11),
+            ),
+          ],
+        ],
       ),
+    );
+  }
+}
+
+class _DarkField extends StatelessWidget {
+  const _DarkField(
+      {required this.controller,
+      required this.hint,
+      this.keyboardType = TextInputType.text});
+  final TextEditingController controller;
+  final String hint;
+  final TextInputType keyboardType;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: GoogleFonts.dmSans(color: AppColors.textPrimary, fontSize: 14),
+      decoration: InputDecoration(hintText: hint),
     );
   }
 }

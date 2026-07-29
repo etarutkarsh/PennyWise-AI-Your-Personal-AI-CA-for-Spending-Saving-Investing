@@ -79,14 +79,9 @@ class SavingsDetailScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2))
-                    ],
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -104,7 +99,7 @@ class SavingsDetailScreen extends StatelessWidget {
                         subtitle: 'Ideal safety net',
                         color: AppColors.success,
                       ),
-                      const Divider(height: 24),
+                      const Divider(height: 24, color: AppColors.border),
                       const Text('Your Progress (toward 3-month goal)',
                           style:
                               TextStyle(fontSize: 12, color: AppColors.textSecondary)),
@@ -113,7 +108,7 @@ class SavingsDetailScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                         child: LinearProgressIndicator(
                           value: progress3,
-                          backgroundColor: AppColors.background,
+                          backgroundColor: AppColors.border,
                           valueColor:
                               const AlwaysStoppedAnimation(AppColors.success),
                           minHeight: 12,
@@ -326,7 +321,9 @@ class _FundGoalRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary)),
               Text(subtitle,
                   style: const TextStyle(
                       fontSize: 11, color: AppColors.textSecondary)),
@@ -354,16 +351,23 @@ class _TipCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)],
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Text(icon, style: const TextStyle(fontSize: 20)),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(tip, style: const TextStyle(fontSize: 13, height: 1.4)),
+            child: Text(
+              tip,
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.4,
+                color: AppColors.textPrimary,
+              ),
+            ),
           ),
         ],
       ),
@@ -400,8 +404,10 @@ class _Rule72Row extends StatelessWidget {
             style:
                 const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
         Text('$years years to double',
-            style:
-                const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppColors.textPrimary)),
       ],
     );
   }

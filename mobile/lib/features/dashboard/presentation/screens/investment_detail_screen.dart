@@ -145,22 +145,19 @@ class InvestmentDetailScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.surface,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                          color: Colors.black.withOpacity(0.04), blurRadius: 8)
-                    ],
+                    border: Border.all(color: AppColors.border),
                   ),
                   child: const Column(
                     children: [
                       _SIPRow(years: 5, amount: '~₹4 Lakhs', color: AppColors.accent),
-                      Divider(height: 16),
+                      Divider(height: 16, color: AppColors.border),
                       _SIPRow(years: 10, amount: '~₹11.6 Lakhs', color: AppColors.primary),
-                      Divider(height: 16),
+                      Divider(height: 16, color: AppColors.border),
                       _SIPRow(years: 20, amount: '~₹49.9 Lakhs', color: AppColors.success),
-                      Divider(height: 16),
-                      _SIPRow(years: 30, amount: '~₹1.76 Crore 🚀', color: AppColors.secondary),
+                      Divider(height: 16, color: AppColors.border),
+                      _SIPRow(years: 30, amount: '~₹1.76 Crore 🚀', color: AppColors.orange),
                     ],
                   ),
                 ),
@@ -294,11 +291,9 @@ class _PyramidCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)
-        ],
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -378,7 +373,9 @@ class _PyramidLevel extends StatelessWidget {
               Text(label,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.w600)),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary)),
               Text(examples,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
@@ -419,17 +416,16 @@ class _PortfolioCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)
-        ],
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: items
             .expand((item) => [
                   _PortfolioRow(item: item),
-                  if (item != items.last) const Divider(height: 14),
+                  if (item != items.last)
+                    const Divider(height: 14, color: AppColors.border),
                 ])
             .toList(),
       ),
@@ -454,7 +450,9 @@ class _PortfolioRow extends StatelessWidget {
             children: [
               Text(item.label,
                   style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13)),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppColors.textPrimary)),
               Text(item.note,
                   style: const TextStyle(
                       fontSize: 10, color: AppColors.textSecondary)),
@@ -515,7 +513,9 @@ class _SIPRow extends StatelessWidget {
         ),
         Text(amount,
             style: const TextStyle(
-                fontWeight: FontWeight.w700, fontSize: 14)),
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: AppColors.textPrimary)),
       ],
     );
   }

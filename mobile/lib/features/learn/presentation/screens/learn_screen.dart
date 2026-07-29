@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../dashboard/presentation/screens/budget_detail_screen.dart';
-import '../../../dashboard/presentation/screens/investment_detail_screen.dart';
-import '../../../dashboard/presentation/screens/salary_detail_screen.dart';
-import '../../../dashboard/presentation/screens/savings_detail_screen.dart';
 
 class LearnScreen extends StatefulWidget {
   const LearnScreen({super.key});
@@ -19,11 +16,42 @@ class _LearnScreenState extends State<LearnScreen> {
   int _xp = 0;
   List<String> _completedQuizzes = [];
   List<String> _achievements = [];
-  double _salary = 50000;
-  String _levelName = 'Bronze';
-  String _levelEmoji = '🥉';
-  int _nextLevelXp = 200;
   int _streak = 0;
+  double _salary = 50000;
+
+  static const _dailyTips = [
+    'Invest at least 15% of your income for long-term wealth.',
+    'Track every rupee — awareness is the first step to control.',
+    'An emergency fund of 6 months stops small crises becoming big ones.',
+    'SIPs work best when started early and kept consistent.',
+    'Pay yourself first: automate your savings before spending.',
+    'Compound interest rewards patience more than intelligence.',
+    'Index funds beat most actively managed funds over 10 years.',
+    'Zero-based budgeting gives every rupee a job.',
+    'Lifestyle inflation is the silent wealth killer.',
+    'Your biggest financial asset is your earning capacity.',
+  ];
+
+  String get _todayTip =>
+      _dailyTips[DateTime.now().day % _dailyTips.length];
+
+  int get _level {
+    if (_xp >= 200) return 3;
+    if (_xp >= 100) return 2;
+    return 1;
+  }
+
+  String get _levelLabel {
+    if (_level == 3) return 'Gold';
+    if (_level == 2) return 'Silver';
+    return 'Bronze';
+  }
+
+  int get _xpToNext {
+    if (_level == 1) return 100;
+    if (_level == 2) return 200;
+    return 300;
+  }
 
   @override
   void initState() {
@@ -33,408 +61,341 @@ class _LearnScreenState extends State<LearnScreen> {
 
   Future<void> _load() async {
     final xp = await UserPrefsStorage.getTotalQuizScore();
-    final quizzes = await UserPrefsStorage.getCompletedQuizzes();
+    final completed = await UserPrefsStorage.getCompletedQuizzes();
     final achievements = await UserPrefsStorage.getAchievements();
     final salary = await UserPrefsStorage.getSalary();
-    final level = await UserPrefsStorage.getLevel();
-    final streak = await UserPrefsStorage.getStreak();
     if (mounted) {
       setState(() {
         _xp = xp;
-        _completedQuizzes = quizzes;
+        _completedQuizzes = completed;
         _achievements = achievements;
         _salary = salary;
-        _levelName = level.$1;
-        _levelEmoji = level.$2;
-        _nextLevelXp = level.$4;
-        _streak = streak;
+        _streak = completed.length;
       });
     }
+  }
+
+  final _modules = const [
+    (
+      letter: '50',
+      bg: AppColors.questBlue,
+      fg: Color(0xFF1565C0),
+      title: '50-30-20 Rule',
+      subtitle: 'Master your monthly budget split',
+      xp: '+50 XP',
+      quizId: 'salary_quiz_done',
+      route: '_salary',
+    ),
+    (
+      letter: 'P',
+      bg: AppColors.questGreen,
+      fg: Color(0xFF0F9D58),
+      title: 'Power of Saving',
+      subtitle: 'Emergency fund & Rule of 72',
+      xp: '+50 XP',
+      quizId: 'savings_quiz_done',
+      route: '_savings',
+    ),
+    (
+      letter: 'I',
+      bg: AppColors.questPurple,
+      fg: Color(0xFF6A1B9A),
+      title: 'Investing Basics',
+      subtitle: 'SIP, compounding, portfolio',
+      xp: '+50 XP',
+      quizId: 'investment_quiz_done',
+      route: '_invest',
+    ),
+    (
+      letter: 'B',
+      bg: AppColors.questPeach,
+      fg: Color(0xFFBF5820),
+      title: 'Budget Like a Pro',
+      subtitle: 'Zero-based budgeting strategy',
+      xp: '+50 XP',
+      quizId: 'budget_quiz_done',
+      route: '_budget',
+    ),
+  ];
+
+  void _openModule(String route) {
+    final s = _salary.toStringAsFixed(2);
+    late final Future<Object?> nav;
+    switch (route) {
+      case '_salary':
+        nav = context.push('/detail/salary?salary=$s');
+      case '_savings':
+        nav = context.push(
+          '/detail/savings?salary=$s&savings=${(_salary * 0.12).toStringAsFixed(2)}',
+        );
+      case '_invest':
+        nav = context.push(
+          '/detail/investment?salary=$s&investments=${(_salary * 0.08).toStringAsFixed(2)}',
+        );
+      case '_budget':
+        nav = context.push(
+          '/detail/budget?budget=${(_salary * 0.30).toStringAsFixed(2)}',
+        );
+      default:
+        return;
+    }
+    // Refresh XP/achievements when user returns from detail screen.
+    nav.then((_) { if (mounted) _load(); });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Learn'),
-        actions: [
-          if (_streak > 0)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: Chip(
-                avatar: const Text('🔥', style: TextStyle(fontSize: 12)),
-                label: Text('$_streak day',
-                    style: const TextStyle(fontSize: 11)),
-                backgroundColor: AppColors.danger.withValues(alpha: 0.1),
-                padding: EdgeInsets.zero,
-              ),
-            ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: Chip(
-              avatar: Text(_levelEmoji, style: const TextStyle(fontSize: 12)),
-              label: Text('$_levelName · $_xp XP',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 11)),
-              backgroundColor: AppColors.accent.withValues(alpha: 0.12),
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-          children: [
-            _ProgressBanner(
-              completedCount: _completedQuizzes.length,
-              totalCount: _modules.length,
-              xp: _xp,
-              levelName: _levelName,
-              levelEmoji: _levelEmoji,
-              nextLevelXp: _nextLevelXp,
-            ),
-            const SizedBox(height: 20),
-            if (_achievements.isNotEmpty) ...[
-              _SectionHeader(title: 'Your Badges'),
-              const SizedBox(height: 10),
-              _BadgesRow(achievements: _achievements),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               const SizedBox(height: 20),
-            ],
-            _SectionHeader(title: 'Finance Modules'),
-            const SizedBox(height: 10),
-            ..._modules.map((m) => _ModuleCard(
-                  module: m,
-                  isCompleted: _completedQuizzes.contains(m.quizId),
-                  salary: _salary,
-                )),
-            const SizedBox(height: 20),
-            _SectionHeader(title: 'Daily Finance Tips'),
-            const SizedBox(height: 10),
-            const _DailyTipsCard(),
-            const SizedBox(height: 20),
-            _SectionHeader(title: 'Community'),
-            const SizedBox(height: 10),
-            Card(
-              child: ListTile(
-                leading: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Center(
-                    child: Text('🏆', style: TextStyle(fontSize: 22)),
-                  ),
-                ),
-                title: const Text(
-                  'Leaderboard',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                ),
-                subtitle: const Text(
-                  'See how you rank against other users',
-                  style: TextStyle(
-                      color: AppColors.textSecondary, fontSize: 12),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.textSecondary),
-                onTap: () => context.push('/leaderboard'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  static final _modules = [
-    _Module(
-      quizId: 'salary_quiz',
-      title: '50-30-20 Rule',
-      subtitle: 'Master salary allocation',
-      icon: '💰',
-      color: AppColors.primary,
-      xpReward: 50,
-    ),
-    _Module(
-      quizId: 'savings_quiz',
-      title: 'Power of Saving',
-      subtitle: 'Build your safety net',
-      icon: '🏦',
-      color: AppColors.success,
-      xpReward: 50,
-    ),
-    _Module(
-      quizId: 'investment_quiz',
-      title: 'Investing Basics',
-      subtitle: 'Grow your wealth',
-      icon: '📈',
-      color: AppColors.secondary,
-      xpReward: 50,
-    ),
-    _Module(
-      quizId: 'budget_quiz',
-      title: 'Budget Like a Pro',
-      subtitle: 'Zero-based budgeting',
-      icon: '🎯',
-      color: AppColors.accent,
-      xpReward: 50,
-    ),
-  ];
-}
-
-class _Module {
-  const _Module({
-    required this.quizId,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.xpReward,
-  });
-  final String quizId;
-  final String title;
-  final String subtitle;
-  final String icon;
-  final Color color;
-  final int xpReward;
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title});
-  final String title;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(title,
-        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15));
-  }
-}
-
-class _ProgressBanner extends StatelessWidget {
-  const _ProgressBanner({
-    required this.completedCount,
-    required this.totalCount,
-    required this.xp,
-    required this.levelName,
-    required this.levelEmoji,
-    required this.nextLevelXp,
-  });
-  final int completedCount;
-  final int totalCount;
-  final int xp;
-  final String levelName;
-  final String levelEmoji;
-  final int nextLevelXp;
-
-  @override
-  Widget build(BuildContext context) {
-    final prevLevelXp = levelName == 'Bronze' ? 0 : levelName == 'Silver' ? 200 : levelName == 'Gold' ? 500 : 1000;
-    final levelFraction = nextLevelXp > prevLevelXp
-        ? ((xp - prevLevelXp) / (nextLevelXp - prevLevelXp)).clamp(0.0, 1.0)
-        : 1.0;
-
-    return Card(
-      color: AppColors.secondary,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(levelEmoji, style: const TextStyle(fontSize: 28)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
+              Row(
+                children: [
+                  Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('$levelName · $xp XP',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15)),
-                      const SizedBox(height: 2),
-                      Text('$completedCount of $totalCount modules done · ${nextLevelXp - xp} XP to next level',
-                          style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
-                              fontSize: 12)),
+                      Text('Library',
+                          style: GoogleFonts.dmSans(
+                              color: AppColors.textPrimary,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800)),
+                      Text('${_completedQuizzes.length}/${_modules.length} complete',
+                          style: GoogleFonts.dmSans(
+                              color: AppColors.textSecondary, fontSize: 14)),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: levelFraction,
-                minHeight: 8,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                valueColor: const AlwaysStoppedAnimation(AppColors.accent),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => context.push('/leaderboard'),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.leaderboard_outlined,
+                              color: AppColors.orange, size: 16),
+                          const SizedBox(width: 6),
+                          Text('Board',
+                              style: GoogleFonts.dmSans(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 4),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('$xp XP', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
-              Text('$nextLevelXp XP', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10)),
-            ]),
-          ],
-        ),
-      ),
-    );
-  }
-}
+              const SizedBox(height: 20),
 
-class _BadgesRow extends StatelessWidget {
-  const _BadgesRow({required this.achievements});
-  final List<String> achievements;
-
-  static const _badgeMap = {
-    'onboarding_complete': ('🚀', 'Started'),
-    'salary_quiz_done': ('💰', 'Salary Scholar'),
-    'savings_quiz_done': ('🏦', 'Savings Expert'),
-    'investment_quiz_done': ('📈', 'Investment Pro'),
-    'budget_quiz_done': ('🎯', 'Budget Boss'),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: achievements.map((id) {
-          final badge = _badgeMap[id] ?? ('⭐', id);
-          return Container(
-            margin: const EdgeInsets.only(right: 10),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppColors.primary.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(badge.$1,
-                    style: const TextStyle(fontSize: 18)),
-                const SizedBox(width: 6),
-                Text(badge.$2,
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.primary)),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _ModuleCard extends StatelessWidget {
-  const _ModuleCard({
-    required this.module,
-    required this.isCompleted,
-    required this.salary,
-  });
-
-  final _Module module;
-  final bool isCompleted;
-  final double salary;
-
-  void _navigate(BuildContext context) {
-    final route = switch (module.quizId) {
-      'salary_quiz' => MaterialPageRoute(
-          builder: (_) => SalaryDetailScreen(salary: salary)),
-      'savings_quiz' => MaterialPageRoute(
-          builder: (_) => SavingsDetailScreen(
-              salary: salary, savings: salary * 0.12)),
-      'investment_quiz' => MaterialPageRoute(
-          builder: (_) => InvestmentDetailScreen(
-              salary: salary, investments: salary * 0.08)),
-      'budget_quiz' => MaterialPageRoute(
-          builder: (_) =>
-              BudgetDetailScreen(remainingBudget: salary * 0.30)),
-      _ => null,
-    };
-    if (route != null) Navigator.of(context).push(route);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        onTap: () => _navigate(context),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
+              // XP / Level card
               Container(
-                width: 48,
-                height: 48,
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: module.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: AppColors.border),
                 ),
-                child: Center(
-                  child: Text(module.icon,
-                      style: const TextStyle(fontSize: 24)),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   children: [
-                    Text(module.title,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 15)),
-                    const SizedBox(height: 2),
-                    Text(module.subtitle,
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12)),
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: AppColors.orange.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '$_level',
+                          style: GoogleFonts.dmSans(
+                            color: AppColors.orange,
+                            fontSize: 24,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(_levelLabel,
+                                  style: GoogleFonts.dmSans(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w700)),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.orange,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text('$_xp XP',
+                                    style: GoogleFonts.dmSans(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          LinearProgressIndicator(
+                            value: (_xp / _xpToNext).clamp(0.0, 1.0),
+                            backgroundColor: AppColors.surfaceElevated,
+                            valueColor: const AlwaysStoppedAnimation(
+                                AppColors.orange),
+                            minHeight: 6,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          const SizedBox(height: 4),
+                          Text('$_xp / $_xpToNext XP to next level',
+                              style: GoogleFonts.dmSans(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      children: [
+                        const Text('🔥', style: TextStyle(fontSize: 22)),
+                        Text('$_streak',
+                            style: GoogleFonts.dmSans(
+                                color: AppColors.orange,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700)),
+                        Text('streak',
+                            style: GoogleFonts.dmSans(
+                                color: AppColors.textMuted, fontSize: 9)),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              if (isCompleted)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text('✓ Done',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.success,
-                          fontWeight: FontWeight.w700)),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text('+${module.xpReward} XP',
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.accent,
-                          fontWeight: FontWeight.w700)),
+              const SizedBox(height: 28),
+
+              Text('Missions',
+                  style: GoogleFonts.dmSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 12),
+
+              for (final m in _modules) ...[
+                _MissionCard(
+                  letter: m.letter,
+                  letterBg: m.bg,
+                  letterColor: m.fg,
+                  title: m.title,
+                  subtitle: m.subtitle,
+                  xp: m.xp,
+                  isComplete: _completedQuizzes.contains(m.quizId),
+                  onTap: () => _openModule(m.route),
                 ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppColors.textSecondary),
+                const SizedBox(height: 10),
+              ],
+              const SizedBox(height: 28),
+
+              // Today's tip
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: AppColors.questPeach,
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('📖  TODAY\'S TIP',
+                          style: GoogleFonts.dmSans(
+                              color: const Color(0xFF5C3A00),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5)),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _todayTip,
+                      style: GoogleFonts.playfairDisplay(
+                        color: const Color(0xFF1A0A00),
+                        fontSize: 18,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w700,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (_achievements.isNotEmpty) ...[
+                const SizedBox(height: 28),
+                Text('Achievements',
+                    style: GoogleFonts.dmSans(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _achievements.map((a) {
+                    final label = a
+                        .replaceAll('_', ' ')
+                        .split(' ')
+                        .map((w) => w.isNotEmpty
+                            ? '${w[0].toUpperCase()}${w.substring(1)}'
+                            : w)
+                        .join(' ');
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('🏅', style: TextStyle(fontSize: 14)),
+                          const SizedBox(width: 6),
+                          Text(label,
+                              style: GoogleFonts.dmSans(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+              const SizedBox(height: 36),
             ],
           ),
         ),
@@ -443,48 +404,105 @@ class _ModuleCard extends StatelessWidget {
   }
 }
 
-class _DailyTipsCard extends StatelessWidget {
-  const _DailyTipsCard();
+class _MissionCard extends StatelessWidget {
+  const _MissionCard({
+    required this.letter,
+    required this.letterBg,
+    required this.letterColor,
+    required this.title,
+    required this.subtitle,
+    required this.xp,
+    required this.isComplete,
+    required this.onTap,
+  });
 
-  static const _tips = [
-    ('💡', 'Pay yourself first — transfer savings the moment your salary arrives.'),
-    ('📊', 'Track every expense for 30 days. Awareness is the first step to change.'),
-    ('🏦', 'An emergency fund of 6 months\' expenses is your financial superpower.'),
-    ('📈', 'Start a SIP with even ₹500/month. Time in market beats timing the market.'),
-    ('✂️', 'Cut one unused subscription today — that\'s ₹1,200+ back per year.'),
-    ('🎯', 'Set a specific savings goal. Vague intentions don\'t move money.'),
-    ('⚡', 'Avoid lifestyle inflation — when income rises, save the difference first.'),
-    ('🛡️', 'Insurance is not an expense — it\'s protection for your wealth.'),
-    ('💳', 'Pay your credit card in full every month. Interest is wealth destruction.'),
-    ('🌱', 'Invest in yourself — a new skill can increase your income more than any fund.'),
-  ];
+  final String letter, title, subtitle, xp;
+  final Color letterBg, letterColor;
+  final bool isComplete;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now().day;
-    final tip = _tips[today % _tips.length];
-
-    return Card(
-      child: Padding(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
           children: [
-            Row(
-              children: [
-                Text(tip.$1, style: const TextStyle(fontSize: 24)),
-                const SizedBox(width: 10),
-                const Text("Today's Tip",
-                    style: TextStyle(
-                        fontWeight: FontWeight.w700, fontSize: 14)),
-              ],
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: letterBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: Text(letter,
+                    style: GoogleFonts.dmSans(
+                        color: letterColor,
+                        fontSize: letter.length > 1 ? 13 : 20,
+                        fontWeight: FontWeight.w800)),
+              ),
             ),
-            const SizedBox(height: 10),
-            Text(tip.$2,
-                style: const TextStyle(
-                    fontSize: 14,
-                    height: 1.5,
-                    color: AppColors.textSecondary)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textSecondary, fontSize: 12)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (isComplete)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.check_rounded,
+                        color: AppColors.success, size: 12),
+                    const SizedBox(width: 4),
+                    Text('Done',
+                        style: GoogleFonts.dmSans(
+                            color: AppColors.success,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(xp,
+                    style: GoogleFonts.dmSans(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700)),
+              ),
           ],
         ),
       ),

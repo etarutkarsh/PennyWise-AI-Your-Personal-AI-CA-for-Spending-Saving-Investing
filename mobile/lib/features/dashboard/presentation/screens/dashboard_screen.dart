@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/services/app_services.dart';
+import '../../../../core/services/dashboard_cache.dart';
 import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/repositories/health_score_repository.dart';
 import '../../domain/entities/dashboard_summary.dart';
-import '../widgets/summary_card.dart';
-import '../../../insights/presentation/screens/insights_screen.dart';
-import 'budget_detail_screen.dart';
-import 'investment_detail_screen.dart';
-import 'salary_detail_screen.dart';
-import 'savings_detail_screen.dart';
+import '../widgets/hero_carousel_section.dart';
+import '../widgets/market_data_section.dart';
+import '../widgets/news_ticker_widget.dart';
+import '../widgets/animated_stats_section.dart';
+import '../widgets/motivation_cards_section.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,23 +22,41 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with SingleTickerProviderStateMixin {
   double _salary = 50000;
   bool _loadedSalary = false;
   HealthScoreModel? _healthScore;
   String _dailyTip = '';
+  late AnimationController _animController;
+  late Animation<double> _progressAnim;
 
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
+    _progressAnim = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutCubic,
+    );
     _load();
   }
 
-  Future<void> _load() async {
-    final salary = await UserPrefsStorage.getSalary();
-    if (mounted) setState(() => _salary = salary);
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
 
-    // Sync local salary to backend if backend has no income on record.
+  Future<void> _load({bool forceRefresh = false}) async {
+    final salary = await UserPrefsStorage.getSalary();
+    if (!mounted) return;
+    setState(() => _salary = salary);
+
+    // Fire-and-forget: sync salary to backend if not set yet.
     if (salary > 0) {
       AppServices.instance.user.getMe().then((user) {
         if ((user.monthlyIncome ?? 0) <= 0) {
@@ -46,7 +65,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }).catchError((_) {});
     }
 
-    // Load health score and daily tip in parallel
+    // Serve cached data instantly; skip network on warm sessions.
+    if (!forceRefresh && !DashboardCache.isStale) {
+      if (mounted) {
+        setState(() {
+          _healthScore = DashboardCache.healthScore;
+          _dailyTip = DashboardCache.dailyTip;
+          _loadedSalary = true;
+        });
+        _animController.forward();
+      }
+      return;
+    }
+
     final results = await Future.wait([
       AppServices.instance.healthScore
           .get()
@@ -56,296 +87,568 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ]);
 
     if (mounted) {
+      DashboardCache.set(results[0] as HealthScoreModel?, results[1] as String);
       setState(() {
-        _healthScore = results[0] as HealthScoreModel?;
-        _dailyTip = results[1] as String;
+        _healthScore = DashboardCache.healthScore;
+        _dailyTip = DashboardCache.dailyTip;
         _loadedSalary = true;
       });
+      _animController.forward();
     }
   }
+
+  int get _level {
+    final s = _healthScore?.score ?? DashboardSummary.placeholder.financialHealthScore;
+    return (s / 20).floor() + 1;
+  }
+
+  int get _xpCurrent {
+    final s = _healthScore?.score ?? DashboardSummary.placeholder.financialHealthScore;
+    return (s % 20) * 120;
+  }
+
+  int get _xpMax => 2400;
 
   @override
   Widget build(BuildContext context) {
     final currency =
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-
     final savings = _salary * 0.12;
     final investments = _salary * 0.08;
     final remainingBudget = _salary - savings - investments - (_salary * 0.50);
-
-    final summary = DashboardSummary(
-      salary: _salary,
-      savings: savings,
-      investments: investments,
-      remainingBudget: remainingBudget,
-      financialHealthScore: _healthScore?.score ??
-          DashboardSummary.placeholder.financialHealthScore,
-      dailyTip: _dailyTip.isNotEmpty
-          ? _dailyTip
-          : DashboardSummary.placeholder.dailyTip,
-    );
+    final tip = _dailyTip.isNotEmpty
+        ? _dailyTip
+        : DashboardSummary.placeholder.dailyTip;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Good morning'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_rounded),
-            onPressed: () => context.push('/notifications'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push('/settings'),
-          ),
-        ],
-      ),
+      backgroundColor: AppColors.background,
       body: RefreshIndicator(
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            if (!_loadedSalary)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(child: CircularProgressIndicator()),
-              )
-            else ...[
-              GridView.count(
-                crossAxisCount: 2,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 1.35,
-                children: [
-                  SummaryCard(
-                    label: 'Salary',
-                    amount: currency.format(summary.salary),
-                    icon: Icons.account_balance_wallet_outlined,
-                    description: 'Your monthly take-home pay',
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SalaryDetailScreen(salary: _salary),
-                      ),
+        color: AppColors.orange,
+        backgroundColor: AppColors.surface,
+        onRefresh: () => _load(forceRefresh: true),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _Header(
+                onNotificationsTap: () => context.push('/notifications'),
+                onSettingsTap: () => context.push('/settings'),
+              ),
+              RepaintBoundary(child: HeroCarouselSection(salary: _salary)),
+              const SizedBox(height: 20),
+              const RepaintBoundary(child: MarketDataSection()),
+              const SizedBox(height: 4),
+              const RepaintBoundary(child: FinancialNewsTicker()),
+              const SizedBox(height: 20),
+              const AnimatedStatsSection(),
+              const SizedBox(height: 20),
+              MotivationCardsSection(salary: _salary, savings: savings),
+              const SizedBox(height: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _LevelCard(
+                      level: _level,
+                      xpCurrent: _xpCurrent,
+                      xpMax: _xpMax,
+                      progressAnim: _progressAnim,
+                      healthScore: _healthScore,
                     ),
-                  ),
-                  SummaryCard(
-                    label: 'Savings',
-                    amount: currency.format(summary.savings),
-                    icon: Icons.savings_outlined,
-                    description: 'Your safety net & future fund',
-                    color: AppColors.success,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => SavingsDetailScreen(
-                            salary: _salary, savings: summary.savings),
+                    const SizedBox(height: 28),
+                    if (!_loadedSalary)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: CircularProgressIndicator(
+                              color: AppColors.orange),
+                        ),
+                      )
+                    else ...[
+                      _SectionLabel(
+                        label: '4 missions today',
+                        badge: 'earn 850 XP',
                       ),
-                    ),
-                  ),
-                  SummaryCard(
-                    label: 'Investments',
-                    amount: currency.format(summary.investments),
-                    icon: Icons.trending_up_rounded,
-                    description: 'Your wealth-building engine',
-                    color: AppColors.secondary,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => InvestmentDetailScreen(
-                          salary: _salary,
-                          investments: summary.investments,
+                      const SizedBox(height: 12),
+                      _QuestCard(
+                        letter: 'S',
+                        letterColor: const Color(0xFF0F9D58),
+                        letterBg: AppColors.questGreen,
+                        title: 'Monthly Salary',
+                        subtitle: currency.format(_salary),
+                        xp: '+120 XP',
+                        onTap: () => context.push(
+                          '/detail/salary?salary=${_salary.toStringAsFixed(2)}',
                         ),
                       ),
-                    ),
-                  ),
-                  SummaryCard(
-                    label: 'Remaining Budget',
-                    amount: currency.format(summary.remainingBudget),
-                    icon: Icons.pie_chart_outline_rounded,
-                    description: 'What\'s yours to spend freely',
-                    color: AppColors.accent,
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => BudgetDetailScreen(
-                            remainingBudget: summary.remainingBudget),
+                      _QuestCard(
+                        letter: 'G',
+                        letterColor: const Color(0xFF1565C0),
+                        letterBg: AppColors.questBlue,
+                        title: 'Savings Goal',
+                        subtitle: '${currency.format(savings)} this month',
+                        xp: '+90 XP',
+                        onTap: () => context.push(
+                          '/detail/savings?salary=${_salary.toStringAsFixed(2)}&savings=${savings.toStringAsFixed(2)}',
+                        ),
                       ),
-                    ),
-                  ),
-                ],
+                      _QuestCard(
+                        letter: 'I',
+                        letterColor: const Color(0xFF6A1B9A),
+                        letterBg: AppColors.questPurple,
+                        title: 'Investments',
+                        subtitle: '${currency.format(investments)} in SIP',
+                        xp: '+80 XP',
+                        onTap: () => context.push(
+                          '/detail/investment?salary=${_salary.toStringAsFixed(2)}&investments=${investments.toStringAsFixed(2)}',
+                        ),
+                      ),
+                      _QuestCard(
+                        letter: 'B',
+                        letterColor: const Color(0xFFE65100),
+                        letterBg: AppColors.questPeach,
+                        title: 'Budget Left',
+                        subtitle:
+                            '${currency.format(remainingBudget)} remaining',
+                        xp: '+60 XP',
+                        onTap: () => context.push(
+                          '/detail/budget?budget=${remainingBudget.toStringAsFixed(2)}',
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      _SectionLabel(label: 'Quick Actions'),
+                      const SizedBox(height: 12),
+                      _QuickActions(
+                        onAffordabilityTap: () =>
+                            context.push('/affordability'),
+                        onGoalsTap: () => context.push('/goals'),
+                        onInsightsTap: () => context.push('/insights'),
+                        onChatTap: () => context.push('/chat'),
+                        onNetWorthTap: () => context.push('/net-worth'),
+                      ),
+                      const SizedBox(height: 28),
+                      _InsightCard(tip: tip),
+                    ],
+                    const SizedBox(height: 36),
+                  ],
+                ),
               ),
             ],
-            const SizedBox(height: 20),
-            _FinancialHealthScoreCard(
-              score: summary.financialHealthScore,
-              healthScore: _healthScore,
-            ),
-            const SizedBox(height: 20),
-            _QuickActions(
-              onAffordabilityTap: () => context.push('/affordability'),
-              onGoalsTap: () => context.push('/goals'),
-              onInsightsTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const InsightsScreen()),
-              ),
-              onChatTap: () => context.push('/chat'),
-              onNetWorthTap: () => context.push('/net-worth'),
-            ),
-            const SizedBox(height: 20),
-            _AiTipCard(tip: summary.dailyTip),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _FinancialHealthScoreCard extends StatelessWidget {
-  const _FinancialHealthScoreCard({
-    required this.score,
-    required this.healthScore,
+// ─── Header ───────────────────────────────────────────────────────────────────
+
+class _Header extends StatelessWidget {
+  const _Header({
+    required this.onNotificationsTap,
+    required this.onSettingsTap,
   });
-
-  final int score;
-  final HealthScoreModel? healthScore;
-
-  Color get _scoreColor {
-    if (score >= 80) return AppColors.success;
-    if (score >= 60) return AppColors.primary;
-    if (score >= 40) return AppColors.warning;
-    return AppColors.danger;
-  }
+  final VoidCallback onNotificationsTap, onSettingsTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                SizedBox(
-                  height: 56,
-                  width: 56,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        value: score / 100,
-                        strokeWidth: 6,
-                        backgroundColor: AppColors.background,
-                        valueColor: AlwaysStoppedAnimation(_scoreColor),
-                      ),
-                      Text('$score',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 14)),
-                    ],
-                  ),
+    final topPad = MediaQuery.of(context).padding.top;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20, topPad + 16, 20, 20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Good morning',
+                style: GoogleFonts.dmSans(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text('Financial Health',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w600, fontSize: 14)),
-                          const SizedBox(width: 8),
-                          if (healthScore != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: _scoreColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                healthScore!.grade,
-                                style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w700,
-                                    color: _scoreColor),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        healthScore?.summary ??
-                            'Increase your emergency fund and SIP to boost this score.',
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 12),
-                      ),
-                    ],
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'PennyWise AI',
+                style: GoogleFonts.dmSans(
+                  color: AppColors.textPrimary,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: AppColors.orange.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('🔥', style: TextStyle(fontSize: 14)),
+                const SizedBox(width: 4),
+                Text(
+                  '×3',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.orange,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
                   ),
                 ),
               ],
             ),
-            if (healthScore != null) ...[
-              const SizedBox(height: 12),
-              const Divider(),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _PillarChip(
-                      label: 'Savings',
-                      score: healthScore!.savingsScore,
-                      max: 25),
-                  _PillarChip(
-                      label: 'Budget',
-                      score: healthScore!.budgetScore,
-                      max: 25),
-                  _PillarChip(
-                      label: 'Goals',
-                      score: healthScore!.goalScore,
-                      max: 25),
-                  _PillarChip(
-                      label: 'Activity',
-                      score: healthScore!.activityScore,
-                      max: 15),
-                ],
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onNotificationsTap,
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border),
               ),
-            ],
-          ],
-        ),
+              child: const Icon(Icons.notifications_none_rounded,
+                  color: AppColors.textPrimary, size: 20),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _PillarChip extends StatelessWidget {
-  const _PillarChip(
-      {required this.label, required this.score, required this.max});
+// ─── Level Card ───────────────────────────────────────────────────────────────
 
+class _LevelCard extends StatelessWidget {
+  const _LevelCard({
+    required this.level,
+    required this.xpCurrent,
+    required this.xpMax,
+    required this.progressAnim,
+    required this.healthScore,
+  });
+  final int level, xpCurrent, xpMax;
+  final Animation<double> progressAnim;
+  final HealthScoreModel? healthScore;
+
+  String get _levelTitle {
+    if (level >= 8) return 'Money Master';
+    if (level >= 6) return 'Wealth Builder';
+    if (level >= 4) return 'Financial Pro';
+    if (level >= 2) return 'Saver';
+    return 'Beginner';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'LEVEL $level',
+                  style: GoogleFonts.dmSans(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                _levelTitle,
+                style: GoogleFonts.dmSans(
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '$xpCurrent / $xpMax',
+                style: GoogleFonts.dmSans(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          AnimatedBuilder(
+            animation: progressAnim,
+            builder: (_, __) {
+              final frac = (xpCurrent / xpMax) * progressAnim.value;
+              return Stack(
+                children: [
+                  Container(
+                    height: 8,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceElevated,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  FractionallySizedBox(
+                    widthFactor: frac.clamp(0.0, 1.0),
+                    child: Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: AppColors.orange,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          if (healthScore != null) ...[
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                _PillarBadge(
+                    label: 'Savings',
+                    score: healthScore!.savingsScore,
+                    max: 25),
+                const SizedBox(width: 6),
+                _PillarBadge(
+                    label: 'Budget',
+                    score: healthScore!.budgetScore,
+                    max: 25),
+                const SizedBox(width: 6),
+                _PillarBadge(
+                    label: 'Goals',
+                    score: healthScore!.goalScore,
+                    max: 25),
+                const SizedBox(width: 6),
+                _PillarBadge(
+                    label: 'Activity',
+                    score: healthScore!.activityScore,
+                    max: 15),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PillarBadge extends StatelessWidget {
+  const _PillarBadge(
+      {required this.label, required this.score, required this.max});
   final String label;
   final int score;
   final int max;
 
   @override
   Widget build(BuildContext context) {
-    final fraction = max > 0 ? score / max : 0.0;
-    final color = fraction >= 0.8
+    final frac = max > 0 ? score / max : 0.0;
+    final c = frac >= 0.8
         ? AppColors.success
-        : fraction >= 0.5
+        : frac >= 0.5
             ? AppColors.warning
             : AppColors.danger;
-
     return Expanded(
-      child: Column(
-        children: [
-          Text('$score/$max',
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        decoration: BoxDecoration(
+          color: c.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          children: [
+            Text(
+              '$score/$max',
               style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w700, color: color)),
-          const SizedBox(height: 3),
-          Text(label,
+                  color: c,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
               style: const TextStyle(
-                  fontSize: 10, color: AppColors.textSecondary)),
-        ],
+                  color: AppColors.textSecondary, fontSize: 9),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+// ─── Section Label ────────────────────────────────────────────────────────────
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel({required this.label, this.badge});
+  final String label;
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.dmSans(
+            color: AppColors.textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        if (badge != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.orange,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              badge!,
+              style: GoogleFonts.dmSans(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ─── Quest Card ───────────────────────────────────────────────────────────────
+
+class _QuestCard extends StatelessWidget {
+  const _QuestCard({
+    required this.letter,
+    required this.letterColor,
+    required this.letterBg,
+    required this.title,
+    required this.subtitle,
+    required this.xp,
+    required this.onTap,
+  });
+
+  final String letter, title, subtitle, xp;
+  final Color letterColor, letterBg;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: letterBg,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Center(
+                child: Text(
+                  letter,
+                  style: GoogleFonts.dmSans(
+                    color: letterColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.orange,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                xp,
+                style: GoogleFonts.dmSans(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textMuted, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Quick Actions ────────────────────────────────────────────────────────────
 
 class _QuickActions extends StatelessWidget {
   const _QuickActions({
@@ -356,11 +659,11 @@ class _QuickActions extends StatelessWidget {
     required this.onNetWorthTap,
   });
 
-  final VoidCallback onAffordabilityTap;
-  final VoidCallback onGoalsTap;
-  final VoidCallback onInsightsTap;
-  final VoidCallback onChatTap;
-  final VoidCallback onNetWorthTap;
+  final VoidCallback onAffordabilityTap,
+      onGoalsTap,
+      onInsightsTap,
+      onChatTap,
+      onNetWorthTap;
 
   @override
   Widget build(BuildContext context) {
@@ -368,105 +671,137 @@ class _QuickActions extends StatelessWidget {
       spacing: 8,
       runSpacing: 8,
       children: [
-        SizedBox(
-          width: (MediaQuery.of(context).size.width - 56) / 2,
-          child: _ActionChip(
-            label: 'Can I afford?',
+        _ActionPill(
+            label: 'Can I Afford?',
             icon: Icons.calculate_outlined,
-            onTap: onAffordabilityTap,
-          ),
-        ),
-        SizedBox(
-          width: (MediaQuery.of(context).size.width - 56) / 2,
-          child: _ActionChip(
+            onTap: onAffordabilityTap),
+        _ActionPill(
             label: 'Goals',
             icon: Icons.flag_outlined,
-            onTap: onGoalsTap,
-          ),
-        ),
-        SizedBox(
-          width: (MediaQuery.of(context).size.width - 56) / 2,
-          child: _ActionChip(
+            onTap: onGoalsTap),
+        _ActionPill(
             label: 'AI Insights',
             icon: Icons.psychology_outlined,
-            onTap: onInsightsTap,
-          ),
-        ),
-        SizedBox(
-          width: (MediaQuery.of(context).size.width - 56) / 2,
-          child: _ActionChip(
+            onTap: onInsightsTap),
+        _ActionPill(
             label: 'Ask AI',
             icon: Icons.chat_bubble_outline_rounded,
-            onTap: onChatTap,
-          ),
-        ),
-        SizedBox(
-          width: (MediaQuery.of(context).size.width - 56) / 2,
-          child: _ActionChip(
+            onTap: onChatTap),
+        _ActionPill(
             label: 'Net Worth',
-            icon: Icons.account_balance_wallet_rounded,
-            onTap: onNetWorthTap,
-          ),
-        ),
+            icon: Icons.account_balance_outlined,
+            onTap: onNetWorthTap),
       ],
     );
   }
 }
 
-class _ActionChip extends StatelessWidget {
-  const _ActionChip(
+class _ActionPill extends StatelessWidget {
+  const _ActionPill(
       {required this.label, required this.icon, required this.onTap});
-
   final String label;
   final IconData icon;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return GestureDetector(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Column(
-            children: [
-              Icon(icon, color: AppColors.primary, size: 22),
-              const SizedBox(height: 5),
-              Text(label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 10)),
-            ],
-          ),
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: AppColors.orange, size: 16),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _AiTipCard extends StatelessWidget {
-  const _AiTipCard({required this.tip});
+// ─── Insight Card (Playfair Display italic hero) ──────────────────────────────
 
+class _InsightCard extends StatelessWidget {
+  const _InsightCard({required this.tip});
   final String tip;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      color: AppColors.secondary,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            const Icon(Icons.lightbulb_outline_rounded,
-                color: AppColors.accent),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(tip,
-                  style:
-                      const TextStyle(color: Colors.white, fontSize: 13)),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: AppColors.questPeach,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '💡  AI INSIGHT',
+                  style: GoogleFonts.dmSans(
+                    color: const Color(0xFF5C3A00),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            tip,
+            style: GoogleFonts.playfairDisplay(
+              color: const Color(0xFF1A0A00),
+              fontSize: 20,
+              fontStyle: FontStyle.italic,
+              fontWeight: FontWeight.w700,
+              height: 1.35,
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Text(
+                'Tap to learn more',
+                style: GoogleFonts.dmSans(
+                  color: const Color(0xFF5C3A00),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.arrow_forward_rounded,
+                  color: Color(0xFF5C3A00), size: 14),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -9,7 +9,12 @@ import '../../features/budget/presentation/screens/budget_screen.dart';
 import '../../features/calculator/presentation/screens/affordability_screen.dart';
 import '../../features/ai/chat/presentation/screens/chat_screen.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
+import '../../features/dashboard/presentation/screens/salary_detail_screen.dart';
+import '../../features/dashboard/presentation/screens/savings_detail_screen.dart';
+import '../../features/dashboard/presentation/screens/investment_detail_screen.dart';
+import '../../features/dashboard/presentation/screens/budget_detail_screen.dart';
 import '../../features/goals/presentation/screens/goals_screen.dart';
+import '../../features/insights/presentation/screens/insights_screen.dart';
 import '../../features/investments/presentation/screens/investments_screen.dart';
 import '../../features/learn/presentation/screens/learn_screen.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
@@ -27,10 +32,19 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 /// Central route table. Uses go_router's StatefulShellRoute so the bottom
 /// nav (MainShell) preserves each tab's navigation stack independently.
+///
+/// Detail routes (salary, savings, investment, budget, insights) are defined
+/// at the ROOT level with parentNavigatorKey = rootNavigatorKey so they always
+/// render above the shell, full-screen. Query params carry all required data.
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/splash',
+  redirect: (context, state) {
+    if (state.uri.path == '/') return '/splash';
+    return null;
+  },
   routes: [
+    // ── Auth & onboarding ────────────────────────────────────────────────────
     GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
@@ -38,6 +52,8 @@ final GoRouter appRouter = GoRouter(
       path: '/onboarding/goal-setup',
       builder: (context, state) => const OnboardingGoalSetupScreen(),
     ),
+
+    // ── Standalone screens (no shell) ────────────────────────────────────────
     GoRoute(path: '/affordability', builder: (context, state) => const AffordabilityScreen()),
     GoRoute(path: '/budgets', builder: (context, state) => const BudgetScreen()),
     GoRoute(path: '/investments', builder: (context, state) => const InvestmentsScreen()),
@@ -49,6 +65,53 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/savings-rules', builder: (context, state) => const SavingsRulesScreen()),
     GoRoute(path: '/leaderboard', builder: (context, state) => const LeaderboardScreen()),
     GoRoute(path: '/sms-import', builder: (context, state) => const SmsImportScreen()),
+    GoRoute(path: '/insights', builder: (context, state) => const InsightsScreen()),
+
+    // ── Detail screens — parentNavigatorKey forces full-screen above shell ───
+    GoRoute(
+      path: '/detail/salary',
+      parentNavigatorKey: rootNavigatorKey,
+      builder: (context, state) {
+        final salary = double.tryParse(
+              state.uri.queryParameters['salary'] ?? '',
+            ) ??
+            50000.0;
+        return SalaryDetailScreen(salary: salary);
+      },
+    ),
+    GoRoute(
+      path: '/detail/savings',
+      parentNavigatorKey: rootNavigatorKey,
+      builder: (context, state) {
+        final q = state.uri.queryParameters;
+        final salary = double.tryParse(q['salary'] ?? '') ?? 50000.0;
+        final savings = double.tryParse(q['savings'] ?? '') ?? salary * 0.12;
+        return SavingsDetailScreen(salary: salary, savings: savings);
+      },
+    ),
+    GoRoute(
+      path: '/detail/investment',
+      parentNavigatorKey: rootNavigatorKey,
+      builder: (context, state) {
+        final q = state.uri.queryParameters;
+        final salary = double.tryParse(q['salary'] ?? '') ?? 50000.0;
+        final investments = double.tryParse(q['investments'] ?? '') ?? salary * 0.08;
+        return InvestmentDetailScreen(salary: salary, investments: investments);
+      },
+    ),
+    GoRoute(
+      path: '/detail/budget',
+      parentNavigatorKey: rootNavigatorKey,
+      builder: (context, state) {
+        final budget = double.tryParse(
+              state.uri.queryParameters['budget'] ?? '',
+            ) ??
+            15000.0;
+        return BudgetDetailScreen(remainingBudget: budget);
+      },
+    ),
+
+    // ── Main tab shell ────────────────────────────────────────────────────────
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) => MainShell(navigationShell: navigationShell),
       branches: [

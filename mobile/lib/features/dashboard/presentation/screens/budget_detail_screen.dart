@@ -154,7 +154,9 @@ class BudgetDetailScreen extends StatelessWidget {
                       Text(
                         'Track EVERY expense for 30 days',
                         style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 15),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: AppColors.textPrimary),
                         textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 6),
@@ -304,7 +306,10 @@ class _ZeroBasedExplainer extends StatelessWidget {
       children: [
         const Text(
           'Give every rupee a job.',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              color: AppColors.textPrimary),
         ),
         const SizedBox(height: 8),
         const Text(
@@ -323,7 +328,10 @@ class _ZeroBasedExplainer extends StatelessWidget {
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Total Allocated', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text('Total Allocated',
+                style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary)),
             Text('= Salary  (Remaining: ₹0)',
                 style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
           ],
@@ -352,7 +360,10 @@ class _CategoryRow extends StatelessWidget {
       children: [
         Text(emoji, style: const TextStyle(fontSize: 16)),
         const SizedBox(width: 8),
-        Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
+        Expanded(
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textPrimary))),
         Text(pct, style: TextStyle(fontWeight: FontWeight.w700, color: color)),
       ],
     );
@@ -372,11 +383,9 @@ class _BudgetKillerCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)
-        ],
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -394,7 +403,9 @@ class _BudgetKillerCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(title,
                         style: const TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 13)),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.textPrimary)),
                   ],
                 ),
                 const SizedBox(height: 4),

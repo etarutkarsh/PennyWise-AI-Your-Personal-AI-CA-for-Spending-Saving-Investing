@@ -243,9 +243,9 @@ class _RuleBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6)],
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,7 +253,11 @@ class _RuleBar extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(label,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: AppColors.textPrimary)),
               Row(
                 children: [
                   Text(
@@ -262,7 +266,10 @@ class _RuleBar extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(amount,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppColors.textPrimary)),
                 ],
               ),
             ],
@@ -272,7 +279,7 @@ class _RuleBar extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: percentage / 100,
-              backgroundColor: color.withOpacity(0.12),
+              backgroundColor: AppColors.border,
               valueColor: AlwaysStoppedAnimation(color),
               minHeight: 8,
             ),
