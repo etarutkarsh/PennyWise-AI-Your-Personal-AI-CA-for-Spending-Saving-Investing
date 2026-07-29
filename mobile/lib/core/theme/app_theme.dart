@@ -44,13 +44,13 @@ class AppTheme {
         },
       ),
       colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.orange,
+        seedColor: AppColors.blue,
         brightness: Brightness.dark,
       ).copyWith(
         surface: AppColors.surface,
         primary: AppColors.orange,
         onPrimary: Colors.white,
-        secondary: AppColors.amber,
+        secondary: AppColors.blue,
         onSurface: AppColors.textPrimary,
       ),
       scaffoldBackgroundColor: AppColors.background,

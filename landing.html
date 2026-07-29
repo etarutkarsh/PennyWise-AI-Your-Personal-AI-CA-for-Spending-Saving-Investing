@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PennyWise AI — Know Every Rupee</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ─── Reset ─────────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: auto; }
+
+    /* ─── Tokens ─────────────────────────────────────────────────────────────── */
+    :root {
+      --bg:        #090909;
+      --surface:   #111111;
+      --card:      #161616;
+      --border:    rgba(255,255,255,0.07);
+      --orange:    #F4722B;
+      --amber:     #FFB830;
+      --red:       #FF3B5C;
+      --green:     #00D084;
+      --t1:        #FFFFFF;
+      --t2:        #888888;
+      --t3:        #333333;
+      --ledger:    rgba(255,255,255,0.032);
+    }
+
+    /* ─── Base ───────────────────────────────────────────────────────────────── */
+    body {
+      background: var(--bg);
+      color: var(--t1);
+      font-family: 'DM Sans', sans-serif;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--orange); border-radius: 2px; }
+
+    /* ─── Ledger texture (the accounting-paper motif) ────────────────────────── */
+    .ledger {
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        transparent, transparent 39px,
+        var(--ledger) 39px, var(--ledger) 40px
+      );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Global scroll progress bar ────────────────────────────────────────── */
+    #progress-bar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--orange), var(--amber));
+      z-index: 1000;
+      box-shadow: 0 0 8px rgba(244,114,43,0.55);
+      transition: width 0.06s linear;
+    }
+
+    /* ─── Chapter rail (desktop sidebar) ────────────────────────────────────── */
+    #rail {
+      position: fixed;
+      left: 28px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+    .rail-dot {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      opacity: 0.28;
+      transition: opacity 0.4s ease;
+      cursor: default;
+    }
+    .rail-dot.on { opacity: 1; }
+    .rail-pip {
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      background: var(--t2);
+      flex-shrink: 0;
+      transition: width 0.3s ease, border-radius 0.3s ease, background 0.3s ease;
+    }
+    .rail-dot.on .rail-pip {
+      width: 22px; border-radius: 2px;
+      background: var(--orange);
+    }
+    .rail-lbl {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--t2);
+      white-space: nowrap;
+    }
+    .rail-dot.on .rail-lbl { color: var(--t1); }
+
+    /* ─── Reveal utility ─────────────────────────────────────────────────────── */
+    .rv {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    .rv.in {
+      animation: slideUp 0.9s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+    @keyframes slideUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+       §1  HERO
+    ═══════════════════════════════════════════════════════════════════════════ */
+    #hero {
+      height: 100vh;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0 32px;
+      overflow: hidden;
+    }
+    #particles {
+      position: absolute; inset: 0;
+      pointer-events: none; overflow: hidden; z-index: 1;
+    }
+    .pt {
+      position: absolute;
+      font-family: 'Space Mono', monospace;
+      color: rgba(244,114,43,0.11);
+      user-select: none;
+      animation: drift linear infinite;
+    }
+    @keyframes drift {
+      0%   { transform: translateY(110vh) rotate(0deg);  opacity: 0; }
+      8%   { opacity: 1; }
+      92%  { opacity: 0.4; }
+      100% { transform: translateY(-10vh) rotate(22deg); opacity: 0; }
+    }
+
+    .hero-inner { position: relative; z-index: 2; max-width: 1020px; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center; gap: 10px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--orange);
+      padding: 8px 18px;
+      border: 1px solid rgba(244,114,43,0.22);
+      border-radius: 100px;
+      background: rgba(244,114,43,0.05);
+      margin-bottom: 36px;
+      opacity: 0;
+      animation: fadeUp 0.7s ease forwards 0.4s;
+    }
+    .pulse {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--orange);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.2; } }
+
+    .hero-h1 {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-weight: 900;
+      font-size: clamp(46px, 6.8vw, 100px);
+      line-height: 1.06;
+      letter-spacing: -0.025em;
+      color: var(--t1);
+      opacity: 0;
+      animation: fadeUp 1s ease forwards 0.7s;
+    }
+    .hero-h1 .hi {
+      background: linear-gradient(100deg, var(--orange), var(--amber));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      margin-top: 26px;
+      font-size: 18px; line-height: 1.7;
+      color: var(--t2); max-width: 560px;
+      margin-left: auto; margin-right: auto;
+      font-weight: 400;
+      opacity: 0;
+      animation: fadeUp 0.9s ease forwards 1.05s;
+    }
+
+    .scroll-cue {
+      position: absolute;
+      bottom: 40px; left: 50%; transform: translateX(-50%);
+      z-index: 2;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      opacity: 0;
+      animation: fadeUp 1s ease forwards 1.5s;
+    }
+    .scroll-cue span {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase;
+      color: var(--t3);
+    }
+    .needle {
+      width: 1px; height: 52px;
+      background: linear-gradient(to bottom, var(--orange), transparent);
+      animation: needlePulse 2.2s ease-in-out infinite;
+    }
+    @keyframes needlePulse { 0%,100% { opacity:0.45; } 50% { opacity:1; } }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(22px); } to { opacity:1; transform:translateY(0); } }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+       §2  THE UPI AGE
+    ═══════════════════════════════════════════════════════════════════════════ */
+    #upi {
+      position: relative;
+      padding: 150px 40px 150px;
+      overflow: hidden;
+    }
+    .upi-grid {
+      position: relative; z-index: 1;
+      max-width: 1160px; margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 430px;
+      gap: 100px;
+      align-items: center;
+    }
+    .eyebrow {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--orange);
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 26px;
+    }
+    .eyebrow::before {
+      content: ''; width: 28px; height: 1px;
+      background: var(--orange); flex-shrink: 0;
+    }
+    .s-h2 {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-weight: 700;
+      font-size: clamp(32px, 3.8vw, 56px);
+      line-height: 1.15; color: var(--t1);
+      margin-bottom: 28px;
+    }
+    .s-p {
+      font-size: 17px; line-height: 1.82;
+      color: var(--t2); font-weight: 400;
+    }
+    .s-p + .s-p { margin-top: 18px; }
+    .s-p strong { color: var(--t1); font-weight: 600; }
+    .stat-chip {
+      display: inline-flex; align-items: center; gap: 10px;
+      margin-top: 36px;
+      padding: 11px 20px;
+      background: rgba(244,114,43,0.07);
+      border: 1px solid rgba(244,114,43,0.18);
+      border-radius: 100px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px; color: var(--orange);
+    }
+
+    /* Phone ── */
+    .phone-wrap {
+      position: relative;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .phone-aura {
+      position: absolute;
+      width: 320px; height: 320px;
+      background: radial-gradient(circle, rgba(244,114,43,0.11) 0%, transparent 68%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .phone {
+      position: relative; z-index: 1;
+      width: 256px;
+      background: #0C0C0C;
+      border-radius: 40px;
+      border: 1.5px solid rgba(255,255,255,0.1);
+      overflow: hidden;
+      padding: 26px 18px 24px;
+      box-shadow:
+        0 0 0 10px rgba(255,255,255,0.02),
+        0 48px 80px rgba(0,0,0,0.7);
+    }
+    .phone-notch {
+      width: 72px; height: 5px;
+      background: var(--surface);
+      border-radius: 3px;
+      margin: 0 auto 18px;
+    }
+    .phone-hd {
+      font-family: 'Space Mono', monospace;
+      font-size: 8px; letter-spacing: 2.5px; text-transform: uppercase;
+      color: var(--t3); text-align: center;
+      margin-bottom: 14px;
+    }
+    .p-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 12px;
+      background: var(--surface);
+      border-radius: 13px; margin-bottom: 7px;
+      opacity: 0; transform: translateX(14px);
+    }
+    .p-row.ri { animation: rowIn 0.4s ease forwards; }
+    @keyframes rowIn { to { opacity:1; transform:translateX(0); } }
+    .p-ico {
+      width: 32px; height: 32px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+    }
+    .p-lbl { flex: 1; min-width: 0; }
+    .p-name { font-size: 11px; font-weight: 600; }
+    .p-desc { font-size: 9px; color: var(--t2); margin-top: 1px; }
+    .p-amt {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px; font-weight: 700; color: #FF6B6B; flex-shrink: 0;
+    }
+    .p-ok {
+      margin-top: 10px; padding: 9px;
+      background: rgba(0,208,132,0.07);
+      border: 1px solid rgba(0,208,132,0.16);
+      border-radius: 9px; text-align: center;
+      font-size: 10px; color: var(--green); font-weight: 600;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+       §3  THE FLOOD  (sticky, 500vh scroll)
+    ═══════════════════════════════════════════════════════════════════════════ */
+    #flood { height: 500vh; position: relative; }
+
+    #flood-pin {
+      position: sticky; top: 0;
+      height: 100vh; overflow: hidden;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+    }
+
+    .flood-head {
+      padding: 38px 56px 24px;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      position: relative; z-index: 2; flex-shrink: 0;
+    }
+    .flood-lhs { max-width: 500px; }
+    .flood-title {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-weight: 700;
+      font-size: clamp(22px, 2.8vw, 36px);
+      line-height: 1.22; color: var(--t1);
+      min-height: 2.5em;
+      transition: opacity 0.22s ease;
+    }
+    .flood-sub {
+      font-size: 13px; color: var(--t2);
+      margin-top: 5px;
+      transition: opacity 0.22s ease;
+    }
+    .flood-rhs { text-align: right; }
+    .flood-tot-lbl {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--t2); margin-bottom: 4px;
+    }
+    #f-total {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(30px, 4.4vw, 56px);
+      font-weight: 700; color: var(--orange);
+      letter-spacing: -0.02em;
+      transition: color 0.6s ease;
+    }
+    .flood-bar {
+      position: absolute; bottom: 0; left: 0;
+      height: 1px;
+      background: var(--orange);
+      box-shadow: 0 0 5px rgba(244,114,43,0.5);
+      transition: width 0.1s linear;
+    }
+
+    .flood-body {
+      flex: 1; padding: 0 56px 28px;
+      overflow: hidden; position: relative; z-index: 1;
+    }
+    .flood-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 9px;
+      max-width: 1300px;
+    }
+
+    .fc {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      padding: 11px 13px;
+      opacity: 0;
+      transform: translateY(-12px) scale(0.97);
+      transition: opacity 0.26s ease, transform 0.26s ease, border-color 0.3s ease;
+      will-change: transform, opacity;
+    }
+    .fc.on { opacity: 1; transform: translateY(0) scale(1); }
+    .fc.new { border-color: rgba(244,114,43,0.38); }
+    .fc-ico {
+      width: 34px; height: 34px; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; flex-shrink: 0;
+    }
+    .fc-bd { flex: 1; min-width: 0; }
+    .fc-nm { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fc-nt { font-size: 9px; color: var(--t2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fc-am {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px; font-weight: 700; color: #FF6B6B; flex-shrink: 0;
+    }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+       §4  THE RECKONING
+    ═══════════════════════════════════════════════════════════════════════════ */
+    #reckoning {
+      min-height: 100vh; position: relative;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      padding: 100px 32px;
+      overflow: hidden;
+    }
+    .reck-glow {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 55%,
+        rgba(255,59,92,0.1) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .reck-inner { position: relative; z-index: 1; max-width: 740px; }
+
+    .reck-date {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--t2); margin-bottom: 44px;
+    }
+    .reck-big {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(64px, 12vw, 128px);
+      font-weight: 700; line-height: 0.95;
+      color: var(--red);
+      letter-spacing: -0.03em; margin-bottom: 16px;
+    }
+    .reck-label {
+      font-size: 12px; letter-spacing: 3.5px; text-transform: uppercase;
+      font-weight: 600; color: var(--t2); margin-bottom: 60px;
+    }
+    .reck-rule {
+      width: 100%; height: 1px;
+      background: rgba(255,59,92,0.15);
+      margin-bottom: 60px;
+    }
+    .reck-bal-lbl {
+      font-family: 'Space Mono', monospace;
+      font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--t2); margin-bottom: 14px;
+    }
+    .reck-bal {
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(40px, 7vw, 80px);
+      font-weight: 700; color: var(--t1);
+      letter-spacing: -0.025em; margin-bottom: 64px;
+    }
+    .reck-quote {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: clamp(18px, 2.4vw, 26px);
+      line-height: 1.6; color: var(--t2);
+    }
+    .reck-quote em { font-style: normal; color: var(--t1); }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+       §5  THE WAY OUT
+    ═══════════════════════════════════════════════════════════════════════════ */
+    #solution {
+      position: relative;
+      padding: 150px 40px 130px;
+      overflow: hidden;
+    }
+    .sol-glow {
+      position: absolute; top: -80px; left: 50%;
+      transform: translateX(-50%);
+      width: 900px; height: 500px;
+      background: radial-gradient(ellipse,
+        rgba(244,114,43,0.07) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .sol-inner {
+      position: relative; z-index: 1;
+      max-width: 1160px; margin: 0 auto;
+    }
+    .sol-logo {
+      display: inline-flex; align-items: center; gap: 14px;
+      margin-bottom: 56px;
+    }
+    .sol-icon {
+      width: 54px; height: 54px;
+      background: linear-gradient(140deg, var(--orange), var(--amber));
+      border-radius: 17px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 27px;
+      box-shadow: 0 10px 28px rgba(244,114,43,0.28);
+    }
+    .sol-word {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px; font-weight: 700; color: var(--t1);
+    }
+    .sol-word span { font-style: italic; color: var(--orange); }
+
+    .sol-h2 {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-weight: 900;
+      font-size: clamp(36px, 5vw, 72px);
+      line-height: 1.1; color: var(--t1);
+      max-width: 750px; margin-bottom: 24px;
+    }
+    .sol-h2 em {
+      font-style: normal;
+      background: linear-gradient(100deg, var(--orange), var(--amber));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .sol-desc {
+      font-size: 18px; line-height: 1.78;
+      color: var(--t2); max-width: 590px; margin-bottom: 72px;
+    }
+    .feats {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 18px;
+    }
+    .feat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px; padding: 28px;
+      transition: border-color 0.25s, background 0.25s;
+    }
+    .feat:hover {
+      border-color: rgba(244,114,43,0.25);
+      background: rgba(244,114,43,0.025);
+    }
+    .feat-ico {
+      width: 46px; height: 46px; border-radius: 14px;
+      background: rgba(244,114,43,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 21px; margin-bottom: 18px;
+    }
+    .feat-t { font-size: 15px; font-weight: 700; color: var(--t1); margin-bottom: 8px; }
+    .feat-d { font-size: 14px; line-height: 1.65; color: var(--t2); }
+
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+       §6  SIGN IN
+    ═══════════════════════════════════════════════════════════════════════════ */
+    #signin {
+      min-height: 100vh; position: relative;
+      display: flex; align-items: center; justify-content: center;
+      padding: 80px 24px;
+      overflow: hidden;
+    }
+    .si-glow {
+      position: absolute; bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 900px; height: 460px;
+      background: radial-gradient(ellipse at bottom,
+        rgba(244,114,43,0.07) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .si-card {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 440px;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 32px;
+      padding: 52px 48px;
+      box-shadow:
+        0 0 0 1px rgba(244,114,43,0.05),
+        0 52px 96px rgba(0,0,0,0.55);
+    }
+    .si-logo {
+      display: flex; align-items: center; gap: 11px;
+      margin-bottom: 40px;
+    }
+    .si-logo-ico {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--orange), var(--amber));
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .si-logo-nm {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 700; color: var(--t1);
+    }
+    .si-h3 {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-size: 28px; font-weight: 700;
+      line-height: 1.28; color: var(--t1); margin-bottom: 8px;
+    }
+    .si-tag {
+      font-size: 14px; color: var(--t2);
+      margin-bottom: 36px; line-height: 1.55;
+    }
+    .f-lbl {
+      display: block; font-size: 10px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.9px;
+      color: var(--t2); margin-bottom: 8px;
+    }
+    .f-in {
+      width: 100%; padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 13px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px; color: var(--t1);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 16px;
+    }
+    .f-in::placeholder { color: var(--t3); }
+    .f-in:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(244,114,43,0.11);
+    }
+    .f-btn {
+      width: 100%; padding: 16px;
+      background: var(--orange); color: #fff;
+      border: none; border-radius: 13px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; margin-top: 8px;
+      transition: background 0.18s, transform 0.1s, box-shadow 0.18s;
+    }
+    .f-btn:hover {
+      background: #e5611e;
+      box-shadow: 0 8px 28px rgba(244,114,43,0.32);
+    }
+    .f-btn:active { transform: scale(0.985); }
+    .si-switch {
+      text-align: center; margin-top: 28px;
+      font-size: 14px; color: var(--t2);
+    }
+    .si-switch a { color: var(--orange); text-decoration: none; font-weight: 600; }
+    .si-switch a:hover { text-decoration: underline; }
+
+    /* ── Sign-in states ─── */
+    .f-err {
+      display: flex; align-items: center; gap: 9px;
+      background: rgba(255,59,92,0.08);
+      border: 1px solid rgba(255,59,92,0.22);
+      border-radius: 11px;
+      padding: 12px 15px;
+      font-size: 13px; color: #FF6B6B;
+      margin-top: 12px;
+      animation: errIn 0.25s ease;
+    }
+    @keyframes errIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+
+    .f-btn.loading {
+      opacity: 0.75; cursor: not-allowed;
+      background: var(--surface);
+    }
+    .f-btn.success {
+      background: #00D084 !important;
+      box-shadow: 0 8px 28px rgba(0,208,132,0.28) !important;
+      cursor: default;
+    }
+    .f-btn.success:hover { background: #00D084 !important; }
+
+    .si-success {
+      text-align: center;
+      padding: 8px 0 4px;
+      animation: errIn 0.3s ease;
+    }
+    .si-success-icon {
+      font-size: 40px; margin-bottom: 12px;
+    }
+    .si-success-title {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-size: 22px; font-weight: 700;
+      color: var(--t1); margin-bottom: 8px;
+    }
+    .si-success-body {
+      font-size: 14px; color: var(--t2); line-height: 1.55;
+    }
+    .si-success-email {
+      display: inline-block;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px; color: var(--orange);
+      background: rgba(244,114,43,0.08);
+      border: 1px solid rgba(244,114,43,0.18);
+      border-radius: 8px;
+      padding: 4px 10px; margin-top: 10px;
+    }
+
+    /* ─── Responsive ─────────────────────────────────────────────────────────── */
+    @media (max-width: 980px) {
+      .upi-grid { grid-template-columns: 1fr; gap: 60px; }
+      .phone-wrap { display: none; }
+      .feats { grid-template-columns: 1fr 1fr; }
+      #rail { display: none; }
+      .flood-grid { grid-template-columns: repeat(2,1fr); }
+      .flood-head { padding: 28px 28px 20px; }
+      .flood-body { padding: 0 28px 20px; }
+      #upi { padding: 100px 28px; }
+      #solution { padding: 100px 28px; }
+    }
+    @media (max-width: 600px) {
+      .feats { grid-template-columns: 1fr; }
+      .flood-grid { grid-template-columns: 1fr 1fr; }
+      .flood-head { flex-direction: column; gap: 16px; padding: 24px 20px 16px; }
+      .flood-body { padding: 0 20px 16px; }
+      .si-card { padding: 36px 28px; border-radius: 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, .rv { animation: none !important; transition: none !important; }
+      .rv { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Scroll progress -->
+<div id="progress-bar" style="width:0%" role="progressbar" aria-hidden="true"></div>
+
+<!-- Chapter rail -->
+<nav id="rail" aria-label="Page sections">
+  <div class="rail-dot on"  data-s="hero">      <div class="rail-pip"></div><span class="rail-lbl">Intro</span></div>
+  <div class="rail-dot"     data-s="upi">       <div class="rail-pip"></div><span class="rail-lbl">The problem</span></div>
+  <div class="rail-dot"     data-s="flood">     <div class="rail-pip"></div><span class="rail-lbl">The flood</span></div>
+  <div class="rail-dot"     data-s="reckoning"> <div class="rail-pip"></div><span class="rail-lbl">The reckoning</span></div>
+  <div class="rail-dot"     data-s="solution">  <div class="rail-pip"></div><span class="rail-lbl">The way out</span></div>
+  <div class="rail-dot"     data-s="signin">    <div class="rail-pip"></div><span class="rail-lbl">Sign in</span></div>
+</nav>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     §1  HERO
+══════════════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="ledger" aria-hidden="true"></div>
+  <div id="particles"   aria-hidden="true"></div>
+
+  <div class="hero-inner">
+    <div class="hero-badge">
+      <span class="pulse"></span>
+      PennyWise AI &nbsp;·&nbsp; Your personal financial CA
+    </div>
+
+    <h1 class="hero-h1">
+      You work for your money.<br>
+      Then it <span class="hi">disappears.</span>
+    </h1>
+
+    <p class="hero-sub">
+      In India's UPI era, every rupee leaves your account in two taps — no wallet emptying, no counting change. Just a silent, painless vanishing act, month after month.
+    </p>
+  </div>
+
+  <div class="scroll-cue" aria-hidden="true">
+    <span>scroll to read</span>
+    <div class="needle"></div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     §2  THE UPI AGE
+══════════════════════════════════════════════════════════════ -->
+<section id="upi">
+  <div class="ledger" aria-hidden="true"></div>
+  <div class="upi-grid">
+
+    <div>
+      <div class="eyebrow">Chapter I &nbsp;·&nbsp; The cost of convenience</div>
+      <h2 class="s-h2 rv">Cash used to tell you<br>when to stop.</h2>
+      <p class="s-p rv" data-delay="0.08">
+        Opening your wallet, counting notes, handing over ₹500 for dinner — there was <strong>physical feedback</strong>. A slight reluctance. A moment of pause. Your body registered what your brain was spending.
+      </p>
+      <p class="s-p rv" data-delay="0.16">
+        Then UPI arrived. <strong>₹847 on Swiggy</strong> — one tap. <strong>₹1,299 on Amazon</strong> — two seconds. <strong>₹680 at Starbucks</strong> — done. The friction vanished. And with it, your instinctive awareness of what you were actually spending.
+      </p>
+      <p class="s-p rv" data-delay="0.24">
+        This is not a failure of willpower. It is a failure of <strong>visibility</strong>.
+      </p>
+      <div class="stat-chip rv" data-delay="0.32">
+        <span class="pulse"></span>
+        Over 500 crore UPI transactions processed in India every single month
+      </div>
+    </div>
+
+    <div class="phone-wrap rv" data-delay="0.18">
+      <div class="phone-aura" aria-hidden="true"></div>
+      <div class="phone" role="img" aria-label="Phone showing four UPI transactions">
+        <div class="phone-notch"></div>
+        <div class="phone-hd">Today's activity</div>
+
+        <div class="p-row" id="pr1">
+          <div class="p-ico" style="background:rgba(255,107,107,0.12)">🍔</div>
+          <div class="p-lbl"><div class="p-name">Swiggy</div><div class="p-desc">Biryani + raita</div></div>
+          <div class="p-amt">−₹847</div>
+        </div>
+        <div class="p-row" id="pr2">
+          <div class="p-ico" style="background:rgba(0,160,220,0.11)">🚗</div>
+          <div class="p-lbl"><div class="p-name">Uber</div><div class="p-desc">Airport pickup</div></div>
+          <div class="p-amt">−₹1,234</div>
+        </div>
+        <div class="p-row" id="pr3">
+          <div class="p-ico" style="background:rgba(255,165,0,0.1)">📦</div>
+          <div class="p-lbl"><div class="p-name">Amazon</div><div class="p-desc">Bluetooth earphones</div></div>
+          <div class="p-amt">−₹1,299</div>
+        </div>
+        <div class="p-row" id="pr4">
+          <div class="p-ico" style="background:rgba(150,100,50,0.15)">☕</div>
+          <div class="p-lbl"><div class="p-name">Starbucks</div><div class="p-desc">Team catch-up</div></div>
+          <div class="p-amt">−₹680</div>
+        </div>
+        <div class="p-ok">✓ All transactions successful</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     §3  THE FLOOD  — 500vh sticky
+══════════════════════════════════════════════════════════════ -->
+<section id="flood">
+  <div id="flood-pin">
+    <div class="ledger" aria-hidden="true"></div>
+
+    <div class="flood-head">
+      <div class="flood-lhs">
+        <div class="flood-title" id="f-title">This is your month.</div>
+        <div class="flood-sub"   id="f-sub">Every tap. Every swipe. Every impulse.</div>
+      </div>
+      <div class="flood-rhs" aria-live="polite">
+        <div class="flood-tot-lbl">Total spent</div>
+        <div id="f-total">₹0</div>
+      </div>
+      <div class="flood-bar" id="f-bar" style="width:0%"></div>
+    </div>
+
+    <div class="flood-body">
+      <div class="flood-grid" id="f-grid"></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     §4  THE RECKONING
+══════════════════════════════════════════════════════════════ -->
+<section id="reckoning">
+  <div class="ledger" aria-hidden="true"></div>
+  <div class="reck-glow"  aria-hidden="true"></div>
+
+  <div class="reck-inner">
+    <p class="reck-date    rv">31st of the month · 11:58 PM</p>
+    <div class="reck-big   rv" data-delay="0.12">₹47,832</div>
+    <p class="reck-label   rv" data-delay="0.22">spent this month</p>
+    <div class="reck-rule  rv" data-delay="0.32"></div>
+    <div class="rv" data-delay="0.42">
+      <p class="reck-bal-lbl">What's left in your account</p>
+      <div class="reck-bal">₹2,168</div>
+    </div>
+    <p class="reck-quote   rv" data-delay="0.56">
+      "I thought I was being <em>careful.</em><br>
+      I had no idea where it all went."
+    </p>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     §5  THE WAY OUT
+══════════════════════════════════════════════════════════════ -->
+<section id="solution">
+  <div class="ledger"   aria-hidden="true"></div>
+  <div class="sol-glow" aria-hidden="true"></div>
+
+  <div class="sol-inner">
+    <div class="sol-logo rv">
+      <div class="sol-icon" aria-hidden="true">💰</div>
+      <div class="sol-word">Penny<span>Wise</span> AI</div>
+    </div>
+
+    <h2 class="sol-h2 rv" data-delay="0.08">
+      Your money finally has<br><em>someone watching over it.</em>
+    </h2>
+    <p class="sol-desc rv" data-delay="0.16">
+      PennyWise AI is your personal Chartered Accountant — turning every UPI transaction into a clear picture of where you stand, what to cut, and how to actually build wealth.
+    </p>
+
+    <div class="feats">
+      <div class="feat rv" data-delay="0.08">
+        <div class="feat-ico">📊</div>
+        <div class="feat-t">Live spending awareness</div>
+        <p class="feat-d">See exactly where every rupee goes — categorised, visualised, and explained without jargon.</p>
+      </div>
+      <div class="feat rv" data-delay="0.15">
+        <div class="feat-ico">🎯</div>
+        <div class="feat-t">Goals that have a plan</div>
+        <p class="feat-d">Car, vacation, emergency fund — set the target and get the exact monthly amount required to reach it.</p>
+      </div>
+      <div class="feat rv" data-delay="0.22">
+        <div class="feat-ico">🤖</div>
+        <div class="feat-t">AI that knows your money</div>
+        <p class="feat-d">Ask "should I buy this?" or "how do I save ₹10k this month?" — get an answer based on your actual data.</p>
+      </div>
+      <div class="feat rv" data-delay="0.29">
+        <div class="feat-ico">📱</div>
+        <div class="feat-t">SMS auto-capture</div>
+        <p class="feat-d">Every UPI bank SMS is read and categorised automatically. Zero manual entry required.</p>
+      </div>
+      <div class="feat rv" data-delay="0.36">
+        <div class="feat-ico">📚</div>
+        <div class="feat-t">Learn while you track</div>
+        <p class="feat-d">Gamified finance education — 50-30-20 rule, SIPs, emergency funds — earn XP as your habits improve.</p>
+      </div>
+      <div class="feat rv" data-delay="0.43">
+        <div class="feat-ico">🔒</div>
+        <div class="feat-t">Bank-grade security</div>
+        <p class="feat-d">All data lives in encrypted secure storage. We never see your UPI PINs or banking credentials.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     §6  SIGN IN
+══════════════════════════════════════════════════════════════ -->
+<section id="signin">
+  <div class="ledger"  aria-hidden="true"></div>
+  <div class="si-glow" aria-hidden="true"></div>
+
+  <div class="si-card rv">
+    <div class="si-logo">
+      <div class="si-logo-ico" aria-hidden="true">💰</div>
+      <div class="si-logo-nm">PennyWise AI</div>
+    </div>
+
+    <div id="si-form-wrap">
+      <h2 class="si-h3">Take back control<br>of your money.</h2>
+      <p class="si-tag">Sign in — your financial CA is ready.</p>
+
+      <form id="si-form" novalidate>
+        <label class="f-lbl" for="si-email">Email address</label>
+        <input class="f-in" type="email" id="si-email" placeholder="you@example.com" autocomplete="email" required>
+
+        <label class="f-lbl" for="si-pw">Password</label>
+        <input class="f-in" type="password" id="si-pw" placeholder="••••••••" autocomplete="current-password" required>
+
+        <button class="f-btn" id="si-btn" type="submit">Sign in to PennyWise</button>
+      </form>
+
+      <p class="si-switch">
+        New here? <a href="#signup">Create your account →</a>
+      </p>
+    </div>
+
+    <!-- Success state (hidden until login succeeds) -->
+    <div id="si-success-wrap" style="display:none" class="si-success">
+      <div class="si-success-icon">✅</div>
+      <div class="si-success-title">You're in.</div>
+      <p class="si-success-body">
+        Signed in successfully.<br>Open PennyWise on your device to continue.
+      </p>
+      <div class="si-success-email" id="si-success-email"></div>
+    </div>
+  </div>
+</section>
+
+
+<script>
+(function () {
+  'use strict';
+
+  /* ── 1. Hero particles ───────────────────────────────────────────────────── */
+  const particleEl = document.getElementById('particles');
+  const labels = ['₹','₹','₹','47','12K','₹','8K','₹','₹','5K'];
+  for (let i = 0; i < 24; i++) {
+    const s = document.createElement('span');
+    s.className = 'pt';
+    s.textContent = labels[i % labels.length];
+    s.style.cssText = [
+      `left:${Math.random()*100}%`,
+      `font-size:${10 + Math.random()*10}px`,
+      `animation-duration:${10 + Math.random()*14}s`,
+      `animation-delay:-${Math.random()*15}s`
+    ].join(';');
+    particleEl.appendChild(s);
+  }
+
+  /* ── 2. Phone row stagger ────────────────────────────────────────────────── */
+  [1,2,3,4].forEach((n, i) => {
+    setTimeout(() => {
+      const el = document.getElementById('pr'+n);
+      if (el) el.classList.add('ri');
+    }, 900 + i * 500);
+  });
+
+  /* ── 3. Flood data ───────────────────────────────────────────────────────── */
+  const TXN = [
+    { e:'🍔', n:'Swiggy',      d:'Chicken Biryani + raita',         a:847,  bg:'rgba(255,107,107,0.12)' },
+    { e:'🚗', n:'Uber',        d:'Airport pickup',                   a:1234, bg:'rgba(0,160,220,0.1)'    },
+    { e:'📦', n:'Amazon',      d:'Bluetooth earphones',              a:1299, bg:'rgba(255,165,0,0.1)'    },
+    { e:'🍕', n:'Zomato',      d:'Pizza night — 3 items',            a:459,  bg:'rgba(255,107,107,0.12)' },
+    { e:'🎬', n:'Netflix',     d:'Monthly subscription',             a:649,  bg:'rgba(229,9,20,0.1)'     },
+    { e:'⚡', n:'Blinkit',     d:'10-minute grocery run',            a:1847, bg:'rgba(255,200,60,0.1)'   },
+    { e:'👗', n:'Myntra',      d:'End-of-season sale haul',          a:2199, bg:'rgba(255,107,200,0.1)'  },
+    { e:'💸', n:'PhonePe',     d:"Rohan's rent share",               a:5000, bg:'rgba(107,107,255,0.1)'  },
+    { e:'🎭', n:'BookMyShow',  d:'Weekend movie + popcorn',          a:890,  bg:'rgba(255,165,0,0.1)'    },
+    { e:'☕', n:'Starbucks',   d:'Team catch-up (4 drinks)',         a:1240, bg:'rgba(150,100,50,0.15)'  },
+    { e:'🚂', n:'IRCTC',       d:'Mumbai–Pune weekend trip',         a:1450, bg:'rgba(0,150,220,0.1)'    },
+    { e:'🍜', n:'Swiggy',      d:'Late-night noodles',               a:298,  bg:'rgba(255,107,107,0.12)' },
+    { e:'🎵', n:'Spotify',     d:'Premium monthly',                  a:119,  bg:'rgba(29,185,84,0.1)'    },
+    { e:'📱', n:'Airtel',      d:'Mobile recharge',                  a:599,  bg:'rgba(255,0,100,0.1)'    },
+    { e:'👕', n:'H&M',         d:'New collection — 3 pieces',        a:3499, bg:'rgba(200,200,200,0.07)' },
+    { e:'🏋️',n:'Cult.fit',   d:'Monthly gym membership',           a:1999, bg:'rgba(0,200,100,0.1)'    },
+    { e:'🎮', n:'Steam',       d:'Elden Ring DLC',                   a:1149, bg:'rgba(50,100,180,0.12)'  },
+    { e:'✈️', n:'MakeMyTrip', d:'Goa return flights',               a:4800, bg:'rgba(0,150,255,0.1)'    },
+    { e:'🧴', n:'Nykaa',       d:'Skincare essentials',              a:1549, bg:'rgba(255,150,200,0.1)'  },
+    { e:'🏠', n:'PhonePe',     d:'Electricity bill',                 a:1890, bg:'rgba(107,107,255,0.1)'  },
+  ];
+
+  /* ── 4. Build flood cards ────────────────────────────────────────────────── */
+  const fGrid = document.getElementById('f-grid');
+  TXN.forEach((t, i) => {
+    const c = document.createElement('div');
+    c.className = 'fc';
+    c.id = 'fc' + i;
+    c.innerHTML = `
+      <div class="fc-ico" style="background:${t.bg}">${t.e}</div>
+      <div class="fc-bd">
+        <div class="fc-nm">${t.n}</div>
+        <div class="fc-nt">${t.d}</div>
+      </div>
+      <div class="fc-am">−₹${t.a.toLocaleString('en-IN')}</div>`;
+    fGrid.appendChild(c);
+  });
+
+  const cards   = Array.from(document.querySelectorAll('.fc'));
+  const fTotal  = document.getElementById('f-total');
+  const fBar    = document.getElementById('f-bar');
+  const fTitle  = document.getElementById('f-title');
+  const fSub    = document.getElementById('f-sub');
+  const floodSec = document.getElementById('flood');
+
+  const STAGES = [
+    { at:0,    t:'This is your month.',              s:'Every tap. Every swipe. Every impulse.' },
+    { at:0.22, t:'It adds up.',                      s:'Slowly. Silently. Without warning.' },
+    { at:0.48, t:'Still going…',                    s:"You didn't even notice, did you?" },
+    { at:0.72, t:'Just one more.',                   s:"There's always just one more." },
+    { at:0.92, t:"And this is only what you tracked.", s:"The rent. The bills. The petrol. That's extra." },
+  ];
+
+  function inr(n) {
+    return '₹' + Math.round(n).toLocaleString('en-IN');
+  }
+
+  /* ── 5. Reveal observer ──────────────────────────────────────────────────── */
+  const revObs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (!e.isIntersecting) return;
+      const delay = parseFloat(e.target.dataset.delay || 0);
+      e.target.style.animationDelay = delay + 's';
+      e.target.classList.add('in');
+      revObs.unobserve(e.target);
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.rv').forEach(el => revObs.observe(el));
+
+  /* ── 6. Section tracker for rail ─────────────────────────────────────────── */
+  const sections = Array.from(document.querySelectorAll('section[id]'));
+  const railDots = Array.from(document.querySelectorAll('.rail-dot'));
+
+  function updateRail() {
+    const mid = window.innerHeight * 0.45;
+    let active = sections[0].id;
+    sections.forEach(sec => {
+      const top = sec.getBoundingClientRect().top;
+      if (top <= mid) active = sec.id;
+    });
+    railDots.forEach(d => d.classList.toggle('on', d.dataset.s === active));
+  }
+
+  /* ── 7. Scroll handler ───────────────────────────────────────────────────── */
+  let lastCount = -1;
+  let lastStage = -1;
+
+  function onScroll() {
+    const sY = window.scrollY;
+    const docH = document.documentElement.scrollHeight - window.innerHeight;
+
+    // Global progress bar
+    document.getElementById('progress-bar').style.width = (sY / docH * 100) + '%';
+
+    // Rail
+    updateRail();
+
+    // Flood section progress
+    const fTop  = floodSec.offsetTop;
+    const fSpan = floodSec.offsetHeight - window.innerHeight;
+    const prog  = Math.max(0, Math.min(1, (sY - fTop) / fSpan));
+
+    fBar.style.width = (prog * 100) + '%';
+
+    const showN = Math.round(prog * TXN.length);
+
+    if (showN !== lastCount) {
+      lastCount = showN;
+      cards.forEach((card, i) => {
+        card.classList.toggle('on',  i < showN);
+        card.classList.toggle('new', i === showN - 1);
+      });
+
+      const running = TXN.slice(0, showN).reduce((s, t) => s + t.a, 0);
+      fTotal.textContent = inr(running);
+      fTotal.style.color = running > 18000 ? '#FF3B5C'
+                         : running > 9000  ? '#FFB830'
+                         :                   '#F4722B';
+    }
+
+    // Stage text with fade transition
+    let si = 0;
+    STAGES.forEach((st, i) => { if (prog >= st.at) si = i; });
+    if (si !== lastStage) {
+      lastStage = si;
+      fTitle.style.opacity = '0';
+      fSub.style.opacity   = '0';
+      setTimeout(() => {
+        fTitle.textContent   = STAGES[si].t;
+        fSub.textContent     = STAGES[si].s;
+        fTitle.style.opacity = '1';
+        fSub.style.opacity   = '1';
+      }, 220);
+    }
+  }
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  /* ── 8. Sign-in form ─────────────────────────────────────────────────────── */
+  const API = 'http://localhost:8080/api';
+  const siForm     = document.getElementById('si-form');
+  const siBtn      = document.getElementById('si-btn');
+  const siEmail    = document.getElementById('si-email');
+  const siPw       = document.getElementById('si-pw');
+  const siFormWrap = document.getElementById('si-form-wrap');
+  const siSuccess  = document.getElementById('si-success-wrap');
+  const siSuccessEmail = document.getElementById('si-success-email');
+
+  let errEl = null;
+
+  function showErr(msg) {
+    clearErr();
+    errEl = document.createElement('div');
+    errEl.className = 'f-err';
+    errEl.innerHTML = `<span>⚠</span><span>${msg}</span>`;
+    siBtn.insertAdjacentElement('afterend', errEl);
+  }
+
+  function clearErr() {
+    if (errEl) { errEl.remove(); errEl = null; }
+  }
+
+  function setLoading(on) {
+    siBtn.disabled = on;
+    siBtn.classList.toggle('loading', on);
+    siBtn.textContent = on ? 'Signing in…' : 'Sign in to PennyWise';
+  }
+
+  siForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    clearErr();
+
+    const email    = siEmail.value.trim();
+    const password = siPw.value;
+
+    if (!email || !password) {
+      showErr('Please enter your email and password.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch(`${API}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!res.ok) {
+        let msg = 'Something went wrong. Try again.';
+        try {
+          const body = await res.json();
+          if (body.message) msg = body.message;
+          else if (res.status === 401) msg = 'Invalid email or password.';
+          else if (res.status === 404) msg = 'No account found with that email.';
+          else if (res.status >= 500) msg = 'Server error — make sure the backend is running.';
+        } catch (_) {}
+        throw new Error(msg);
+      }
+
+      const data = await res.json();
+
+      // Set session flag so index.html's gate lets Flutter boot on return visits.
+      localStorage.setItem('pw_session', '1');
+
+      // Pass tokens via URL fragment — Flutter reads them in main() and stores
+      // them properly via flutter_secure_storage (AES-GCM encrypted on web).
+      siBtn.classList.add('success');
+      siBtn.textContent = '✓ Signed in — opening dashboard…';
+      setTimeout(() => {
+        window.location.href =
+          `./#/splash?at=${encodeURIComponent(data.accessToken)}&rt=${encodeURIComponent(data.refreshToken)}`;
+      }, 900);
+
+    } catch (err) {
+      setLoading(false);
+      showErr(err.message);
+    }
+  });
+
+  // Clear error on any input change
+  [siEmail, siPw].forEach(el => el.addEventListener('input', clearErr));
+
+}());
+</script>
+
+</body>
+</html>

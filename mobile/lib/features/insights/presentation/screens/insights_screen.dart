@@ -9,7 +9,8 @@ import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../transactions/domain/entities/transaction_entity.dart';
 
 class InsightsScreen extends StatefulWidget {
-  const InsightsScreen({super.key});
+  const InsightsScreen({super.key, this.salary = 0.0});
+  final double salary;
 
   @override
   State<InsightsScreen> createState() => _InsightsScreenState();
@@ -30,6 +31,8 @@ class _InsightsScreenState extends State<InsightsScreen> {
   @override
   void initState() {
     super.initState();
+    // Use navigated salary immediately; fall back to local storage in _load.
+    if (widget.salary > 0) _salary = widget.salary;
     _load();
   }
 
@@ -39,7 +42,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       _error = null;
     });
     try {
-      _salary = await UserPrefsStorage.getSalary();
+      if (_salary <= 0) _salary = await UserPrefsStorage.getSalary();
       _hasAiKey = await AppServices.instance.ai.hasKey();
 
       final txs = await AppServices.instance.transactions.getAll();

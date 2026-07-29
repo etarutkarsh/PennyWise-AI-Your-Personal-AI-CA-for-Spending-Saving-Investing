@@ -54,7 +54,16 @@ final GoRouter appRouter = GoRouter(
     ),
 
     // ── Standalone screens (no shell) ────────────────────────────────────────
-    GoRoute(path: '/affordability', builder: (context, state) => const AffordabilityScreen()),
+    GoRoute(
+      path: '/affordability',
+      builder: (context, state) {
+        final salary = double.tryParse(
+              state.uri.queryParameters['salary'] ?? '',
+            ) ??
+            0.0;
+        return AffordabilityScreen(salary: salary);
+      },
+    ),
     GoRoute(path: '/budgets', builder: (context, state) => const BudgetScreen()),
     GoRoute(path: '/investments', builder: (context, state) => const InvestmentsScreen()),
     GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen()),
@@ -65,7 +74,16 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/savings-rules', builder: (context, state) => const SavingsRulesScreen()),
     GoRoute(path: '/leaderboard', builder: (context, state) => const LeaderboardScreen()),
     GoRoute(path: '/sms-import', builder: (context, state) => const SmsImportScreen()),
-    GoRoute(path: '/insights', builder: (context, state) => const InsightsScreen()),
+    GoRoute(
+      path: '/insights',
+      builder: (context, state) {
+        final salary = double.tryParse(
+              state.uri.queryParameters['salary'] ?? '',
+            ) ??
+            0.0;
+        return InsightsScreen(salary: salary);
+      },
+    ),
 
     // ── Detail screens — parentNavigatorKey forces full-screen above shell ───
     GoRoute(
