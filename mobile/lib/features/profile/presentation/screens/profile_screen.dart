@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -270,7 +271,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             title: const Text('Monthly Salary'),
                             subtitle: Text(
                               _user?.monthlyIncome != null
-                                  ? '₹${_user!.monthlyIncome!.toStringAsFixed(0)}'
+                                  ? NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0).format(_user!.monthlyIncome)
                                   : 'Not set',
                             ),
                             trailing:
