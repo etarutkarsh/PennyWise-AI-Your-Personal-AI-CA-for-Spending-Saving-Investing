@@ -319,7 +319,7 @@ class _ZeroBasedExplainer extends StatelessWidget {
           style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 14),
-        const _CategoryRow(emoji: '🏠', label: 'Needs (Rent, Food, Bills)', pct: '50%', color: AppColors.secondary),
+        const _CategoryRow(emoji: '🏠', label: 'Needs (Rent, Food, Bills)', pct: '50%', color: AppColors.blue),
         const SizedBox(height: 6),
         const _CategoryRow(emoji: '🎉', label: 'Wants (Fun, Shopping)', pct: '30%', color: AppColors.accent),
         const SizedBox(height: 6),
