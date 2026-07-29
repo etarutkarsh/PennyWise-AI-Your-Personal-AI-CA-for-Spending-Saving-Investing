@@ -342,8 +342,10 @@ class _SpendingSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final savingsRate =
-        salary > 0 ? ((salary - totalDebit) / salary * 100).clamp(0.0, 100.0) : 0.0;
+    // Show 0% when no transactions tracked yet (avoids misleading 100% with no data)
+    final savingsRate = (salary > 0 && totalDebit > 0)
+        ? ((salary - totalDebit) / salary * 100).clamp(0.0, 100.0)
+        : 0.0;
     final rateColor = savingsRate >= 20 ? AppColors.success : AppColors.warning;
 
     return _darkCard(
