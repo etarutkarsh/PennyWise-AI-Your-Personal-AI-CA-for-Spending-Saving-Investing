@@ -8,12 +8,15 @@ import com.pennywise.entity.User;
 import com.pennywise.exception.ResourceNotFoundException;
 import com.pennywise.repository.BudgetRepository;
 import com.pennywise.repository.CategoryRepository;
+import com.pennywise.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
 import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.List;
 
 @Service
@@ -21,13 +24,16 @@ public class BudgetService {
 
     private final BudgetRepository budgetRepository;
     private final CategoryRepository categoryRepository;
+    private final TransactionRepository transactionRepository;
     private final CurrentUserProvider currentUserProvider;
 
     public BudgetService(BudgetRepository budgetRepository,
                           CategoryRepository categoryRepository,
+                          TransactionRepository transactionRepository,
                           CurrentUserProvider currentUserProvider) {
         this.budgetRepository = budgetRepository;
         this.categoryRepository = categoryRepository;
+        this.transactionRepository = transactionRepository;
         this.currentUserProvider = currentUserProvider;
     }
 
@@ -51,9 +57,18 @@ public class BudgetService {
 
     public List<BudgetDto> listForCurrentPeriod() {
         User user = currentUserProvider.get();
-        String period = YearMonth.now().toString();
+        YearMonth ym = YearMonth.now();
+        String period = ym.toString();
+        Instant from = ym.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant to = ym.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+
         return budgetRepository.findByUserIdAndPeriod(user.getId(), period)
-                .stream().map(this::toDto).toList();
+                .stream().map(b -> {
+                    BigDecimal spent = transactionRepository.sumByCategoryAndPeriod(
+                            user.getId(), b.getCategory().getId(), from, to);
+                    b.setSpentSoFar(spent);
+                    return toDto(b);
+                }).toList();
     }
 
     private BudgetDto toDto(Budget b) {
@@ -67,6 +82,7 @@ public class BudgetService {
                 .id(b.getId())
                 .categoryId(b.getCategory().getId())
                 .categoryName(b.getCategory().getName())
+                .categoryIcon(b.getCategory().getIcon())
                 .monthlyLimit(b.getMonthlyLimit())
                 .spentSoFar(b.getSpentSoFar())
                 .remaining(remaining)

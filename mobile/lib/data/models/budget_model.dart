@@ -27,8 +27,8 @@ class BudgetModel {
         categoryName: json['categoryName'] as String? ?? 'Unknown',
         categoryIcon: json['categoryIcon'] as String? ?? '💰',
         monthlyLimit: (json['monthlyLimit'] as num).toDouble(),
-        spent: (json['spent'] as num? ?? 0).toDouble(),
-        remainingAmount: (json['remainingAmount'] as num? ?? 0).toDouble(),
+        spent: (json['spentSoFar'] as num? ?? 0).toDouble(),
+        remainingAmount: (json['remaining'] as num? ?? 0).toDouble(),
         overBudget: json['overBudget'] as bool? ?? false,
         period: json['period'] as String? ?? '',
       );

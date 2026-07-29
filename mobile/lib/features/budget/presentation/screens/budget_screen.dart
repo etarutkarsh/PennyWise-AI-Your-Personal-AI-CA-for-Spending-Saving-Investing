@@ -333,7 +333,7 @@ class _AddBudgetSheetState extends State<_AddBudgetSheet> {
       final all = await AppServices.instance.categories.getAll();
       if (mounted) {
         setState(() =>
-            _categories = all.where((c) => c.type == 'EXPENSE').toList());
+            _categories = all.where((c) => c.type.toLowerCase() == 'expense').toList());
       }
     } catch (_) {}
   }

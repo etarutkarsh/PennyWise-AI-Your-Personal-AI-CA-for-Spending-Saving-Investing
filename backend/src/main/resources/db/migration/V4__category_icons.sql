@@ -1,0 +1,25 @@
+-- Add emoji icons to system-default categories for display in the mobile app.
+UPDATE categories SET icon = CASE name
+    WHEN 'Food'          THEN '🍽️'
+    WHEN 'Transport'     THEN '🚗'
+    WHEN 'Shopping'      THEN '🛍️'
+    WHEN 'Travel'        THEN '✈️'
+    WHEN 'Health'        THEN '💊'
+    WHEN 'Entertainment' THEN '🎬'
+    WHEN 'Utilities'     THEN '💡'
+    WHEN 'Rent'          THEN '🏠'
+    WHEN 'Education'     THEN '📚'
+    WHEN 'Subscriptions' THEN '📺'
+    WHEN 'Insurance'     THEN '🛡️'
+    WHEN 'Investment'    THEN '📈'
+    WHEN 'Loans'         THEN '🏦'
+    WHEN 'Gifts'         THEN '🎁'
+    WHEN 'Bills'         THEN '📋'
+    WHEN 'Pets'          THEN '🐾'
+    WHEN 'Luxury'        THEN '💎'
+    WHEN 'Others'        THEN '📦'
+    WHEN 'Salary'        THEN '💰'
+    WHEN 'Other Income'  THEN '💵'
+    ELSE '💰'
+END
+WHERE system_default = true AND icon IS NULL;

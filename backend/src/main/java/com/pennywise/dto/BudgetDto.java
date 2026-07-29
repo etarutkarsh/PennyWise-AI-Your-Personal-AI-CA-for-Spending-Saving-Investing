@@ -16,6 +16,7 @@ public class BudgetDto {
     private UUID id;
     private UUID categoryId;
     private String categoryName;
+    private String categoryIcon;
     private BigDecimal monthlyLimit;
     private BigDecimal spentSoFar;
     private BigDecimal remaining;
