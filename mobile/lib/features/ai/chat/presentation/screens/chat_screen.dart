@@ -52,10 +52,18 @@ class _ChatScreenState extends State<ChatScreen> {
       final history = (resp.data as List?) ?? [];
       if (mounted) {
         setState(() {
-          _messages.addAll(history.map((m) => _Message(
-                text: m['message'] as String? ?? '',
-                isUser: m['role'] == 'user',
-              )));
+          _messages.addAll(history
+              .where((m) {
+                final text = m['message'] as String? ?? '';
+                // Filter out system context injections (e.g. "[Context: ...]" prompts)
+                // and role:'system' entries — these are never visible to the user.
+                return !text.startsWith('[Context:') &&
+                    m['role'] != 'system';
+              })
+              .map((m) => _Message(
+                    text: m['message'] as String? ?? '',
+                    isUser: m['role'] == 'user',
+                  )));
         });
         _scrollToBottom();
       }
