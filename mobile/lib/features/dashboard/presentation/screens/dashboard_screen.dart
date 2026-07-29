@@ -179,9 +179,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                         title: 'Monthly Salary',
                         subtitle: currency.format(_salary),
                         xp: '+120 XP',
-                        onTap: () => context.push(
-                          '/detail/salary?salary=${_salary.toStringAsFixed(2)}',
-                        ),
+                        onTap: () => context
+                            .push('/detail/salary?salary=${_salary.toStringAsFixed(2)}')
+                            .then((_) { if (mounted) _load(); }),
                       ),
                       _QuestCard(
                         letter: 'G',
@@ -190,9 +190,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                         title: 'Savings Goal',
                         subtitle: '${currency.format(savings)} this month',
                         xp: '+90 XP',
-                        onTap: () => context.push(
-                          '/detail/savings?salary=${_salary.toStringAsFixed(2)}&savings=${savings.toStringAsFixed(2)}',
-                        ),
+                        onTap: () => context
+                            .push('/detail/savings?salary=${_salary.toStringAsFixed(2)}&savings=${savings.toStringAsFixed(2)}')
+                            .then((_) { if (mounted) _load(); }),
                       ),
                       _QuestCard(
                         letter: 'I',
@@ -201,9 +201,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                         title: 'Investments',
                         subtitle: '${currency.format(investments)} in SIP',
                         xp: '+80 XP',
-                        onTap: () => context.push(
-                          '/detail/investment?salary=${_salary.toStringAsFixed(2)}&investments=${investments.toStringAsFixed(2)}',
-                        ),
+                        onTap: () => context
+                            .push('/detail/investment?salary=${_salary.toStringAsFixed(2)}&investments=${investments.toStringAsFixed(2)}')
+                            .then((_) { if (mounted) _load(); }),
                       ),
                       _QuestCard(
                         letter: 'B',
@@ -213,20 +213,29 @@ class _DashboardScreenState extends State<DashboardScreen>
                         subtitle:
                             '${currency.format(remainingBudget)} remaining',
                         xp: '+60 XP',
-                        onTap: () => context.push(
-                          '/detail/budget?budget=${remainingBudget.toStringAsFixed(2)}',
-                        ),
+                        onTap: () => context
+                            .push('/detail/budget?budget=${remainingBudget.toStringAsFixed(2)}')
+                            .then((_) { if (mounted) _load(); }),
                       ),
                       const SizedBox(height: 28),
                       _SectionLabel(label: 'Quick Actions'),
                       const SizedBox(height: 12),
                       _QuickActions(
-                        onAffordabilityTap: () =>
-                            context.push('/affordability'),
-                        onGoalsTap: () => context.push('/goals'),
-                        onInsightsTap: () => context.push('/insights'),
-                        onChatTap: () => context.push('/chat'),
-                        onNetWorthTap: () => context.push('/net-worth'),
+                        onAffordabilityTap: () => context
+                            .push('/affordability?salary=${_salary.toStringAsFixed(2)}')
+                            .then((_) { if (mounted) _load(); }),
+                        onGoalsTap: () => context
+                            .push('/goals')
+                            .then((_) { if (mounted) _load(); }),
+                        onInsightsTap: () => context
+                            .push('/insights?salary=${_salary.toStringAsFixed(2)}')
+                            .then((_) { if (mounted) _load(); }),
+                        onChatTap: () => context
+                            .push('/chat')
+                            .then((_) { if (mounted) _load(); }),
+                        onNetWorthTap: () => context
+                            .push('/net-worth')
+                            .then((_) { if (mounted) _load(); }),
                       ),
                       const SizedBox(height: 28),
                       _InsightCard(tip: tip),
