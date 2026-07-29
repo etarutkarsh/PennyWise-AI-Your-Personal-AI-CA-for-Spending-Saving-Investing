@@ -113,9 +113,16 @@ public class HealthScoreService {
 
         if (budgets.isEmpty()) return 10; // no budgets set — partial credit
 
+        Instant bFrom = period.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        Instant bTo   = period.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+
         long total = budgets.size();
         long onTrack = budgets.stream()
-                .filter(b -> b.getSpentSoFar().compareTo(b.getMonthlyLimit()) <= 0)
+                .filter(b -> {
+                    BigDecimal spent = transactionRepository.sumByCategoryAndPeriod(
+                            user.getId(), b.getCategory().getId(), bFrom, bTo);
+                    return spent.compareTo(b.getMonthlyLimit()) <= 0;
+                })
                 .count();
 
         double ratio = (double) onTrack / total;
