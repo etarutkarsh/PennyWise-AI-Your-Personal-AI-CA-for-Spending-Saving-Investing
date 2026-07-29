@@ -14,7 +14,6 @@ class MotivationCardsSection extends StatelessWidget {
     required this.savings,
   });
 
-  // Future value of annuity: FV = PMT × ((1+r)^n - 1) / r
   double _projectedWealth(double monthlySavings, double annualRate, int years) {
     if (monthlySavings <= 0) return 0;
     final r = annualRate / 12;
@@ -41,27 +40,43 @@ class MotivationCardsSection extends StatelessWidget {
     final cards = [
       _CardData(
         emoji: '💰',
+        tag: 'THIS MONTH',
         value: currency.format(savings),
-        subtext: 'Keep it up! 🎯',
-        label: 'Savings this month',
+        headline: 'Saved',
+        encourage:
+            'Your financial armor is growing. This single habit separates those who retire free from those who retire broke.',
+        accent: AppColors.success,
+        accentBg: AppColors.success.withValues(alpha: 0.10),
       ),
       _CardData(
         emoji: '🏆',
-        value: '72%',
-        subtext: 'of users save less than you',
-        label: 'Ahead of peers',
+        tag: 'PEER RANKING',
+        value: 'Top 28%',
+        headline: 'Of earners your age',
+        encourage:
+            '72% of people earning like you save less. Keep this pace 3 more years and you hit the top 10%.',
+        accent: const Color(0xFF4FC3F7),
+        accentBg: const Color(0xFF4FC3F7).withValues(alpha: 0.10),
       ),
       _CardData(
         emoji: '🔥',
-        value: '18 days',
-        subtext: 'Daily savings streak',
-        label: 'Current streak',
+        tag: 'CONSISTENCY',
+        value: '18 Days',
+        headline: 'Savings streak',
+        encourage:
+            'You haven\'t missed a day in 18 days. Habits compound faster than money — don\'t break the chain now.',
+        accent: AppColors.orange,
+        accentBg: AppColors.orange.withValues(alpha: 0.10),
       ),
       _CardData(
         emoji: '📈',
+        tag: 'IN 20 YEARS',
         value: _formatCompact(projected),
-        subtext: 'in 20 years at current pace',
-        label: 'Projected wealth',
+        headline: 'Projected wealth',
+        encourage:
+            'At this savings rate you\'ll retire with ${_formatCompact(projected)}. That\'s your freedom number — guard it.',
+        accent: AppColors.amber,
+        accentBg: AppColors.amber.withValues(alpha: 0.10),
       ),
     ];
 
@@ -70,23 +85,56 @@ class MotivationCardsSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Your Momentum',
-            style: GoogleFonts.dmSans(
-              color: AppColors.textPrimary,
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
+          Row(
+            children: [
+              Text(
+                'Your Momentum',
+                style: GoogleFonts.dmSans(
+                  color: AppColors.textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.orange.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'LIVE',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.orange,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _MotivationCard(data: cards[0])),
+                const SizedBox(width: 12),
+                Expanded(child: _MotivationCard(data: cards[1])),
+              ],
             ),
           ),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.3,
-            children: cards.map((c) => _MotivationCard(data: c)).toList(),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _MotivationCard(data: cards[2])),
+                const SizedBox(width: 12),
+                Expanded(child: _MotivationCard(data: cards[3])),
+              ],
+            ),
           ),
         ],
       ),
@@ -96,70 +144,140 @@ class MotivationCardsSection extends StatelessWidget {
 
 class _CardData {
   final String emoji;
+  final String tag;
   final String value;
-  final String subtext;
-  final String label;
+  final String headline;
+  final String encourage;
+  final Color accent;
+  final Color accentBg;
 
   const _CardData({
     required this.emoji,
+    required this.tag,
     required this.value,
-    required this.subtext,
-    required this.label,
+    required this.headline,
+    required this.encourage,
+    required this.accent,
+    required this.accentBg,
   });
 }
 
-class _MotivationCard extends StatelessWidget {
+class _MotivationCard extends StatefulWidget {
   final _CardData data;
   const _MotivationCard({required this.data});
 
   @override
+  State<_MotivationCard> createState() => _MotivationCardState();
+}
+
+class _MotivationCardState extends State<_MotivationCard> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              data.emoji,
-              style: const TextStyle(fontSize: 16),
-            ),
+    final d = widget.data;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _hovered ? AppColors.surfaceElevated : AppColors.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: _hovered
+                ? d.accent.withValues(alpha: 0.5)
+                : AppColors.border,
+            width: _hovered ? 1.5 : 1.0,
           ),
-          const SizedBox(height: 10),
-          Text(
-            data.value,
-            style: GoogleFonts.manrope(
-              color: AppColors.textPrimary,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
+          boxShadow: _hovered
+              ? [
+                  BoxShadow(
+                    color: d.accent.withValues(alpha: 0.12),
+                    blurRadius: 20,
+                    offset: const Offset(0, 6),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Tag + emoji badge row
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: d.accentBg,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Text(
+                    d.emoji,
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    d.tag,
+                    style: GoogleFonts.dmSans(
+                      color: d.accent,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Text(
-              data.subtext,
+
+            const SizedBox(height: 14),
+
+            // Big value
+            Text(
+              d.value,
+              style: GoogleFonts.manrope(
+                color: AppColors.textPrimary,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                height: 1.0,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+
+            const SizedBox(height: 3),
+
+            // Headline (what the value means)
+            Text(
+              d.headline,
+              style: GoogleFonts.dmSans(
+                color: d.accent,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // Divider
+            Container(height: 1, color: AppColors.border),
+
+            const SizedBox(height: 12),
+
+            // Encouragement copy
+            Text(
+              d.encourage,
               style: GoogleFonts.dmSans(
                 color: AppColors.textSecondary,
                 fontSize: 12,
-                height: 1.3,
+                height: 1.5,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
