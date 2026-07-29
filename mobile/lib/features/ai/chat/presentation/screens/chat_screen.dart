@@ -391,71 +391,261 @@ class _EmptyState extends StatelessWidget {
   final void Function(String) onSuggestionTap;
   final List<String> suggestions;
 
+  static const _capabilities = [
+    (Icons.savings_outlined, AppColors.success, 'Savings & Emergency Fund',
+        'How much to save, when to pause, where to park it'),
+    (Icons.trending_up_rounded, AppColors.orange, 'Investments & SIP',
+        'Mutual funds, index funds, SIP calculations, risk profiling'),
+    (Icons.account_balance_wallet_outlined, AppColors.questBlue, 'Budgeting',
+        '50-30-20, zero-based budgeting, cutting unnecessary spend'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
+          // Hero banner
           Container(
-            width: 72, height: 72,
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.orange.withValues(alpha: 0.12),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.orange.withValues(alpha: 0.18),
+                  const Color(0xFF6A1B9A).withValues(alpha: 0.12),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
               borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                  color: AppColors.orange.withValues(alpha: 0.2)),
             ),
-            child: const Icon(Icons.psychology_outlined,
-                color: AppColors.orange, size: 34),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Your AI Financial CA',
-            style: GoogleFonts.dmSans(
-                color: AppColors.textPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Ask anything about saving, investing, or budgeting.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.dmSans(
-                color: AppColors.textSecondary, fontSize: 14),
-          ),
-          const SizedBox(height: 32),
-          Text('Try asking:',
-              style: GoogleFonts.dmSans(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600)),
-          const SizedBox(height: 10),
-          ...suggestions.map((s) => GestureDetector(
-                onTap: () => onSuggestionTap(s),
-                child: Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(s,
-                            style: GoogleFonts.dmSans(
-                                color: AppColors.textPrimary,
-                                fontSize: 14)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: AppColors.orange.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      const Icon(Icons.arrow_forward_ios_rounded,
-                          color: AppColors.textMuted, size: 14),
-                    ],
+                      child: const Icon(Icons.psychology_outlined,
+                          color: AppColors.orange, size: 28),
+                    ),
+                    const SizedBox(width: 14),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'PennyWise AI',
+                          style: GoogleFonts.dmSans(
+                            color: AppColors.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          'Your personal financial CA',
+                          style: GoogleFonts.dmSans(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                                color: AppColors.success,
+                                shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            'Online',
+                            style: GoogleFonts.dmSans(
+                              color: AppColors.success,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Ask me anything about your\nmoney, savings, or investments.',
+                  style: GoogleFonts.playfairDisplay(
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w600,
+                    height: 1.4,
                   ),
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
+
+          // Capabilities
+          Text(
+            'What I can help with',
+            style: GoogleFonts.dmSans(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ..._capabilities.map((c) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: c.$2.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(c.$1, color: c.$2, size: 18),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            c.$3,
+                            style: GoogleFonts.dmSans(
+                              color: AppColors.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            c.$4,
+                            style: GoogleFonts.dmSans(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               )),
+          const SizedBox(height: 22),
+
+          // Suggestions
+          Text(
+            'Try asking',
+            style: GoogleFonts.dmSans(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...suggestions.asMap().entries.map((e) => _SuggestionChip(
+                text: e.value,
+                onTap: () => onSuggestionTap(e.value),
+              )),
+          const SizedBox(height: 20),
         ],
+      ),
+    );
+  }
+}
+
+class _SuggestionChip extends StatefulWidget {
+  const _SuggestionChip({required this.text, required this.onTap});
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  State<_SuggestionChip> createState() => _SuggestionChipState();
+}
+
+class _SuggestionChipState extends State<_SuggestionChip> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: _hovered ? AppColors.surfaceElevated : AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _hovered
+                  ? AppColors.orange.withValues(alpha: 0.4)
+                  : AppColors.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.chat_bubble_outline_rounded,
+                  color: AppColors.orange.withValues(alpha: 0.7), size: 14),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.text,
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(Icons.arrow_forward_ios_rounded,
+                  color: _hovered
+                      ? AppColors.orange
+                      : AppColors.textMuted,
+                  size: 13),
+            ],
+          ),
+        ),
       ),
     );
   }

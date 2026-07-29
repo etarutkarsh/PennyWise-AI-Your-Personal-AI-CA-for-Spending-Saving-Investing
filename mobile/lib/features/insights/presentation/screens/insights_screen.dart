@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/services/app_services.dart';
@@ -104,55 +105,167 @@ class _InsightsScreenState extends State<InsightsScreen> {
         NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('AI Insights'),
-        actions: [
-          if (!_isLoading)
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _load,
-            ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _ErrorView(error: _error!, onRetry: _load)
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                    children: [
-                      if (!_hasAiKey) _AiKeyBanner(onReload: _load),
-                      _SpendingSummaryCard(
-                        totalDebit: _totalDebit,
-                        totalCredit: _totalCredit,
-                        salary: _salary,
-                        currency: currency,
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Custom header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => context.pop(),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
                       ),
-                      const SizedBox(height: 16),
-                      _InsightsSection(insights: _insights),
-                      const SizedBox(height: 16),
-                      _RecommendationsSection(
-                          recommendations: _recommendations),
-                      if (_predictions.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        _PredictionsSection(predictions: _predictions),
-                      ],
-                      if (_spendingByCategory.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        _CategoryBreakdown(
-                          spendingByCategory: _spendingByCategory,
-                          currency: currency,
-                          totalDebit: _totalDebit,
+                      child: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: AppColors.textPrimary, size: 16),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI Insights',
+                        style: GoogleFonts.dmSans(
+                          color: AppColors.textPrimary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
                         ),
-                      ],
+                      ),
+                      Text(
+                        'Powered by your spending data',
+                        style: GoogleFonts.dmSans(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
-                ),
+                  const Spacer(),
+                  if (!_isLoading)
+                    GestureDetector(
+                      onTap: _load,
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: const Icon(Icons.refresh_rounded,
+                            color: AppColors.textSecondary, size: 18),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.orange))
+                  : _error != null
+                      ? _ErrorView(error: _error!, onRetry: _load)
+                      : RefreshIndicator(
+                          color: AppColors.orange,
+                          backgroundColor: AppColors.surface,
+                          onRefresh: _load,
+                          child: ListView(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+                            children: [
+                              if (!_hasAiKey) _AiKeyBanner(onReload: _load),
+                              _SpendingSummaryCard(
+                                totalDebit: _totalDebit,
+                                totalCredit: _totalCredit,
+                                salary: _salary,
+                                currency: currency,
+                              ),
+                              const SizedBox(height: 20),
+                              _InsightsSection(insights: _insights),
+                              const SizedBox(height: 20),
+                              _RecommendationsSection(
+                                  recommendations: _recommendations),
+                              if (_predictions.isNotEmpty) ...[
+                                const SizedBox(height: 20),
+                                _PredictionsSection(predictions: _predictions),
+                              ],
+                              if (_spendingByCategory.isNotEmpty) ...[
+                                const SizedBox(height: 20),
+                                _CategoryBreakdown(
+                                  spendingByCategory: _spendingByCategory,
+                                  currency: currency,
+                                  totalDebit: _totalDebit,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(
+      {required this.title, required this.icon, required this.color});
+  final String title;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: GoogleFonts.dmSans(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+Widget _darkCard({required Widget child, EdgeInsets? padding}) {
+  return Container(
+    width: double.infinity,
+    padding: padding ?? const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(color: AppColors.border),
+    ),
+    child: child,
+  );
+}
+
+// ─── AI Key Banner ────────────────────────────────────────────────────────────
 
 class _AiKeyBanner extends StatelessWidget {
   const _AiKeyBanner({required this.onReload});
@@ -161,36 +274,55 @@ class _AiKeyBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.accent.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
+        color: AppColors.amber.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.amber.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.key_rounded, color: AppColors.accent),
-          const SizedBox(width: 10),
-          const Expanded(
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.amber.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.key_rounded, color: AppColors.amber, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
             child: Text(
-              'Add your OpenAI key in Settings to get personalised AI insights.',
-              style: TextStyle(fontSize: 13, color: AppColors.accent),
+              'Add your OpenAI key in Settings to unlock personalised AI insights.',
+              style: GoogleFonts.dmSans(
+                  fontSize: 13,
+                  color: AppColors.amber,
+                  height: 1.4),
             ),
           ),
-          TextButton(
-            onPressed: () async {
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () async {
               await context.push('/settings');
               onReload();
             },
-            child: const Text('Settings'),
+            child: Text(
+              'Settings →',
+              style: GoogleFonts.dmSans(
+                color: AppColors.amber,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 }
+
+// ─── Spending Summary ─────────────────────────────────────────────────────────
 
 class _SpendingSummaryCard extends StatelessWidget {
   const _SpendingSummaryCard({
@@ -208,72 +340,85 @@ class _SpendingSummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final savingsRate =
-        salary > 0 ? ((salary - totalDebit) / salary * 100).clamp(0, 100) : 0;
+        salary > 0 ? ((salary - totalDebit) / salary * 100).clamp(0.0, 100.0) : 0.0;
+    final rateColor = savingsRate >= 20 ? AppColors.success : AppColors.warning;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('This Month',
-                style:
-                    TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-            const SizedBox(height: 12),
+    return _darkCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'This Month',
+            style: GoogleFonts.dmSans(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _StatTile(
+                  label: 'Total Spent',
+                  value: currency.format(totalDebit),
+                  color: AppColors.danger,
+                  icon: Icons.arrow_upward_rounded,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _StatTile(
+                  label: 'Income In',
+                  value: currency.format(totalCredit),
+                  color: AppColors.success,
+                  icon: Icons.arrow_downward_rounded,
+                ),
+              ),
+            ],
+          ),
+          if (salary > 0) ...[
+            const SizedBox(height: 16),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: _StatTile(
-                    label: 'Total Spent',
-                    value: currency.format(totalDebit),
-                    color: AppColors.danger,
-                    icon: Icons.arrow_upward_rounded,
+                Text(
+                  'Savings rate',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatTile(
-                    label: 'Income Received',
-                    value: currency.format(totalCredit),
-                    color: AppColors.success,
-                    icon: Icons.arrow_downward_rounded,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: rateColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${savingsRate.toStringAsFixed(0)}%',
+                    style: GoogleFonts.dmSans(
+                      fontWeight: FontWeight.w700,
+                      color: rateColor,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ],
             ),
-            if (salary > 0) ...[
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Savings rate',
-                      style: TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13)),
-                  Text('${savingsRate.toStringAsFixed(0)}%',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: savingsRate >= 20
-                              ? AppColors.success
-                              : AppColors.warning)),
-                ],
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: savingsRate / 100,
+                minHeight: 7,
+                backgroundColor: AppColors.surfaceElevated,
+                valueColor: AlwaysStoppedAnimation(rateColor),
               ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: savingsRate / 100,
-                  minHeight: 6,
-                  backgroundColor: AppColors.background,
-                  valueColor: AlwaysStoppedAnimation(
-                    savingsRate >= 20
-                        ? AppColors.success
-                        : AppColors.warning,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -294,30 +439,44 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(height: 6),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: color,
-                  fontSize: 16)),
-          const SizedBox(height: 2),
-          Text(label,
-              style: const TextStyle(
-                  color: AppColors.textSecondary, fontSize: 11)),
+          Row(
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: GoogleFonts.dmSans(
+                  color: color.withValues(alpha: 0.8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: GoogleFonts.manrope(
+              fontWeight: FontWeight.w800,
+              color: color,
+              fontSize: 18,
+            ),
+          ),
         ],
       ),
     );
   }
 }
+
+// ─── Insights Section ─────────────────────────────────────────────────────────
 
 class _InsightsSection extends StatelessWidget {
   const _InsightsSection({required this.insights});
@@ -328,24 +487,18 @@ class _InsightsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
-          children: [
-            Icon(Icons.psychology_outlined, color: AppColors.primary, size: 20),
-            SizedBox(width: 8),
-            Text('Spending Insights',
-                style:
-                    TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-          ],
+        const _SectionHeader(
+          title: 'Spending Insights',
+          icon: Icons.psychology_outlined,
+          color: AppColors.success,
         ),
-        const SizedBox(height: 10),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              children: insights
-                  .map((insight) => _InsightTile(text: insight))
-                  .toList(),
-            ),
+        const SizedBox(height: 12),
+        _darkCard(
+          padding: const EdgeInsets.all(6),
+          child: Column(
+            children: insights.asMap().entries.map((e) {
+              return _InsightTile(text: e.value, index: e.key);
+            }).toList(),
           ),
         ),
       ],
@@ -354,27 +507,56 @@ class _InsightsSection extends StatelessWidget {
 }
 
 class _InsightTile extends StatelessWidget {
-  const _InsightTile({required this.text});
+  const _InsightTile({required this.text, required this.index});
   final String text;
+  final int index;
+
+  static const _dotColors = [
+    AppColors.success,
+    AppColors.orange,
+    AppColors.amber,
+    AppColors.primary,
+    AppColors.danger,
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+    final color = _dotColors[index % _dotColors.length];
+    return Container(
+      margin: const EdgeInsets.all(6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.circle, size: 6, color: AppColors.primary),
-          const SizedBox(width: 10),
+          Container(
+            width: 6,
+            height: 6,
+            margin: const EdgeInsets.only(top: 5),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(text,
-                style: const TextStyle(fontSize: 13, height: 1.4)),
+            child: Text(
+              text,
+              style: GoogleFonts.dmSans(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 }
+
+// ─── Recommendations ─────────────────────────────────────────────────────────
 
 class _RecommendationsSection extends StatelessWidget {
   const _RecommendationsSection({required this.recommendations});
@@ -385,40 +567,111 @@ class _RecommendationsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Row(
-          children: [
-            Icon(Icons.lightbulb_outline_rounded,
-                color: AppColors.accent, size: 20),
-            SizedBox(width: 8),
-            Text('Savings Tips',
-                style:
-                    TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-          ],
+        const _SectionHeader(
+          title: 'Savings Tips',
+          icon: Icons.lightbulb_outline_rounded,
+          color: AppColors.amber,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         ...recommendations.asMap().entries.map(
-              (e) => Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    radius: 14,
-                    backgroundColor:
-                        AppColors.accent.withValues(alpha: 0.12),
-                    child: Text('${e.key + 1}',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.accent)),
-                  ),
-                  title: Text(e.value,
-                      style: const TextStyle(fontSize: 13, height: 1.4)),
-                ),
-              ),
+          (e) => Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
             ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: AppColors.amber.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${e.key + 1}',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.amber,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    e.value,
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
 }
+
+// ─── Predictions ─────────────────────────────────────────────────────────────
+
+class _PredictionsSection extends StatelessWidget {
+  const _PredictionsSection({required this.predictions});
+  final List<String> predictions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader(
+          title: 'Next Month Forecast',
+          icon: Icons.schedule_outlined,
+          color: AppColors.questBlue,
+        ),
+        const SizedBox(height: 12),
+        _darkCard(
+          child: Column(
+            children: predictions.asMap().entries.map(
+              (e) => Padding(
+                padding: EdgeInsets.only(bottom: e.key < predictions.length - 1 ? 14 : 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.arrow_forward_rounded,
+                        size: 14, color: AppColors.questBlue),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        e.value,
+                        style: GoogleFonts.dmSans(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Category Breakdown ───────────────────────────────────────────────────────
 
 class _CategoryBreakdown extends StatelessWidget {
   const _CategoryBreakdown({
@@ -431,6 +684,15 @@ class _CategoryBreakdown extends StatelessWidget {
   final NumberFormat currency;
   final double totalDebit;
 
+  static const _barColors = [
+    AppColors.orange,
+    AppColors.success,
+    AppColors.amber,
+    AppColors.danger,
+    AppColors.questBlue,
+    Color(0xFF6A1B9A),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final sorted = spendingByCategory.entries.toList()
@@ -439,106 +701,76 @@ class _CategoryBreakdown extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Spending by Category',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-        const SizedBox(height: 10),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              children: sorted.map((e) {
-                final fraction =
-                    totalDebit > 0 ? e.value / totalDebit : 0.0;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(e.key,
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500)),
-                          Text(
-                            '${currency.format(e.value)} (${(fraction * 100).toStringAsFixed(0)}%)',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: fraction.clamp(0.0, 1.0),
-                          minHeight: 6,
-                          backgroundColor: AppColors.background,
-                          valueColor: const AlwaysStoppedAnimation(
-                              AppColors.primary),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+        const _SectionHeader(
+          title: 'Spending by Category',
+          icon: Icons.pie_chart_outline_rounded,
+          color: AppColors.orange,
         ),
-      ],
-    );
-  }
-}
-
-class _PredictionsSection extends StatelessWidget {
-  const _PredictionsSection({required this.predictions});
-  final List<String> predictions;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
-          children: [
-            Icon(Icons.schedule_outlined, color: AppColors.secondary, size: 20),
-            SizedBox(width: 8),
-            Text('Next Month Predictions',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Card(
-          color: AppColors.secondary.withValues(alpha: 0.05),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              children: predictions
-                  .map((p) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: 12),
+        _darkCard(
+          child: Column(
+            children: sorted.asMap().entries.map((entry) {
+              final i = entry.key;
+              final e = entry.value;
+              final fraction = totalDebit > 0 ? e.value / totalDebit : 0.0;
+              final color = _barColors[i % _barColors.length];
+              return Padding(
+                padding: EdgeInsets.only(bottom: i < sorted.length - 1 ? 16 : 0),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            const Icon(Icons.arrow_forward_ios_rounded,
-                                size: 12, color: AppColors.secondary),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                  color: color, shape: BoxShape.circle),
+                            ),
                             const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(p,
-                                  style: const TextStyle(fontSize: 13, height: 1.4)),
+                            Text(
+                              e.key,
+                              style: GoogleFonts.dmSans(
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
-                      ))
-                  .toList(),
-            ),
+                        Text(
+                          '${currency.format(e.value)}  ·  ${(fraction * 100).toStringAsFixed(0)}%',
+                          style: GoogleFonts.dmSans(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: fraction.clamp(0.0, 1.0),
+                        minHeight: 6,
+                        backgroundColor: AppColors.surfaceElevated,
+                        valueColor: AlwaysStoppedAnimation(color),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
           ),
         ),
       ],
     );
   }
 }
+
+// ─── Error View ───────────────────────────────────────────────────────────────
 
 class _ErrorView extends StatelessWidget {
   const _ErrorView({required this.error, required this.onRetry});
@@ -549,19 +781,37 @@ class _ErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.wifi_off_rounded,
-                size: 48, color: AppColors.textSecondary),
-            const SizedBox(height: 12),
-            Text(error,
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(color: AppColors.textSecondary)),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.wifi_off_rounded,
+                  size: 28, color: AppColors.textSecondary),
+            ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.dmSans(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.orange,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: onRetry,
+              child: Text('Retry', style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
+            ),
           ],
         ),
       ),

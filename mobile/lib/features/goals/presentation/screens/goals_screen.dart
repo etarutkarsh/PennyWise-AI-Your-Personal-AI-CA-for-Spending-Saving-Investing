@@ -288,16 +288,23 @@ class _GoalsScreenState extends State<GoalsScreen> {
   }
 }
 
-class _GoalQuestCard extends StatelessWidget {
+class _GoalQuestCard extends StatefulWidget {
   const _GoalQuestCard({required this.goal, required this.onUpdate});
   final GoalEntity goal;
   final VoidCallback onUpdate;
+
+  @override
+  State<_GoalQuestCard> createState() => _GoalQuestCardState();
+}
+
+class _GoalQuestCardState extends State<_GoalQuestCard> {
+  bool _hovered = false;
 
   static final _currency =
       NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
   Color get _bgColor {
-    switch (goal.goalType.toLowerCase()) {
+    switch (widget.goal.goalType.toLowerCase()) {
       case 'house': return AppColors.questBlue;
       case 'car': return AppColors.questGreen;
       case 'vacation': return AppColors.questYellow;
@@ -308,7 +315,7 @@ class _GoalQuestCard extends StatelessWidget {
   }
 
   Color get _letterColor {
-    switch (goal.goalType.toLowerCase()) {
+    switch (widget.goal.goalType.toLowerCase()) {
       case 'house': return const Color(0xFF1565C0);
       case 'car': return const Color(0xFF0F9D58);
       case 'vacation': return const Color(0xFFE65100);
@@ -320,123 +327,144 @@ class _GoalQuestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pct = goal.targetAmount > 0
-        ? (goal.currentSaved / goal.targetAmount).clamp(0.0, 1.0)
+    final pct = widget.goal.targetAmount > 0
+        ? (widget.goal.currentSaved / widget.goal.targetAmount).clamp(0.0, 1.0)
         : 0.0;
     final isComplete = pct >= 1.0;
+    final barColor = isComplete ? AppColors.success : AppColors.orange;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                    color: _bgColor,
-                    borderRadius: BorderRadius.circular(15)),
-                child: Center(
-                  child: Text(
-                    goal.name.isNotEmpty
-                        ? goal.name[0].toUpperCase()
-                        : '?',
-                    style: GoogleFonts.dmSans(
-                        color: _letterColor,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _hovered ? AppColors.surfaceElevated : AppColors.surface,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: _hovered
+                ? _letterColor.withValues(alpha: 0.35)
+                : AppColors.border,
+          ),
+          boxShadow: _hovered
+              ? [
+                  BoxShadow(
+                    color: _letterColor.withValues(alpha: 0.08),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(goal.name,
-                        style: GoogleFonts.dmSans(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${_currency.format(goal.currentSaved)} of ${_currency.format(goal.targetAmount)}',
+                ]
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                      color: _bgColor,
+                      borderRadius: BorderRadius.circular(15)),
+                  child: Center(
+                    child: Text(
+                      widget.goal.name.isNotEmpty
+                          ? widget.goal.name[0].toUpperCase()
+                          : '?',
                       style: GoogleFonts.dmSans(
-                          color: AppColors.textSecondary, fontSize: 12),
+                          color: _letterColor,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800),
                     ),
-                  ],
-                ),
-              ),
-              if (isComplete)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text('Complete!',
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(widget.goal.name,
+                          style: GoogleFonts.dmSans(
+                              color: AppColors.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_currency.format(widget.goal.currentSaved)} of ${_currency.format(widget.goal.targetAmount)}',
+                        style: GoogleFonts.dmSans(
+                            color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+                if (isComplete)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text('Complete!',
+                        style: GoogleFonts.dmSans(
+                            color: AppColors.success,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700)),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.orange,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${(pct * 100).toInt()}%',
                       style: GoogleFonts.dmSans(
-                          color: AppColors.success,
+                          color: Colors.white,
                           fontSize: 11,
-                          fontWeight: FontWeight.w700)),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.orange,
-                    borderRadius: BorderRadius.circular(12),
+                          fontWeight: FontWeight.w700),
+                    ),
                   ),
-                  child: Text(
-                    '${(pct * 100).toInt()}%',
-                    style: GoogleFonts.dmSans(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Stack(
-            children: [
-              Container(
-                height: 6,
-                decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(6)),
-              ),
-              FractionallySizedBox(
-                widthFactor: pct,
-                child: Container(
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: isComplete ? AppColors.success : AppColors.orange,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          if (goal.recommendedMonthlyContribution > 0) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Save ${_currency.format(goal.recommendedMonthlyContribution)}/month to hit target',
-              style: GoogleFonts.dmSans(
-                  color: AppColors.textSecondary, fontSize: 11),
+              ],
             ),
+            const SizedBox(height: 14),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: pct),
+                duration: const Duration(milliseconds: 900),
+                curve: Curves.easeOutCubic,
+                builder: (_, value, __) => LinearProgressIndicator(
+                  value: value,
+                  minHeight: 7,
+                  backgroundColor: AppColors.surfaceElevated,
+                  valueColor: AlwaysStoppedAnimation(barColor),
+                ),
+              ),
+            ),
+            if (widget.goal.recommendedMonthlyContribution > 0) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Icon(Icons.savings_outlined,
+                      color: AppColors.textMuted, size: 12),
+                  const SizedBox(width: 5),
+                  Text(
+                    'Save ${_currency.format(widget.goal.recommendedMonthlyContribution)}/month to hit target',
+                    style: GoogleFonts.dmSans(
+                        color: AppColors.textSecondary, fontSize: 11),
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

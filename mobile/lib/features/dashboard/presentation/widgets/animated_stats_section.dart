@@ -8,7 +8,8 @@ class _StatData {
   final double countTo;
   final bool isPercent;
   final bool isOrdinal;
-  final String description;
+  final String label;
+  final String explanation;
   final Color accentColor;
   final IconData icon;
 
@@ -17,7 +18,8 @@ class _StatData {
     required this.countTo,
     required this.isPercent,
     required this.isOrdinal,
-    required this.description,
+    required this.label,
+    required this.explanation,
     required this.accentColor,
     required this.icon,
   });
@@ -29,7 +31,8 @@ const _stats = [
     countTo: 27,
     isPercent: true,
     isOrdinal: false,
-    description: 'of Indians regularly save money',
+    label: 'of Indians save regularly',
+    explanation: "You're in the elite 27% just by saving monthly. Most people spend every rupee they earn.",
     accentColor: AppColors.orange,
     icon: Icons.savings_outlined,
   ),
@@ -38,7 +41,8 @@ const _stats = [
     countTo: 73,
     isPercent: true,
     isOrdinal: false,
-    description: 'have no emergency fund',
+    label: 'have no emergency fund',
+    explanation: 'One medical bill from crisis. Build 6× your monthly expenses — your financial airbag.',
     accentColor: AppColors.danger,
     icon: Icons.warning_amber_outlined,
   ),
@@ -47,7 +51,8 @@ const _stats = [
     countTo: 80,
     isPercent: true,
     isOrdinal: false,
-    description: 'retire without adequate savings',
+    label: 'retire without savings',
+    explanation: 'Your SIP today is your freedom tomorrow. The best time to start was yesterday.',
     accentColor: AppColors.amber,
     icon: Icons.elderly_outlined,
   ),
@@ -56,7 +61,8 @@ const _stats = [
     countTo: 8,
     isPercent: false,
     isOrdinal: true,
-    description: 'wonder: compound interest',
+    label: 'wonder: compound interest',
+    explanation: '₹1,000/month at 12% for 30 years grows to ₹35 lakhs. Time is your greatest asset.',
     accentColor: AppColors.success,
     icon: Icons.trending_up_rounded,
   ),
@@ -98,21 +104,35 @@ class _AnimatedStatsSectionState extends State<AnimatedStatsSection> {
             'Financial Reality',
             style: GoogleFonts.dmSans(
               color: AppColors.textPrimary,
-              fontSize: 17,
+              fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
           ),
+          const SizedBox(height: 2),
+          Text(
+            'Numbers every Indian should know',
+            style: GoogleFonts.dmSans(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _StatCard(stat: _stats[0], animate: _started)),
+              const SizedBox(width: 12),
+              Expanded(child: _StatCard(stat: _stats[1], animate: _started)),
+            ],
+          ),
           const SizedBox(height: 12),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.4,
-            children: _stats.map((s) {
-              return _StatCard(stat: s, animate: _started);
-            }).toList(),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _StatCard(stat: _stats[2], animate: _started)),
+              const SizedBox(width: 12),
+              Expanded(child: _StatCard(stat: _stats[3], animate: _started)),
+            ],
           ),
         ],
       ),
@@ -120,70 +140,118 @@ class _AnimatedStatsSectionState extends State<AnimatedStatsSection> {
   }
 }
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-
-class _StatCard extends StatelessWidget {
+class _StatCard extends StatefulWidget {
   final _StatData stat;
   final bool animate;
 
   const _StatCard({required this.stat, required this.animate});
 
   @override
+  State<_StatCard> createState() => _StatCardState();
+}
+
+class _StatCardState extends State<_StatCard> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: stat.accentColor.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(stat.icon, color: stat.accentColor, size: 16),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _hovered
+                ? widget.stat.accentColor.withValues(alpha: 0.55)
+                : AppColors.border,
+            width: _hovered ? 1.5 : 1,
           ),
-          const SizedBox(height: 8),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: animate ? stat.countTo : 0),
-            duration: const Duration(milliseconds: 1500),
-            curve: Curves.easeOut,
-            builder: (_, value, __) {
-              final display = stat.isOrdinal
-                  ? '${value.round()}th'
-                  : stat.isPercent
-                      ? '${value.round()}%'
-                      : value.round().toString();
-              return Text(
-                display,
-                style: GoogleFonts.manrope(
-                  color: stat.accentColor,
-                  fontSize: 36,
-                  fontWeight: FontWeight.w800,
-                  height: 1.0,
+          boxShadow: _hovered
+              ? [
+                  BoxShadow(
+                    color: widget.stat.accentColor.withValues(alpha: 0.14),
+                    blurRadius: 18,
+                    offset: const Offset(0, 5),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: widget.stat.accentColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(widget.stat.icon,
+                      color: widget.stat.accentColor, size: 15),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Text(
-              stat.description,
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _hovered ? 1.0 : 0.0,
+                  child: Icon(
+                    Icons.arrow_outward_rounded,
+                    color: widget.stat.accentColor,
+                    size: 13,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TweenAnimationBuilder<double>(
+              tween: Tween(
+                  begin: 0, end: widget.animate ? widget.stat.countTo : 0),
+              duration: const Duration(milliseconds: 1500),
+              curve: Curves.easeOut,
+              builder: (_, value, __) {
+                final display = widget.stat.isOrdinal
+                    ? '${value.round()}th'
+                    : widget.stat.isPercent
+                        ? '${value.round()}%'
+                        : value.round().toString();
+                return Text(
+                  display,
+                  style: GoogleFonts.manrope(
+                    color: widget.stat.accentColor,
+                    fontSize: 40,
+                    fontWeight: FontWeight.w800,
+                    height: 1.0,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 5),
+            Text(
+              widget.stat.label,
               style: GoogleFonts.dmSans(
-                color: AppColors.textSecondary,
+                color: AppColors.textPrimary,
                 fontSize: 12,
+                fontWeight: FontWeight.w600,
                 height: 1.3,
               ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              widget.stat.explanation,
+              style: GoogleFonts.dmSans(
+                color: AppColors.textSecondary,
+                fontSize: 11,
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

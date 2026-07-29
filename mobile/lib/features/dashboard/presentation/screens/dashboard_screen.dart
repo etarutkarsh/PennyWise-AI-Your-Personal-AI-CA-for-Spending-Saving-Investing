@@ -550,7 +550,7 @@ class _SectionLabel extends StatelessWidget {
 
 // ─── Quest Card ───────────────────────────────────────────────────────────────
 
-class _QuestCard extends StatelessWidget {
+class _QuestCard extends StatefulWidget {
   const _QuestCard({
     required this.letter,
     required this.letterColor,
@@ -566,82 +566,111 @@ class _QuestCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_QuestCard> createState() => _QuestCardState();
+}
+
+class _QuestCardState extends State<_QuestCard> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: letterBg,
-                borderRadius: BorderRadius.circular(14),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _hovered ? AppColors.surfaceElevated : AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: _hovered
+                  ? widget.letterColor.withValues(alpha: 0.4)
+                  : AppColors.border,
+            ),
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: widget.letterColor.withValues(alpha: 0.08),
+                      blurRadius: 14,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: widget.letterBg,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Center(
+                  child: Text(
+                    widget.letter,
+                    style: GoogleFonts.dmSans(
+                      color: widget.letterColor,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ),
-              child: Center(
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.textPrimary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.subtitle,
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppColors.orange,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Text(
-                  letter,
+                  widget.xp,
                   style: GoogleFonts.dmSans(
-                    color: letterColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.dmSans(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.dmSans(
-                      color: AppColors.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: _hovered ? AppColors.textSecondary : AppColors.textMuted,
+                size: 18,
               ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.orange,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                xp,
-                style: GoogleFonts.dmSans(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right_rounded,
-                color: AppColors.textMuted, size: 18),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -667,68 +696,195 @@ class _QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+    return Column(
       children: [
-        _ActionPill(
-            label: 'Can I Afford?',
-            icon: Icons.calculate_outlined,
-            onTap: onAffordabilityTap),
-        _ActionPill(
-            label: 'Goals',
-            icon: Icons.flag_outlined,
-            onTap: onGoalsTap),
-        _ActionPill(
-            label: 'AI Insights',
-            icon: Icons.psychology_outlined,
-            onTap: onInsightsTap),
-        _ActionPill(
-            label: 'Ask AI',
-            icon: Icons.chat_bubble_outline_rounded,
-            onTap: onChatTap),
-        _ActionPill(
-            label: 'Net Worth',
-            icon: Icons.account_balance_outlined,
-            onTap: onNetWorthTap),
+        Row(
+          children: [
+            Expanded(
+              child: _ActionCard(
+                label: 'Can I Afford?',
+                description: 'Smart purchase check',
+                icon: Icons.calculate_outlined,
+                color: AppColors.orange,
+                onTap: onAffordabilityTap,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _ActionCard(
+                label: 'My Goals',
+                description: 'Track your dreams',
+                icon: Icons.flag_outlined,
+                color: const Color(0xFF1565C0),
+                onTap: onGoalsTap,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _ActionCard(
+                label: 'AI Insights',
+                description: 'Spending analysis',
+                icon: Icons.psychology_outlined,
+                color: AppColors.success,
+                onTap: onInsightsTap,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _ActionCard(
+                label: 'Ask AI',
+                description: 'Financial advisor',
+                icon: Icons.chat_bubble_outline_rounded,
+                color: const Color(0xFF6A1B9A),
+                onTap: onChatTap,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _ActionCard(
+          label: 'Net Worth',
+          description: 'Assets minus liabilities — your real financial score',
+          icon: Icons.account_balance_outlined,
+          color: AppColors.amber,
+          onTap: onNetWorthTap,
+          fullWidth: true,
+        ),
       ],
     );
   }
 }
 
-class _ActionPill extends StatelessWidget {
-  const _ActionPill(
-      {required this.label, required this.icon, required this.onTap});
-  final String label;
+class _ActionCard extends StatefulWidget {
+  const _ActionCard({
+    required this.label,
+    required this.description,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+    this.fullWidth = false,
+  });
+
+  final String label, description;
   final IconData icon;
+  final Color color;
   final VoidCallback onTap;
+  final bool fullWidth;
+
+  @override
+  State<_ActionCard> createState() => _ActionCardState();
+}
+
+class _ActionCardState extends State<_ActionCard> {
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: AppColors.orange, size: 16),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.dmSans(
-                color: AppColors.textPrimary,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: _hovered
+                  ? widget.color.withValues(alpha: 0.5)
+                  : AppColors.border,
             ),
-          ],
+            boxShadow: _hovered
+                ? [
+                    BoxShadow(
+                      color: widget.color.withValues(alpha: 0.10),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
+          ),
+          child: widget.fullWidth
+              ? Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: widget.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(widget.icon, color: widget.color, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.label,
+                            style: GoogleFonts.dmSans(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            widget.description,
+                            style: GoogleFonts.dmSans(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.chevron_right_rounded,
+                      color: _hovered
+                          ? AppColors.textSecondary
+                          : AppColors.textMuted,
+                      size: 18,
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: widget.color.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(widget.icon, color: widget.color, size: 20),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.label,
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      widget.description,
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
