@@ -11,6 +11,7 @@ class ApiConstants {
   }
 
   static const String auth = '/auth';
+  static const String authRefresh = '/auth/refresh';
   static const String transactions = '/transactions';
   static const String categories = '/categories';
   static const String budgets = '/budgets';

@@ -242,3 +242,53 @@ OpenAI config ready in `application.yml` (env var: OPENAI_API_KEY, model: gpt-4o
 - flutter_bloc imported in pubspec but unused — state management is all StatefulWidget local state for now
 - Dashboard salary derivation is local only — backend User entity has `monthlyIncome` field but it's never POSTed from mobile
 - Affordability screen uses hardcoded emergency fund value — Phase 3 will use real investment portfolio data
+
+---
+
+# gstack
+
+gstack is installed globally at `~/.claude/skills/gstack`. Use these slash commands:
+
+| Command | Role | Use When |
+|---------|------|----------|
+| `/office-hours` | YC Office Hours | Challenge product assumptions before building |
+| `/spec` | Spec Author | Turn vague intent into a precise, executable spec |
+| `/plan-ceo-review` | CEO / Founder | Expand scope, find the 10-star product |
+| `/plan-eng-review` | Eng Manager | Lock in architecture, data flow, edge cases |
+| `/plan-design-review` | Senior Designer | Rate and fix the design plan |
+| `/autoplan` | Review Pipeline | One command: CEO → design → eng review |
+| `/review` | Staff Engineer | Find bugs that pass CI but blow up in prod |
+| `/investigate` | Debugger | Systematic root-cause debugging |
+| `/design-review` | Designer | Live visual audit + fix loop |
+| `/design-shotgun` | Design Explorer | Generate multiple design variants to compare |
+| `/qa` | QA Lead | Test app in real browser, fix bugs, re-verify |
+| `/cso` | Chief Security Officer | OWASP Top 10 + STRIDE security audit |
+| `/ship` | Release Engineer | Sync, test, push, open PR in one command |
+| `/health` | Code Quality | Type check, lint, tests, dead code score |
+| `/document-release` | Technical Writer | Update stale docs after shipping |
+| `/careful` | Safety Guardrails | Warn before destructive commands |
+| `/diagram` | Diagram Maker | English in → mermaid + excalidraw + SVG out |
+
+**Recommended workflow for PennyWise features:**
+1. `/office-hours` — challenge the feature assumption
+2. `/autoplan` — get a reviewed plan (CEO + design + eng)
+3. Build with Claude Code
+4. `/review` — catch production bugs
+5. `/cso` — security audit before shipping
+6. `/ship` — push + PR
+
+---
+
+# frontend-design skill
+
+Installed at `~/.claude/skills/frontend-design`. Invoked automatically when building or redesigning UI screens.
+
+This skill acts as the design lead — makes deliberate, opinionated choices about palette, typography, and layout specific to PennyWise (finance app, trust + clarity as core values). It grounds every design in the subject's real world rather than generic templates.
+
+**App design tokens (from `app_colors.dart`):**
+- Primary: `#0F9D58` (savings green)
+- Secondary: `#16213E` (trust navy)
+- Accent: `#F2A104` (insight amber)
+- Background: `#F7F9FC`
+
+Use `/frontend-design` when: building new screens, redesigning existing ones, or needing aesthetic direction on Flutter widgets.

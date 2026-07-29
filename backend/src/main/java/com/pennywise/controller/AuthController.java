@@ -2,6 +2,7 @@ package com.pennywise.controller;
 
 import com.pennywise.dto.auth.AuthResponse;
 import com.pennywise.dto.auth.LoginRequest;
+import com.pennywise.dto.auth.RefreshRequest;
 import com.pennywise.dto.auth.RegisterRequest;
 import com.pennywise.service.AuthService;
 import jakarta.validation.Valid;
@@ -30,5 +31,10 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+        return ResponseEntity.ok(authService.refresh(request));
     }
 }

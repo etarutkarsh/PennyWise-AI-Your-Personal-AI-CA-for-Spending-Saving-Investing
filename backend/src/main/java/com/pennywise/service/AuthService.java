@@ -3,14 +3,18 @@ package com.pennywise.service;
 import com.pennywise.config.security.JwtService;
 import com.pennywise.dto.auth.AuthResponse;
 import com.pennywise.dto.auth.LoginRequest;
+import com.pennywise.dto.auth.RefreshRequest;
 import com.pennywise.dto.auth.RegisterRequest;
 import com.pennywise.entity.User;
 import com.pennywise.exception.DuplicateResourceException;
 import com.pennywise.repository.UserRepository;
+import io.jsonwebtoken.Claims;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -57,5 +61,22 @@ public class AuthService {
                 jwtService.generateAccessToken(user.getId(), user.getEmail()),
                 jwtService.generateRefreshToken(user.getId(), user.getEmail()),
                 user.getId());
+    }
+
+    public AuthResponse refresh(RefreshRequest request) {
+        String token = request.getRefreshToken();
+        if (!jwtService.isValid(token)) {
+            throw new BadCredentialsException("Invalid or expired refresh token");
+        }
+        Claims claims = jwtService.parseClaims(token);
+        if (!"refresh".equals(claims.get("type", String.class))) {
+            throw new BadCredentialsException("Not a refresh token");
+        }
+        UUID userId = jwtService.extractUserId(token);
+        String email = jwtService.extractEmail(token);
+        return new AuthResponse(
+                jwtService.generateAccessToken(userId, email),
+                jwtService.generateRefreshToken(userId, email),
+                userId);
     }
 }
