@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../../core/constants/api_constants.dart';
 import '../../../../../core/services/app_services.dart';
 import '../../../../../core/theme/app_colors.dart';
 
@@ -19,7 +17,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<_Message> _messages = [];
   bool _loading = false;
   bool _typing = false;
-  String? _openAiKey;
 
   static const _suggestions = [
     'How can I save more this month?',
@@ -43,22 +40,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _loadHistory() async {
     try {
-      final token = await AppServices.instance.tokenStorage.accessToken;
-      if (token == null) return;
-      final resp = await Dio().get(
-        '${ApiConstants.baseUrl}/ai/chat/history',
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-      final history = (resp.data as List?) ?? [];
+      final history = await AppServices.instance.ai.getChatHistory();
       if (mounted) {
         setState(() {
           _messages.addAll(history
               .where((m) {
                 final text = m['message'] as String? ?? '';
-                // Filter out system context injections (e.g. "[Context: ...]" prompts)
-                // and role:'system' entries — these are never visible to the user.
-                return !text.startsWith('[Context:') &&
-                    m['role'] != 'system';
+                return !text.startsWith('[Context:') && m['role'] != 'system';
               })
               .map((m) => _Message(
                     text: m['message'] as String? ?? '',
@@ -82,15 +70,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
 
     try {
-      final token = await AppServices.instance.tokenStorage.accessToken;
-      final resp = await Dio().post(
-        '${ApiConstants.baseUrl}/ai/chat',
-        data: {'message': text, if (_openAiKey != null) 'openAiKey': _openAiKey},
-        options: Options(headers: {
-          if (token != null) 'Authorization': 'Bearer $token',
-        }),
-      );
-      final reply = resp.data['response'] as String? ?? '…';
+      final reply = await AppServices.instance.ai.sendMessage(text);
       if (mounted) {
         setState(() {
           _messages.add(_Message(text: reply, isUser: false));
@@ -126,40 +106,6 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  void _showKeyDialog() {
-    final ctrl = TextEditingController(text: _openAiKey ?? '');
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('OpenAI Key',
-            style: GoogleFonts.dmSans(
-                color: AppColors.textPrimary, fontWeight: FontWeight.w700)),
-        content: TextField(
-          controller: ctrl,
-          obscureText: true,
-          style: GoogleFonts.dmSans(color: AppColors.textPrimary),
-          decoration: const InputDecoration(hintText: 'sk-...'),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('Cancel',
-                  style: GoogleFonts.dmSans(color: AppColors.textSecondary))),
-          TextButton(
-              onPressed: () {
-                setState(() => _openAiKey = ctrl.text.trim());
-                Navigator.pop(ctx);
-              },
-              child: Text('Save',
-                  style: GoogleFonts.dmSans(
-                      color: AppColors.orange, fontWeight: FontWeight.w700))),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -186,33 +132,6 @@ class _ChatScreenState extends State<ChatScreen> {
                     ],
                   ),
                   const Spacer(),
-                  GestureDetector(
-                    onTap: _showKeyDialog,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.key_outlined,
-                              color: _openAiKey != null
-                                  ? AppColors.success
-                                  : AppColors.textSecondary,
-                              size: 16),
-                          const SizedBox(width: 6),
-                          Text('API Key',
-                              style: GoogleFonts.dmSans(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),

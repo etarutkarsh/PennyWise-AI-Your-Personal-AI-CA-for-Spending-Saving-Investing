@@ -37,6 +37,18 @@ class AiService {
     await _dio.post(ApiConstants.chat, data: {'message': 'Say "ok"'});
   }
 
+  /// Sends a user message to the AI chat endpoint and returns the assistant reply.
+  Future<String> sendMessage(String message) async {
+    final resp = await _dio.post(ApiConstants.chat, data: {'message': message});
+    return resp.data['message'] as String? ?? '…';
+  }
+
+  /// Returns the full chat history for the current user.
+  Future<List<Map<String, dynamic>>> getChatHistory() async {
+    final resp = await _dio.get(ApiConstants.chatHistory);
+    return (resp.data as List).cast<Map<String, dynamic>>();
+  }
+
   Future<String> _chat(String systemPrompt, String userMessage) async {
     // Route through backend /ai/chat endpoint (which proxies to OmniRoute/OpenAI).
     // The system prompt is prepended to the user message so context is preserved.
