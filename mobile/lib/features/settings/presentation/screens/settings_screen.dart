@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/redirect_utils.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -47,7 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
     if (confirmed == true && context.mounted) {
       await AppServices.instance.auth.logout();
-      if (context.mounted) context.go('/login');
+      if (context.mounted && !redirectToLanding()) context.go('/login');
     }
   }
 

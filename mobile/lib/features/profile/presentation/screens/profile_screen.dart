@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/redirect_utils.dart';
 import '../../../../data/repositories/user_repository.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -151,7 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
     if (confirm == true && mounted) {
       await AppServices.instance.auth.logout();
-      if (mounted) context.go('/login');
+      if (mounted && !redirectToLanding()) context.go('/login');
     }
   }
 
