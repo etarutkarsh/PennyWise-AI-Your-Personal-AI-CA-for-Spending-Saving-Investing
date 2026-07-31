@@ -134,6 +134,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(),
           ListTile(
+            leading: const Icon(Icons.info_outline_rounded, color: AppColors.blue),
+            title: const Text('About PennyWise'),
+            subtitle: const Text('Our story, mission & roadmap'),
+            trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+            onTap: () => context.go('/about'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.mail_outline_rounded, color: AppColors.indigo),
+            title: const Text('Contact Us'),
+            subtitle: const Text('Support, feedback & partnerships'),
+            trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
+            onTap: () => context.go('/contact'),
+          ),
+          const Divider(),
+          ListTile(
             leading:
                 const Icon(Icons.logout_rounded, color: AppColors.danger),
             title: const Text('Log out',

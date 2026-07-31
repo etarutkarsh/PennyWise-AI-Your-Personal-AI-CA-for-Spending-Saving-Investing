@@ -28,6 +28,8 @@ import '../../features/savings_rules/presentation/screens/savings_rules_screen.d
 import '../../features/leaderboard/presentation/screens/leaderboard_screen.dart';
 import '../../features/sms/presentation/screens/sms_import_screen.dart';
 import '../../features/documents/presentation/screens/document_vault_screen.dart';
+import '../../features/about/presentation/screens/about_screen.dart';
+import '../../features/contact/presentation/screens/contact_screen.dart';
 import 'main_shell.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -91,6 +93,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/leaderboard', builder: (context, state) => const LeaderboardScreen()),
     GoRoute(path: '/sms-import', builder: (context, state) => const SmsImportScreen()),
     GoRoute(path: '/documents', builder: (context, state) => const DocumentVaultScreen()),
+    GoRoute(path: '/about', builder: (context, state) => const AboutScreen()),
+    GoRoute(path: '/contact', builder: (context, state) => const ContactScreen()),
     GoRoute(
       path: '/insights',
       builder: (context, state) {
