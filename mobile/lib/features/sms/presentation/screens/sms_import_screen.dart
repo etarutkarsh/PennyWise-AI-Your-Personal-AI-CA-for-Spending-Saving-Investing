@@ -2,10 +2,31 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/services/app_services.dart';
 import '../../../../core/services/sms_parser_service.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../transactions/presentation/screens/add_transaction_sheet.dart';
+import '../../../../data/models/category_model.dart';
 
+// ---------------------------------------------------------------------------
+// Data holder for a single parsed row in the bulk-import table
+// ---------------------------------------------------------------------------
+class _ParsedRow {
+  _ParsedRow(this.parsed)
+      : selected = true,
+        suggestedCategoryId = null,
+        selectedCategoryId = null,
+        loadingCategory = true;
+
+  final ParsedSmsTransaction parsed;
+  bool selected;
+  String? suggestedCategoryId;
+  String? selectedCategoryId;
+  bool loadingCategory;
+}
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
 class SmsImportScreen extends StatefulWidget {
   const SmsImportScreen({super.key});
 
@@ -14,311 +35,567 @@ class SmsImportScreen extends StatefulWidget {
 }
 
 class _SmsImportScreenState extends State<SmsImportScreen> {
-  final _smsController = TextEditingController();
-  ParsedSmsTransaction? _parsed;
-  bool _parseAttempted = false;
-  bool _parseFailed = false;
+  final _rawController = TextEditingController();
+
+  List<_ParsedRow> _rows = [];
+  List<CategoryModel> _categories = [];
+  bool _importing = false;
+
+  static final _currency =
+      NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+  static final _dateFmt = DateFormat('d MMM');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCategories();
+  }
 
   @override
   void dispose() {
-    _smsController.dispose();
+    _rawController.dispose();
     super.dispose();
   }
 
+  Future<void> _loadCategories() async {
+    try {
+      final cats = await AppServices.instance.categories.getAll();
+      if (mounted) setState(() => _categories = cats);
+    } catch (_) {
+      // silently ignore — categories are optional for import
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Parse action
+  // -------------------------------------------------------------------------
   void _parse() {
-    final text = _smsController.text.trim();
+    final text = _rawController.text.trim();
     if (text.isEmpty) return;
 
-    final result = SmsParserService.parse(text);
+    final parsed = SmsParserService.parseAll(text);
+    if (parsed.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No transactions found in pasted text.')),
+      );
+      return;
+    }
+
+    final newRows = <_ParsedRow>[];
+    for (final p in parsed) {
+      // Skip duplicates by amount + date (same day)
+      final isDupe = _rows.any((r) =>
+          r.parsed.amount == p.amount &&
+          r.parsed.transactionDate.year == p.transactionDate.year &&
+          r.parsed.transactionDate.month == p.transactionDate.month &&
+          r.parsed.transactionDate.day == p.transactionDate.day);
+      if (isDupe) continue;
+
+      final row = _ParsedRow(p);
+      newRows.add(row);
+    }
+
+    setState(() => _rows = [..._rows, ...newRows]);
+
+    // Fire AI category suggestion in background for each new row
+    for (final row in newRows) {
+      _suggestCategory(row);
+    }
+  }
+
+  Future<void> _suggestCategory(_ParsedRow row) async {
+    try {
+      final id = await AppServices.instance.ai
+          .suggestCategory(row.parsed.merchant, _categories);
+      if (mounted) {
+        setState(() {
+          row.suggestedCategoryId = id;
+          row.selectedCategoryId = id;
+          row.loadingCategory = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => row.loadingCategory = false);
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Import action
+  // -------------------------------------------------------------------------
+  Future<void> _import() async {
+    final selected = _rows.where((r) => r.selected).toList();
+    if (selected.isEmpty) return;
+
+    setState(() => _importing = true);
+
+    final imported = <_ParsedRow>[];
+    String? errorMsg;
+
+    for (final row in selected) {
+      try {
+        await AppServices.instance.transactions.create(
+          amount: row.parsed.amount,
+          merchant: row.parsed.merchant,
+          direction: row.parsed.direction,
+          categoryId: row.selectedCategoryId,
+          paymentMethod: row.parsed.paymentMethod,
+          transactionDate: row.parsed.transactionDate,
+        );
+        imported.add(row);
+      } catch (e) {
+        errorMsg = friendlyError(e);
+        break;
+      }
+    }
+
+    if (!mounted) return;
+
     setState(() {
-      _parseAttempted = true;
-      _parsed = result;
-      _parseFailed = result == null;
+      _importing = false;
+      _rows.removeWhere((r) => imported.contains(r));
+      if (_rows.isEmpty) _rawController.clear();
     });
+
+    if (imported.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${imported.length} transaction${imported.length == 1 ? '' : 's'} imported'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    }
+    if (errorMsg != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg), backgroundColor: AppColors.danger),
+      );
+    }
   }
 
-  void _openAddSheet() {
-    if (_parsed == null) return;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => AddTransactionSheet(
-        initialAmount: _parsed!.amount,
-        initialMerchant: _parsed!.merchant,
-        initialDirection: _parsed!.direction,
-      ),
-    );
-  }
-
+  // -------------------------------------------------------------------------
+  // Build
+  // -------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final selectedCount = _rows.where((r) => r.selected).length;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Import from SMS')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.surface,
+        elevation: 0,
+        leading: const BackButton(color: AppColors.textPrimary),
+        title: const Text(
+          'Import from SMS',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+          ),
+        ),
+      ),
+      body: Column(
         children: [
-          // Platform note
-          if (kIsWeb)
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                    color: AppColors.warning.withValues(alpha: 0.3)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline_rounded,
-                      color: AppColors.warning, size: 20),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'SMS auto-capture is available on Android only. '
-                      'You can still paste an SMS below to parse it.',
-                      style: TextStyle(fontSize: 13, height: 1.4),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(20),
+              children: [
+                // Info banner
+                _buildInfoBanner(),
+                const SizedBox(height: 20),
+
+                // Paste area
+                TextField(
+                  controller: _rawController,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    hintText:
+                        'Paste bank SMS here — one or more messages...',
+                    alignLabelWithHint: true,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.border),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _parse,
+                    icon: const Icon(Icons.search_rounded),
+                    label: const Text('Parse SMS'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          if (!kIsWeb) ...[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.07),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+                ),
+
+                // Parsed rows section
+                if (_rows.isNotEmpty) ...[
+                  const SizedBox(height: 24),
                   Row(
                     children: [
-                      Icon(Icons.sms_outlined, color: AppColors.primary, size: 20),
-                      SizedBox(width: 8),
                       Text(
-                        'SMS Auto-Import',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700, fontSize: 14),
+                        'Parsed Transactions (${_rows.length} found)',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton(
+                        onPressed: () => setState(() => _rows.clear()),
+                        child: const Text(
+                          'Clear all',
+                          style: TextStyle(color: AppColors.danger, fontSize: 13),
+                        ),
                       ),
                     ],
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 4),
+
+                  // Table header
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      children: [
+                        SizedBox(width: 32), // checkbox space
+                        Expanded(
+                          flex: 3,
+                          child: Text('Merchant',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textSecondary)),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text('Amount',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textSecondary)),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text('Category',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textSecondary)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Row list
+                  ..._rows.map((row) => _buildRow(row)),
+                ],
+
+                const SizedBox(height: 24),
+                const _SupportedFormatsCard(),
+                const SizedBox(height: 80), // space for sticky bottom bar
+              ],
+            ),
+          ),
+
+          // Sticky import button
+          if (_rows.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: (selectedCount == 0 || _importing) ? null : _import,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor:
+                        AppColors.primary.withValues(alpha: 0.4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: _importing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          'Import $selectedCount selected',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoBanner() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.sms_outlined, color: AppColors.primary, size: 20),
+          SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              kIsWeb
+                  ? 'Paste one or more bank SMS below. Each message on a new section. (SMS auto-capture not available on web)'
+                  : 'Paste one or more bank SMS below. Each message on a new section.',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRow(_ParsedRow row) {
+    final isDebit = row.parsed.direction == 'DEBIT';
+    final amountColor = isDebit ? AppColors.danger : AppColors.success;
+    final badgeBg = isDebit
+        ? AppColors.danger.withValues(alpha: 0.12)
+        : AppColors.success.withValues(alpha: 0.12);
+    final badgeText = isDebit ? 'Spent' : 'Received';
+
+    // Filter categories by direction
+    final relevantCats = _categories
+        .where((c) => isDebit ? c.type == 'EXPENSE' : c.type == 'INCOME')
+        .toList();
+
+    return Dismissible(
+      key: ObjectKey(row),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        decoration: BoxDecoration(
+          color: AppColors.danger.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 16),
+        child: const Icon(Icons.delete_outline_rounded,
+            color: AppColors.danger, size: 20),
+      ),
+      onDismissed: (_) => setState(() => _rows.remove(row)),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Checkbox
+            SizedBox(
+              width: 28,
+              child: Checkbox(
+                value: row.selected,
+                activeColor: AppColors.primary,
+                onChanged: (v) =>
+                    setState(() => row.selected = v ?? row.selected),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+            const SizedBox(width: 4),
+
+            // Merchant + date
+            Expanded(
+              flex: 3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    'Full auto-capture from SMS inbox coming soon on Android. '
-                    'For now, paste a bank SMS below to parse and import it.',
-                    style: TextStyle(
-                        color: AppColors.textSecondary,
+                    row.parsed.merchant,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600,
                         fontSize: 13,
-                        height: 1.5),
+                        color: AppColors.textPrimary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        _dateFmt.format(row.parsed.transactionDate),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                      if (row.parsed.paymentMethod != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            row.parsed.paymentMethod!,
+                            style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.secondary,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
-          ],
-          const SizedBox(height: 20),
+            const SizedBox(width: 8),
 
-          // Paste SMS section
-          const Text(
-            'Paste Bank SMS',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _smsController,
-            maxLines: 5,
-            decoration: InputDecoration(
-              hintText: 'Paste your bank SMS here...',
-              alignLabelWithHint: true,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+            // Amount + badge
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _currency.format(row.parsed.amount),
+                    style: TextStyle(
+                      color: amountColor,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: badgeBg,
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    child: Text(
+                      badgeText,
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: amountColor,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
               ),
-              filled: true,
-              fillColor: AppColors.background,
             ),
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            onPressed: _parse,
-            icon: const Icon(Icons.search_rounded),
-            label: const Text('Parse & Import'),
-          ),
+            const SizedBox(width: 8),
 
-          // Parse result
-          if (_parseAttempted) ...[
-            const SizedBox(height: 20),
-            if (_parseFailed)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.danger.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                      color: AppColors.danger.withValues(alpha: 0.25)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.error_outline_rounded,
-                        color: AppColors.danger, size: 22),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Could not read this SMS. Try a different bank message.',
-                        style: TextStyle(fontSize: 13, height: 1.4),
+            // Category widget
+            Expanded(
+              flex: 2,
+              child: row.loadingCategory
+                  ? const Align(
+                      alignment: Alignment.centerLeft,
+                      child: SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      height: 30,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(8),
+                        color: AppColors.background,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String?>(
+                          value: row.selectedCategoryId,
+                          isDense: true,
+                          isExpanded: true,
+                          hint: const Text('Category',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary)),
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.textPrimary),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                              size: 14, color: AppColors.textSecondary),
+                          items: [
+                            const DropdownMenuItem<String?>(
+                              value: null,
+                              child: Text('None',
+                                  style: TextStyle(fontSize: 11)),
+                            ),
+                            ...relevantCats.map((c) => DropdownMenuItem<String?>(
+                                  value: c.id,
+                                  child: Text(
+                                    c.name,
+                                    style: const TextStyle(fontSize: 11),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                )),
+                          ],
+                          onChanged: (v) =>
+                              setState(() => row.selectedCategoryId = v),
+                        ),
                       ),
                     ),
-                  ],
-                ),
-              )
-            else if (_parsed != null)
-              _ParsedPreviewCard(
-                parsed: _parsed!,
-                onAddTransaction: _openAddSheet,
-              ),
+            ),
           ],
-
-          const SizedBox(height: 28),
-          const _SupportedFormatsCard(),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _ParsedPreviewCard extends StatelessWidget {
-  const _ParsedPreviewCard({
-    required this.parsed,
-    required this.onAddTransaction,
-  });
-
-  final ParsedSmsTransaction parsed;
-  final VoidCallback onAddTransaction;
-
-  @override
-  Widget build(BuildContext context) {
-    final currency =
-        NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-    final isDebit = parsed.direction == 'DEBIT';
-
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(14)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded,
-                    color: AppColors.primary, size: 18),
-                const SizedBox(width: 8),
-                const Text(
-                  'SMS Parsed Successfully',
-                  style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _PreviewRow(
-                  label: 'Amount',
-                  value: currency.format(parsed.amount),
-                  valueColor: isDebit ? AppColors.danger : AppColors.success,
-                ),
-                const SizedBox(height: 10),
-                _PreviewRow(
-                  label: 'Type',
-                  value: isDebit ? 'Spent (Debit)' : 'Received (Credit)',
-                ),
-                if (parsed.merchant != null) ...[
-                  const SizedBox(height: 10),
-                  _PreviewRow(label: 'Merchant', value: parsed.merchant!),
-                ],
-                if (parsed.accountLast4 != null) ...[
-                  const SizedBox(height: 10),
-                  _PreviewRow(
-                      label: 'Account', value: '****${parsed.accountLast4}'),
-                ],
-                const SizedBox(height: 10),
-                _PreviewRow(
-                  label: 'Date',
-                  value: DateFormat('d MMM yyyy').format(parsed.transactionDate),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: ElevatedButton.icon(
-              onPressed: onAddTransaction,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Add Transaction'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PreviewRow extends StatelessWidget {
-  const _PreviewRow({required this.label, required this.value, this.valueColor});
-  final String label;
-  final String value;
-  final Color? valueColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(
-            label,
-            style: const TextStyle(
-                color: AppColors.textSecondary, fontSize: 13),
-          ),
-        ),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
-              color: valueColor ?? AppColors.textPrimary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
+// ---------------------------------------------------------------------------
+// Supported formats card (preserved from previous design)
+// ---------------------------------------------------------------------------
 class _SupportedFormatsCard extends StatelessWidget {
   const _SupportedFormatsCard();
 
@@ -343,6 +620,8 @@ class _SupportedFormatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
