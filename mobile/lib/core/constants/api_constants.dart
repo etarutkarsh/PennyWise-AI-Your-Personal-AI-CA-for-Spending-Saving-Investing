@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiConstants {
@@ -6,8 +7,10 @@ class ApiConstants {
   static String get baseUrl {
     const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (envUrl.isNotEmpty) return envUrl;
-    // 10.0.2.2 = Android emulator host loopback; iOS simulator uses localhost directly
-    return kIsWeb ? 'http://localhost:8080/api' : 'http://10.0.2.2:8080/api';
+    if (kIsWeb) return 'http://localhost:8080/api';
+    // Android emulator maps 10.0.2.2 → host machine; iOS simulator uses localhost directly
+    if (Platform.isIOS || Platform.isMacOS) return 'http://localhost:8080/api';
+    return 'http://10.0.2.2:8080/api';
   }
 
   static const String auth = '/auth';
