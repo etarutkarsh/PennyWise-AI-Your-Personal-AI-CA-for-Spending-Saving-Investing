@@ -17,7 +17,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./landing.html:/usr/share/nginx/html/landing.html:ro
+      - ./mobile/web/landing.html:/usr/share/nginx/html/landing.html:ro
     depends_on:
       - backend
 
