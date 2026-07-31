@@ -2026,7 +2026,7 @@
       const res = await fetch(`${API}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ fullName: name, email, password }),
       });
       if (!res.ok) {
         let msg = 'Something went wrong. Try again.';
