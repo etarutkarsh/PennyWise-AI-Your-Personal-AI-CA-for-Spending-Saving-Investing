@@ -9,6 +9,18 @@
 # (health check: http://localhost:8080/api/actuator/health)
 
 services:
+  # Serves landing.html at http://localhost and proxies /api → Spring Boot
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./landing.html:/usr/share/nginx/html/landing.html:ro
+    depends_on:
+      - backend
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
