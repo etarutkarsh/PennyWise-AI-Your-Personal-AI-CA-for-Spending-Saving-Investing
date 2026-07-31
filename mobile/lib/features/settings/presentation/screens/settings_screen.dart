@@ -73,10 +73,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
+        padding: const EdgeInsets.only(bottom: 32),
         children: [
+          // ── Account ──────────────────────────────────────────────────────
+          const _SectionHeader('Account'),
           ListTile(
             leading: const Icon(Icons.person_outline_rounded),
             title: const Text('Profile'),
+            subtitle: const Text('Edit name, salary, risk appetite'),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => context.push('/profile'),
           ),
@@ -93,8 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   : 'Add your key to enable AI insights',
               style: TextStyle(
                 fontSize: 12,
-                color:
-                    _hasAiKey ? AppColors.primary : AppColors.textSecondary,
+                color: _hasAiKey ? AppColors.primary : AppColors.textSecondary,
               ),
             ),
             trailing: Row(
@@ -109,7 +112,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             onTap: _openAiKeySheet,
           ),
-          const Divider(indent: 16, endIndent: 16),
+
+          // ── Finance ───────────────────────────────────────────────────────
+          const _SectionHeader('Finance'),
           ListTile(
             leading: const Icon(Icons.savings_outlined, color: AppColors.primary),
             title: const Text('Savings Rules'),
@@ -117,45 +122,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => context.push('/savings-rules'),
           ),
-          const Divider(indent: 16, endIndent: 16),
+
+          // ── Privacy & Security ────────────────────────────────────────────
+          const _SectionHeader('Privacy & Security'),
           const ListTile(
             leading: Icon(Icons.sms_outlined),
             title: Text('SMS & notification permissions'),
             subtitle: Text('Manage automatic transaction detection'),
           ),
+          const Divider(indent: 16, endIndent: 16),
           const ListTile(
             leading: Icon(Icons.fingerprint_rounded),
             title: Text('Biometric lock'),
             subtitle: Text('Face ID / Touch ID / Fingerprint'),
           ),
+          const Divider(indent: 16, endIndent: 16),
           const ListTile(
             leading: Icon(Icons.privacy_tip_outlined),
             title: Text('Privacy & data controls'),
           ),
-          const Divider(),
+
+          // ── About ─────────────────────────────────────────────────────────
+          const _SectionHeader('About'),
           ListTile(
             leading: const Icon(Icons.info_outline_rounded, color: AppColors.blue),
             title: const Text('About PennyWise'),
             subtitle: const Text('Our story, mission & roadmap'),
-            trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-            onTap: () => context.go('/about'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/about'),
           ),
+          const Divider(indent: 16, endIndent: 16),
           ListTile(
             leading: const Icon(Icons.mail_outline_rounded, color: AppColors.indigo),
             title: const Text('Contact Us'),
             subtitle: const Text('Support, feedback & partnerships'),
-            trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted),
-            onTap: () => context.go('/contact'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => context.push('/contact'),
           ),
-          const Divider(),
+
+          // ── Danger zone ───────────────────────────────────────────────────
+          const _SectionHeader('Account Actions'),
           ListTile(
-            leading:
-                const Icon(Icons.logout_rounded, color: AppColors.danger),
+            leading: const Icon(Icons.logout_rounded, color: AppColors.danger),
             title: const Text('Log out',
                 style: TextStyle(color: AppColors.danger)),
             onTap: () => _logout(context),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.label);
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 4),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textMuted,
+          letterSpacing: 1.2,
+        ),
       ),
     );
   }
