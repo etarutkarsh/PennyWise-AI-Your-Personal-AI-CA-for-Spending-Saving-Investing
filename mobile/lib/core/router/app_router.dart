@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../services/app_services.dart';
 import '../../features/authentication/presentation/screens/login_screen.dart';
 import '../../features/authentication/presentation/screens/onboarding_goal_setup_screen.dart';
 import '../../features/authentication/presentation/screens/register_screen.dart';
@@ -30,6 +31,23 @@ import 'main_shell.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
+const _publicPaths = {'/splash', '/login', '/register', '/onboarding/goal-setup'};
+
+Future<String?> _authRedirect(BuildContext context, GoRouterState state) async {
+  final path = state.uri.path;
+  if (path == '/') return '/splash';
+
+  final hasSession = await AppServices.instance.auth.hasSession();
+
+  // Protected route → no valid session → send to login
+  if (!_publicPaths.contains(path) && !hasSession) return '/login';
+
+  // Already authenticated → skip login/register screens
+  if ((path == '/login' || path == '/register') && hasSession) return '/dashboard';
+
+  return null;
+}
+
 /// Central route table. Uses go_router's StatefulShellRoute so the bottom
 /// nav (MainShell) preserves each tab's navigation stack independently.
 ///
@@ -39,10 +57,7 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/splash',
-  redirect: (context, state) {
-    if (state.uri.path == '/') return '/splash';
-    return null;
-  },
+  redirect: _authRedirect,
   routes: [
     // ── Auth & onboarding ────────────────────────────────────────────────────
     GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),

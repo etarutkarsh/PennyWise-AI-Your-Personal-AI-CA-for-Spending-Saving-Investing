@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../../core/services/network/api_client.dart';
 import '../../core/services/storage/token_storage.dart';
 
@@ -28,7 +30,7 @@ class AuthRepository {
       'fullName': fullName.trim(),
       'email': email.trim(),
       'password': password.trim(),
-      'userType': userType.toUpperCase(),
+      'userType': userType,
     });
     await _storage.saveTokens(
       accessToken: res.data['accessToken'] as String,
@@ -36,10 +38,29 @@ class AuthRepository {
     );
   }
 
-  /// Returns true if a saved access token exists (session may still be expired).
+  /// Returns true if a saved, non-expired access token exists.
   Future<bool> hasSession() async {
     final token = await _storage.accessToken;
-    return token != null && token.isNotEmpty;
+    if (token == null || token.isEmpty) return false;
+    return !_isTokenExpired(token);
+  }
+
+  /// Decodes the JWT payload and checks the [exp] claim without a library.
+  bool _isTokenExpired(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true;
+      final payload = base64Url.normalize(parts[1]);
+      final decoded = utf8.decode(base64Url.decode(payload));
+      final map = json.decode(decoded) as Map<String, dynamic>;
+      final exp = map['exp'] as int?;
+      if (exp == null) return true;
+      return DateTime.now().isAfter(
+        DateTime.fromMillisecondsSinceEpoch(exp * 1000),
+      );
+    } catch (_) {
+      return true;
+    }
   }
 
   Future<void> logout() async {
