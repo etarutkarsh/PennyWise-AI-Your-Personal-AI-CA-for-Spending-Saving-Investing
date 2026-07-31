@@ -310,7 +310,7 @@ class _AddTransactionSheetState extends State<AddTransactionSheet> {
             const SizedBox(height: 12),
             if (_filteredCategories.isNotEmpty)
               DropdownButtonFormField<String>(
-                value: _selectedCategoryId,
+                initialValue: _selectedCategoryId,
                 decoration: const InputDecoration(
                   labelText: 'Category (optional)',
                   prefixIcon: Icon(Icons.category_outlined),
