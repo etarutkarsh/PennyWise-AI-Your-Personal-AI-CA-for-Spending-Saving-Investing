@@ -1,6 +1,10 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
 import 'package:intl/intl.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/services/app_services.dart';
 import '../../../../core/services/sms_parser_service.dart';
@@ -40,6 +44,7 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
   List<_ParsedRow> _rows = [];
   List<CategoryModel> _categories = [];
   bool _importing = false;
+  bool _readingPhone = false;
 
   static final _currency =
       NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
@@ -63,6 +68,115 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
       if (mounted) setState(() => _categories = cats);
     } catch (_) {
       // silently ignore — categories are optional for import
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Read from phone (Android only)
+  // -------------------------------------------------------------------------
+  Future<void> _readFromPhone() async {
+    final status = await Permission.sms.request();
+    if (!mounted) return;
+
+    if (status.isPermanentlyDenied) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('SMS permission required'),
+          content: const Text(
+            'PennyWise needs SMS access to read your bank messages. '
+            'Please enable it in Settings → App → Permissions.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                openAppSettings();
+              },
+              child: const Text('Open Settings'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    if (!status.isGranted) return;
+
+    setState(() => _readingPhone = true);
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(days: 90));
+      final query = SmsQuery();
+      final messages = await query.querySms(
+        kinds: [SmsQueryKind.inbox],
+        count: 500,
+      );
+
+      final bankKeywords = ['debited', 'credited', 'inr', 'rs.', '₹', 'upi', 'transaction'];
+      final newRows = <_ParsedRow>[];
+
+      for (final msg in messages) {
+        final body = msg.body ?? '';
+        final date = msg.date ?? DateTime.now();
+        if (date.isBefore(cutoff)) continue;
+
+        final bodyLower = body.toLowerCase();
+        if (!bankKeywords.any((k) => bodyLower.contains(k))) continue;
+
+        final parsed = SmsParserService.parse(body);
+        if (parsed == null) continue;
+
+        // Duplicate detection: same direction + amount + date
+        final isDupe = _rows.any((r) =>
+            r.parsed.amount == parsed.amount &&
+            r.parsed.direction == parsed.direction &&
+            r.parsed.transactionDate.year == parsed.transactionDate.year &&
+            r.parsed.transactionDate.month == parsed.transactionDate.month &&
+            r.parsed.transactionDate.day == parsed.transactionDate.day);
+        if (isDupe) continue;
+
+        newRows.add(_ParsedRow(parsed));
+      }
+
+      if (!mounted) return;
+
+      if (newRows.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No new bank transactions found in last 90 days.'),
+          ),
+        );
+        return;
+      }
+
+      setState(() => _rows = [..._rows, ...newRows]);
+      for (final row in newRows) {
+        _suggestCategory(row);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Found ${newRows.length} new transaction${newRows.length == 1 ? '' : 's'} from inbox'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not read SMS: $e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _readingPhone = false);
     }
   }
 
@@ -226,6 +340,45 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                if (!kIsWeb && Platform.isAndroid) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _readingPhone ? null : _readFromPhone,
+                      icon: _readingPhone
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.inbox_rounded),
+                      label: Text(_readingPhone
+                          ? 'Reading inbox…'
+                          : 'Read from Phone (last 90 days)'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Row(children: [
+                    Expanded(child: Divider()),
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 10),
+                      child: Text('or paste manually',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary)),
+                    ),
+                    Expanded(child: Divider()),
+                  ]),
+                  const SizedBox(height: 10),
+                ],
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -371,17 +524,19 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
         color: AppColors.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: const Row(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.sms_outlined, color: AppColors.primary, size: 20),
-          SizedBox(width: 10),
+          const Icon(Icons.sms_outlined, color: AppColors.primary, size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               kIsWeb
-                  ? 'Paste one or more bank SMS below. Each message on a new section. (SMS auto-capture not available on web)'
-                  : 'Paste one or more bank SMS below. Each message on a new section.',
-              style: TextStyle(
+                  ? 'Paste one or more bank SMS below — one message per section. (SMS auto-read not available on web)'
+                  : Platform.isAndroid
+                      ? 'Tap "Read from Phone" to auto-import last 90 days of bank SMS, or paste messages manually below.'
+                      : 'Paste one or more bank SMS below — one message per section. (SMS auto-read is Android only)',
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
                 height: 1.5,
