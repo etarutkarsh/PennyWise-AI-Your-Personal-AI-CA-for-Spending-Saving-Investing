@@ -478,7 +478,7 @@ class _MissionCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.check_rounded,
+                    const Icon(Icons.check_rounded,
                         color: AppColors.success, size: 12),
                     const SizedBox(width: 4),
                     Text('Done',
