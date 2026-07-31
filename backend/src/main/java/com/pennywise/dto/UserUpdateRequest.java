@@ -10,4 +10,8 @@ public class UserUpdateRequest {
     private String phoneNumber;
     private BigDecimal monthlyIncome;
     private String riskAppetite;
+    // Tax-ready fields
+    private String pan;
+    private String taxRegime;
+    private Integer financialYearStart;
 }

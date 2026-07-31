@@ -40,4 +40,16 @@ public class User extends BaseEntity {
     private String riskAppetite;
 
     private boolean onboardingComplete = false;
+
+    // ── Tax-ready fields (Phase 3/4) ─────────────────────────────────────────
+
+    /** Permanent Account Number — stored as-is, masked on display. */
+    @Column(length = 10)
+    private String pan;
+
+    /** NEW | OLD — user's preferred Indian income tax regime. */
+    private String taxRegime = "NEW";
+
+    /** Month the financial year starts (4 = April for Indian FY). */
+    private Integer financialYearStart = 4;
 }

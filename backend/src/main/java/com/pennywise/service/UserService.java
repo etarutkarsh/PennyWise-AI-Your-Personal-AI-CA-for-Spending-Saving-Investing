@@ -29,6 +29,9 @@ public class UserService {
         if (req.getPhoneNumber() != null) user.setPhoneNumber(req.getPhoneNumber());
         if (req.getMonthlyIncome() != null) user.setMonthlyIncome(req.getMonthlyIncome());
         if (req.getRiskAppetite() != null) user.setRiskAppetite(req.getRiskAppetite());
+        if (req.getPan() != null) user.setPan(req.getPan());
+        if (req.getTaxRegime() != null) user.setTaxRegime(req.getTaxRegime());
+        if (req.getFinancialYearStart() != null) user.setFinancialYearStart(req.getFinancialYearStart());
         return toDto(userRepository.save(user));
     }
 
@@ -43,6 +46,9 @@ public class UserService {
                 .currency(u.getCurrency())
                 .riskAppetite(u.getRiskAppetite())
                 .onboardingComplete(u.isOnboardingComplete())
+                .pan(u.getPan())
+                .taxRegime(u.getTaxRegime())
+                .financialYearStart(u.getFinancialYearStart())
                 .build();
     }
 }

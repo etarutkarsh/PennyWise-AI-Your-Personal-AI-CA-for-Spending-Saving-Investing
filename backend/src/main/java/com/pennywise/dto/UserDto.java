@@ -19,4 +19,8 @@ public class UserDto {
     private String currency;
     private String riskAppetite;
     private boolean onboardingComplete;
+    // Tax-ready fields
+    private String pan;
+    private String taxRegime;
+    private Integer financialYearStart;
 }

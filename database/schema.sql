@@ -32,6 +32,10 @@ create table if not exists users (
     currency            varchar(3) default 'INR',
     risk_appetite       varchar(16),   -- low | medium | high
     onboarding_complete boolean default false,
+    -- Tax-ready additions (V5)
+    pan                 varchar(10),
+    tax_regime          varchar(8)  default 'NEW',  -- NEW | OLD
+    financial_year_start int        default 4,       -- 4 = April (Indian FY)
     created_at          timestamptz default now(),
     updated_at          timestamptz default now()
 );
@@ -68,6 +72,11 @@ create table if not exists transactions (
     source              varchar(32) not null default 'MANUAL', -- SMS | BANK_NOTIFICATION | MANUAL | EMAIL | OCR
     recurring           boolean default false,
     category_confidence double precision,
+    -- Tax-ready additions (V5)
+    receipt_url         text,
+    tax_category        varchar(64),  -- 80C | 80D | HRA | BUSINESS_EXPENSE | CAPITAL_GAINS | etc.
+    verification_status varchar(16) default 'UNVERIFIED', -- UNVERIFIED | VERIFIED | DISPUTED
+    is_business_expense boolean default false,
     created_at          timestamptz default now(),
     updated_at          timestamptz default now()
 );
@@ -235,6 +244,29 @@ create table if not exists affordability_history (
 );
 
 create index if not exists idx_affordability_user on affordability_history(user_id, checked_at desc);
+
+-- ---------------------------------------------------------------------
+-- Documents — Financial Vault (Phase 3)
+-- ---------------------------------------------------------------------
+create table if not exists documents (
+    id                      uuid primary key default gen_random_uuid(),
+    user_id                 uuid not null references users(id) on delete cascade,
+    document_type           varchar(32) not null, -- FORM_16 | FORM_26AS | AIS | RECEIPT | SALARY_SLIP | INSURANCE | HOME_LOAN | MUTUAL_FUND | PREVIOUS_ITR | OTHER
+    original_filename       varchar(255),
+    file_url                text,
+    ocr_status              varchar(16) not null default 'PENDING', -- PENDING | PROCESSING | COMPLETED | FAILED
+    ocr_data                jsonb,
+    confidence_score        double precision,
+    financial_year          varchar(7),      -- e.g. "2025-26"
+    tax_category            varchar(64),
+    linked_transaction_id   uuid references transactions(id) on delete set null,
+    verification_status     varchar(16) not null default 'UNVERIFIED', -- UNVERIFIED | VERIFIED | DISPUTED
+    created_at              timestamptz default now(),
+    updated_at              timestamptz default now()
+);
+
+create index if not exists idx_documents_user on documents(user_id, created_at desc);
+create index if not exists idx_documents_type  on documents(user_id, document_type);
 
 -- ---------------------------------------------------------------------
 -- Chat History (Feature 10 - AI Financial Assistant)

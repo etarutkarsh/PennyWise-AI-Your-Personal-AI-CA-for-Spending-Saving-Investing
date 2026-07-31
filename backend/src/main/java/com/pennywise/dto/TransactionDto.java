@@ -25,4 +25,9 @@ public class TransactionDto {
     private String direction;
     private String source;
     private boolean recurring;
+    // Tax-ready fields
+    private String receiptUrl;
+    private String taxCategory;
+    private String verificationStatus;
+    private boolean businessExpense;
 }

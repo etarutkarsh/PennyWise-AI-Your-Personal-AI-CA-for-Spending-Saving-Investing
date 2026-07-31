@@ -36,4 +36,9 @@ public class TransactionCreateRequest {
 
     /** Raw SMS/notification text, if this transaction originated from auto-detection. */
     private String rawText;
+
+    // Tax-ready fields (all optional — captured now, used in Phase 4)
+    private String receiptUrl;
+    private String taxCategory;
+    private boolean businessExpense = false;
 }

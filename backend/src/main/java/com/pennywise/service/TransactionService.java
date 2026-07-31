@@ -43,6 +43,9 @@ public class TransactionService {
         tx.setPaymentMethod(request.getPaymentMethod());
         tx.setDirection(Transaction.TransactionDirection.valueOf(request.getDirection().toUpperCase()));
         tx.setSource(request.getSource() != null ? request.getSource() : "MANUAL");
+        tx.setReceiptUrl(request.getReceiptUrl());
+        tx.setTaxCategory(request.getTaxCategory());
+        tx.setBusinessExpense(request.isBusinessExpense());
 
         if (request.getCategoryId() != null) {
             Category category = categoryRepository.findById(request.getCategoryId())
@@ -91,6 +94,10 @@ public class TransactionService {
                 .direction(tx.getDirection().name())
                 .source(tx.getSource())
                 .recurring(tx.isRecurring())
+                .receiptUrl(tx.getReceiptUrl())
+                .taxCategory(tx.getTaxCategory())
+                .verificationStatus(tx.getVerificationStatus().name())
+                .businessExpense(tx.isBusinessExpense())
                 .build();
     }
 }
