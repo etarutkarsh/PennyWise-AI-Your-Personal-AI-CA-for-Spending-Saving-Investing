@@ -27,6 +27,7 @@ import '../../features/net_worth/presentation/screens/net_worth_screen.dart';
 import '../../features/savings_rules/presentation/screens/savings_rules_screen.dart';
 import '../../features/leaderboard/presentation/screens/leaderboard_screen.dart';
 import '../../features/sms/presentation/screens/sms_import_screen.dart';
+import '../../features/documents/presentation/screens/document_vault_screen.dart';
 import 'main_shell.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -89,6 +90,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/savings-rules', builder: (context, state) => const SavingsRulesScreen()),
     GoRoute(path: '/leaderboard', builder: (context, state) => const LeaderboardScreen()),
     GoRoute(path: '/sms-import', builder: (context, state) => const SmsImportScreen()),
+    GoRoute(path: '/documents', builder: (context, state) => const DocumentVaultScreen()),
     GoRoute(
       path: '/insights',
       builder: (context, state) {

@@ -131,6 +131,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  String _maskPan(String pan) {
+    if (pan.length < 4) return pan;
+    return '${pan.substring(0, 2)}${'•' * (pan.length - 4)}${pan.substring(pan.length - 2)}';
+  }
+
+  void _editTaxRegime() async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Select tax regime'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'NEW'),
+            child: const Text('🆕  New Regime — lower tax slabs, no deductions'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(ctx, 'OLD'),
+            child: const Text('📋  Old Regime — higher slabs, claim 80C/80D etc.'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && mounted) {
+      try {
+        final updated = await AppServices.instance.user.updateMe(taxRegime: result);
+        setState(() => _user = updated);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tax regime updated')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(friendlyError(e)), backgroundColor: AppColors.danger),
+          );
+        }
+      }
+    }
+  }
+
+  void _editPan() async {
+    final controller = TextEditingController(text: _user?.pan ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('PAN'),
+        content: TextField(
+          controller: controller,
+          textCapitalization: TextCapitalization.characters,
+          maxLength: 10,
+          decoration: const InputDecoration(
+            hintText: 'e.g. ABCDE1234F',
+            helperText: '10-character alphanumeric PAN',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final v = controller.text.trim().toUpperCase();
+              if (v.length == 10) Navigator.pop(ctx, v);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (result != null && mounted) {
+      try {
+        final updated = await AppServices.instance.user.updateMe(pan: result);
+        setState(() => _user = updated);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('PAN saved')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(friendlyError(e)), backgroundColor: AppColors.danger),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -293,6 +384,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             trailing:
                                 const Icon(Icons.chevron_right_rounded),
                             onTap: _editRiskAppetite,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Tax settings
+                    const Text(
+                      'Tax Settings',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Card(
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.receipt_long_rounded,
+                                color: AppColors.accent),
+                            title: const Text('Tax Regime'),
+                            subtitle: Text(
+                              _user?.taxRegime == 'OLD'
+                                  ? 'Old Regime (deductions)'
+                                  : 'New Regime (lower slabs)',
+                            ),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: _editTaxRegime,
+                          ),
+                          const Divider(height: 0, indent: 16),
+                          ListTile(
+                            leading: const Icon(Icons.badge_outlined,
+                                color: AppColors.secondary),
+                            title: const Text('PAN'),
+                            subtitle: Text(
+                              _user?.pan != null
+                                  ? _maskPan(_user!.pan!)
+                                  : 'Not added',
+                            ),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: _editPan,
+                          ),
+                          const Divider(height: 0, indent: 16),
+                          ListTile(
+                            leading: const Icon(Icons.folder_copy_outlined,
+                                color: AppColors.primary),
+                            title: const Text('Document Vault'),
+                            subtitle: const Text('Receipts, Form 16, insurance & more'),
+                            trailing: const Icon(Icons.chevron_right_rounded),
+                            onTap: () => context.push('/documents'),
                           ),
                         ],
                       ),
