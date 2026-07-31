@@ -1861,9 +1861,11 @@
   onScroll();
 
   /* ── 8. Sign-in form ─────────────────────────────────────────────────────── */
-  // When served via nginx (docker-compose), /api proxies to the backend.
-  // When opened as a local file, fall back to the direct backend port.
-  const API = location.protocol === 'file:' ? 'http://localhost:8080/api' : '/api';
+  // Use relative /api only when served via nginx on port 80 (which proxies to backend).
+  // Any other port (Live Server, file://, etc.) hits the backend directly.
+  const API = (location.port === '80' || location.port === '')
+    ? '/api'
+    : 'http://localhost:8080/api';
   const siForm     = document.getElementById('si-form');
   const siBtn      = document.getElementById('si-btn');
   const siEmail    = document.getElementById('si-email');
