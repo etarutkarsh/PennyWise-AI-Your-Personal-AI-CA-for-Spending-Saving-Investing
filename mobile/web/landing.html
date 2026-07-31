@@ -1788,7 +1788,18 @@
     });
   }, { threshold: 0.12 });
 
-  document.querySelectorAll('.rv').forEach(el => revObs.observe(el));
+  // If the page loads with a hash, the browser scrolls past all the sections
+  // before IntersectionObserver fires. Skip scroll-reveal and show everything instantly.
+  if (window.location.hash) {
+    document.querySelectorAll('.rv').forEach(el => {
+      el.style.animation = 'none';
+      el.style.opacity   = '1';
+      el.style.transform = 'none';
+      revObs.unobserve(el);
+    });
+  } else {
+    document.querySelectorAll('.rv').forEach(el => revObs.observe(el));
+  }
 
   /* ── 6. Section tracker for rail ─────────────────────────────────────────── */
   const sections = Array.from(document.querySelectorAll('section[id]'));
