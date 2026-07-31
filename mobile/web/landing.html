@@ -1949,7 +1949,7 @@
       siBtn.textContent = '✓ Signed in — opening dashboard…';
       setTimeout(() => {
         window.location.href =
-          `./#/splash?at=${encodeURIComponent(data.accessToken)}&rt=${encodeURIComponent(data.refreshToken)}`;
+          `./index.html#/splash?at=${encodeURIComponent(data.accessToken)}&rt=${encodeURIComponent(data.refreshToken)}`;
       }, 900);
 
     } catch (err) {
