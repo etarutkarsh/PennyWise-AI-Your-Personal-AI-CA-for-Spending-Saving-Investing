@@ -19,15 +19,25 @@ class TransactionRepository {
     required String direction,
     String? categoryId,
     String? note,
+    String? paymentMethod,
+    DateTime? transactionDate,
+    // Tax-ready fields
+    String? taxCategory,
+    String? receiptUrl,
+    bool businessExpense = false,
   }) async {
     final res = await _client.dio.post('/transactions', data: {
       'amount': amount,
       'merchant': merchant,
       'direction': direction,
       'source': 'MANUAL',
-      'transactionDate': DateTime.now().toUtc().toIso8601String(),
+      'transactionDate': (transactionDate ?? DateTime.now()).toUtc().toIso8601String(),
       if (categoryId != null) 'categoryId': categoryId,
       if (note != null && note.isNotEmpty) 'note': note,
+      if (paymentMethod != null) 'paymentMethod': paymentMethod,
+      if (taxCategory != null) 'taxCategory': taxCategory,
+      if (receiptUrl != null) 'receiptUrl': receiptUrl,
+      if (businessExpense) 'businessExpense': true,
     });
     return TransactionEntity.fromJson(res.data as Map<String, dynamic>);
   }
