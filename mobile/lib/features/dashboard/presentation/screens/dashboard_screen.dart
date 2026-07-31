@@ -86,7 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           .get()
           .then<HealthScoreModel?>((v) => v)
           .catchError((_) => null),
-      AppServices.instance.ai.getDailyTip(),
+      AppServices.instance.ai.getDailyTip().catchError((_) => ''),
     ]);
 
     if (mounted) {
@@ -131,7 +131,9 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: RefreshIndicator(
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
         color: AppColors.orange,
         backgroundColor: AppColors.surface,
         onRefresh: () => _load(forceRefresh: true),
@@ -140,6 +142,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 12),
               // Premium AI Coach Hero
               _AICoachHero(
                 salary: _salary,
@@ -275,6 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
       ),
+      ), // SafeArea
     );
   }
 
@@ -328,7 +332,6 @@ class _AICoachHeroState extends State<_AICoachHero>
 
   @override
   Widget build(BuildContext context) {
-    final topPad = MediaQuery.of(context).padding.top;
     final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
 
     return AnimatedBuilder(
@@ -395,7 +398,7 @@ class _AICoachHeroState extends State<_AICoachHero>
         );
       },
       child: Padding(
-        padding: EdgeInsets.fromLTRB(22, topPad + 20, 22, 22),
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

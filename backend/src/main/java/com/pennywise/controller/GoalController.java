@@ -2,6 +2,7 @@ package com.pennywise.controller;
 
 import com.pennywise.dto.GoalCreateRequest;
 import com.pennywise.dto.GoalDto;
+import com.pennywise.dto.GoalUpdateRequest;
 import com.pennywise.service.GoalService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -31,6 +32,17 @@ public class GoalController {
     @GetMapping
     public List<GoalDto> list() {
         return goalService.listForCurrentUser();
+    }
+
+    @PatchMapping("/{id}")
+    public GoalDto update(@PathVariable UUID id, @RequestBody GoalUpdateRequest request) {
+        return goalService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        goalService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/saved-amount")

@@ -26,6 +26,8 @@ class ApiConstants {
   static const String chat = '/ai/chat';
 
   static const String users = '/users';
+  static const String learning = '/learning';
+  static const String notifications = '/notifications';
 
   static const String accessTokenKey = 'pennywise_access_token';
   static const String refreshTokenKey = 'pennywise_refresh_token';

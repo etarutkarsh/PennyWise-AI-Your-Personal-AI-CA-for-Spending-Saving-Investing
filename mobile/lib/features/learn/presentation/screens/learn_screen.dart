@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/services/app_services.dart';
 import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../data/repositories/learning_repository.dart';
 
 class LearnScreen extends StatefulWidget {
   const LearnScreen({super.key});
@@ -15,7 +17,7 @@ class LearnScreen extends StatefulWidget {
 class _LearnScreenState extends State<LearnScreen> {
   int _xp = 0;
   List<String> _completedQuizzes = [];
-  List<String> _achievements = [];
+  List<AchievementItem> _achievements = [];
   int _streak = 0;
   double _salary = 50000;
 
@@ -60,18 +62,58 @@ class _LearnScreenState extends State<LearnScreen> {
   }
 
   Future<void> _load() async {
-    final xp = await UserPrefsStorage.getTotalQuizScore();
-    final completed = await UserPrefsStorage.getCompletedQuizzes();
-    final achievements = await UserPrefsStorage.getAchievements();
-    final salary = await UserPrefsStorage.getSalary();
+    // Load local state immediately for instant UI.
+    final localXp       = await UserPrefsStorage.getTotalQuizScore();
+    final localCompleted = await UserPrefsStorage.getCompletedQuizzes();
+    final salary        = await UserPrefsStorage.getSalary();
+
     if (mounted) {
       setState(() {
-        _xp = xp;
-        _completedQuizzes = completed;
-        _achievements = achievements;
-        _salary = salary;
-        _streak = completed.length;
+        _xp             = localXp;
+        _completedQuizzes = localCompleted;
+        _salary         = salary;
+        _streak         = localCompleted.length;
       });
+    }
+
+    // Merge with backend data (backend is authoritative after first sync).
+    try {
+      final results = await Future.wait([
+        AppServices.instance.learning.getTotalXp(),
+        AppServices.instance.learning.getProgress(),
+        AppServices.instance.learning.getAchievements(),
+      ]);
+
+      final backendXp           = results[0] as int;
+      final backendProgress     = results[1] as List<LessonProgress>;
+      final backendAchievements = results[2] as List<AchievementItem>;
+
+      // Map backend lessonIds back to quizIds used by this screen.
+      const lessonToQuizId = {
+        'salary_basics':     'salary_quiz_done',
+        'savings_basics':    'savings_quiz_done',
+        'investment_basics': 'investment_quiz_done',
+        'budget_basics':     'budget_quiz_done',
+      };
+      final backendCompleted = backendProgress
+          .where((p) => p.completed)
+          .map((p) => lessonToQuizId[p.lessonId])
+          .whereType<String>()
+          .toList();
+
+      // Union: keep anything completed locally even if not yet synced.
+      final merged = {...localCompleted, ...backendCompleted}.toList();
+
+      if (mounted) {
+        setState(() {
+          _xp              = backendXp > localXp ? backendXp : localXp;
+          _completedQuizzes = merged;
+          _achievements    = backendAchievements;
+          _streak          = merged.length;
+        });
+      }
+    } catch (_) {
+      // Network unavailable — keep local state; achievements stay empty chips.
     }
   }
 
@@ -364,13 +406,6 @@ class _LearnScreenState extends State<LearnScreen> {
                   spacing: 8,
                   runSpacing: 8,
                   children: _achievements.map((a) {
-                    final label = a
-                        .replaceAll('_', ' ')
-                        .split(' ')
-                        .map((w) => w.isNotEmpty
-                            ? '${w[0].toUpperCase()}${w.substring(1)}'
-                            : w)
-                        .join(' ');
                     return Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
@@ -379,18 +414,11 @@ class _LearnScreenState extends State<LearnScreen> {
                         borderRadius: BorderRadius.circular(22),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('🏅', style: TextStyle(fontSize: 14)),
-                          const SizedBox(width: 6),
-                          Text(label,
-                              style: GoogleFonts.dmSans(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
+                      child: Text(a.title,
+                          style: GoogleFonts.dmSans(
+                              color: AppColors.textPrimary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600)),
                     );
                   }).toList(),
                 ),

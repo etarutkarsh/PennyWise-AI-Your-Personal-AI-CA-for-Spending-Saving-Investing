@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/services/app_services.dart';
 import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -76,10 +77,16 @@ class _QuizSectionState extends State<QuizSection> {
         _answered = false;
       });
     } else {
-      await UserPrefsStorage.addQuizScore(_score * 10);
+      final xp = _score * 10;
+      await UserPrefsStorage.addQuizScore(xp);
       await UserPrefsStorage.markQuizCompleted(widget.quizId);
       setState(() => _completed = true);
       widget.onCompleted(_score, widget.questions.length);
+      // Sync to backend in the background — local storage remains source of
+      // truth so any network failure is silent.
+      AppServices.instance.learning
+          .completeLesson(widget.quizId, xp)
+          .catchError((_) {});
     }
   }
 

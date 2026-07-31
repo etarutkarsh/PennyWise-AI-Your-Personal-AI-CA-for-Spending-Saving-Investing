@@ -2,6 +2,7 @@ package com.pennywise.service;
 
 import com.pennywise.dto.GoalCreateRequest;
 import com.pennywise.dto.GoalDto;
+import com.pennywise.dto.GoalUpdateRequest;
 import com.pennywise.entity.Goal;
 import com.pennywise.entity.User;
 import com.pennywise.exception.ResourceNotFoundException;
@@ -53,6 +54,31 @@ public class GoalService {
         User user = currentUserProvider.get();
         return goalRepository.findByUserIdOrderByDeadlineAsc(user.getId())
                 .stream().map(this::toDto).toList();
+    }
+
+    @Transactional
+    public GoalDto update(UUID goalId, GoalUpdateRequest request) {
+        User user = currentUserProvider.get();
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal not found"));
+        if (!goal.getUserId().equals(user.getId()))
+            throw new ResourceNotFoundException("Goal not found");
+        if (request.getName() != null) goal.setName(request.getName());
+        if (request.getTargetAmount() != null) goal.setTargetAmount(request.getTargetAmount());
+        if (request.getDeadline() != null) goal.setDeadline(request.getDeadline());
+        if (request.getPriority() != null) goal.setPriority(request.getPriority());
+        applyRecommendation(goal);
+        return toDto(goalRepository.save(goal));
+    }
+
+    @Transactional
+    public void delete(UUID goalId) {
+        User user = currentUserProvider.get();
+        Goal goal = goalRepository.findById(goalId)
+                .orElseThrow(() -> new ResourceNotFoundException("Goal not found"));
+        if (!goal.getUserId().equals(user.getId()))
+            throw new ResourceNotFoundException("Goal not found");
+        goalRepository.delete(goal);
     }
 
     public GoalDto updateSavedAmount(UUID goalId, BigDecimal newSavedAmount) {

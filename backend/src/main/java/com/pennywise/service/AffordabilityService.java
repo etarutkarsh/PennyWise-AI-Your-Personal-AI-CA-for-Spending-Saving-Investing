@@ -5,6 +5,7 @@ import com.pennywise.dto.AffordabilityRequest;
 import com.pennywise.dto.AffordabilityResponse;
 import com.pennywise.entity.Transaction;
 import com.pennywise.entity.User;
+import com.pennywise.repository.AssetRepository;
 import com.pennywise.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 
@@ -13,21 +14,26 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class AffordabilityService {
 
     private static final int TRAILING_MONTHS_FOR_AVERAGE = 3;
+    private static final Set<String> LIQUID_ASSET_TYPES = Set.of("cash", "savings", "fd", "liquid_fund");
 
     private final CurrentUserProvider currentUserProvider;
     private final TransactionRepository transactionRepository;
+    private final AssetRepository assetRepository;
     private final AffordabilityEngine engine;
 
     public AffordabilityService(CurrentUserProvider currentUserProvider,
                                  TransactionRepository transactionRepository,
+                                 AssetRepository assetRepository,
                                  AffordabilityEngine engine) {
         this.currentUserProvider = currentUserProvider;
         this.transactionRepository = transactionRepository;
+        this.assetRepository = assetRepository;
         this.engine = engine;
     }
 
@@ -48,10 +54,12 @@ public class AffordabilityService {
 
         BigDecimal monthlyIncome = user.getMonthlyIncome() != null ? user.getMonthlyIncome() : BigDecimal.ZERO;
 
-        // TODO(Phase 3/4): replace with the user's real emergency-fund balance from
-        // the InvestmentPortfolio/Assets tables once those are implemented. Approximated
-        // here as 6 months of expenses minus zero, i.e. treated as unfunded until then.
-        BigDecimal currentEmergencyFund = BigDecimal.ZERO;
+        // Sum liquid assets (cash, savings, FDs, liquid funds) as the emergency fund balance
+        BigDecimal currentEmergencyFund = assetRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .filter(a -> LIQUID_ASSET_TYPES.contains(a.getAssetType()))
+                .map(a -> a.getValue() != null ? a.getValue() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return engine.evaluate(request, monthlyIncome, avgMonthlyExpenses, currentEmergencyFund);
     }
