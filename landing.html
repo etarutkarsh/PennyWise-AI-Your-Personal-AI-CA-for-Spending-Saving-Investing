@@ -735,9 +735,480 @@
       *, .rv { animation: none !important; transition: none !important; }
       .rv { opacity: 1; transform: none; }
     }
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+       NAVBAR & HAMBURGER
+    ═══════════════════════════════════════════════════════════════════════════ */
+    .navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 900;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      height: 60px;
+      background: rgba(9,9,9,0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      transition: background 0.3s;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      text-decoration: none;
+    }
+    .nav-logo-ico {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--orange), var(--amber));
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .nav-logo-nm {
+      font-family: 'Playfair Display', serif;
+      font-size: 16px; font-weight: 700; color: var(--t1);
+    }
+    .nav-links {
+      display: flex; align-items: center; gap: 32px;
+      list-style: none;
+    }
+    .nav-links a {
+      font-size: 13px; font-weight: 500;
+      color: var(--t2); text-decoration: none;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--t1); }
+    .nav-cta {
+      padding: 8px 20px;
+      background: var(--orange);
+      color: #fff !important;
+      border-radius: 10px;
+      font-weight: 700 !important;
+      font-size: 13px !important;
+      transition: background 0.18s !important;
+    }
+    .nav-cta:hover { background: #e5611e !important; color: #fff !important; }
+
+    /* Hamburger button */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 5px;
+      width: 40px; height: 40px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      z-index: 1100;
+      position: relative;
+    }
+    .ham-line {
+      width: 22px; height: 2px;
+      background: var(--t1);
+      border-radius: 2px;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      transform-origin: center;
+    }
+    .hamburger.open .ham-line:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.open .ham-line:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .hamburger.open .ham-line:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    /* Mobile overlay menu */
+    .mobile-menu {
+      position: fixed;
+      inset: 0;
+      z-index: 800;
+      background: rgba(9,9,9,0.97);
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .mobile-menu.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .mob-link {
+      display: block;
+      font-family: 'Playfair Display', serif;
+      font-size: 32px; font-weight: 700; font-style: italic;
+      color: var(--t2);
+      text-decoration: none;
+      padding: 16px 40px;
+      transition: color 0.2s;
+      text-align: center;
+    }
+    .mob-link:hover { color: var(--t1); }
+    .mob-cta {
+      display: inline-block;
+      margin-top: 24px;
+      padding: 16px 48px;
+      background: var(--orange);
+      color: #fff;
+      border-radius: 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 18px; font-weight: 700;
+      text-decoration: none;
+      transition: background 0.18s, transform 0.1s;
+    }
+    .mob-cta:hover { background: #e5611e; transform: scale(1.02); }
+    .mob-divider {
+      width: 40px; height: 1px;
+      background: rgba(255,255,255,0.08);
+      margin: 8px auto;
+    }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .hamburger { display: flex; }
+    }
+    @media (min-width: 769px) {
+      .mobile-menu { display: none; }
+    }
+
+    /* Push hero down so navbar doesn't overlap */
+    #hero { padding-top: 60px; }
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+       §7  SIGN UP
+    ═══════════════════════════════════════════════════════════════════════════ */
+    #signup {
+      min-height: 100vh; position: relative;
+      display: flex; align-items: center; justify-content: center;
+      padding: 80px 24px;
+      overflow: hidden;
+    }
+    .su-glow {
+      position: absolute; top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 900px; height: 460px;
+      background: radial-gradient(ellipse at top,
+        rgba(99,102,241,0.08) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════════
+       §8  CONTACT
+    ═══════════════════════════════════════════════════════════════════════════ */
+    #contact {
+      position: relative;
+      padding: 120px 40px 100px;
+      overflow: hidden;
+    }
+    .ct-inner {
+      position: relative; z-index: 1;
+      max-width: 1000px; margin: 0 auto;
+    }
+    .ct-hero {
+      text-align: center; margin-bottom: 72px;
+    }
+    .ct-h2 {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-weight: 900;
+      font-size: clamp(32px, 4.5vw, 60px);
+      line-height: 1.1; color: var(--t1);
+      margin-bottom: 16px;
+    }
+    .ct-h2 em {
+      font-style: normal;
+      background: linear-gradient(100deg, var(--orange), var(--amber));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .ct-sub {
+      font-size: 17px; line-height: 1.7;
+      color: var(--t2); max-width: 500px;
+      margin: 0 auto 32px;
+    }
+    .ct-pills {
+      display: flex; flex-wrap: wrap;
+      gap: 10px; justify-content: center;
+    }
+    .ct-pill {
+      padding: 6px 16px;
+      border: 1px solid rgba(244,114,43,0.22);
+      border-radius: 100px;
+      font-size: 12px; font-weight: 600;
+      color: var(--orange);
+      background: rgba(244,114,43,0.05);
+      font-family: 'Space Mono', monospace;
+      letter-spacing: 1px;
+    }
+
+    /* Contact cards grid */
+    .ct-cards {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 14px;
+      margin-bottom: 64px;
+    }
+    .ct-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px 20px;
+      cursor: pointer;
+      transition: border-color 0.25s, background 0.25s, transform 0.15s;
+      text-decoration: none;
+      display: block;
+    }
+    .ct-card:hover {
+      border-color: rgba(244,114,43,0.3);
+      background: rgba(244,114,43,0.03);
+      transform: translateY(-2px);
+    }
+    .ct-card-ico {
+      width: 40px; height: 40px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+    .ct-card-lbl {
+      font-size: 13px; font-weight: 700;
+      color: var(--t1); margin-bottom: 4px;
+    }
+    .ct-card-email {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px; color: var(--t2);
+    }
+
+    /* Contact form */
+    .ct-form-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 44px 40px;
+      margin-bottom: 64px;
+    }
+    .ct-form-title {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-size: 26px; font-weight: 700;
+      color: var(--t1); margin-bottom: 6px;
+    }
+    .ct-form-sub {
+      font-size: 14px; color: var(--t2); margin-bottom: 32px;
+    }
+    .ct-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .ct-form-full { grid-column: 1 / -1; }
+    .ct-select {
+      width: 100%; padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 13px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px; color: var(--t1);
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      margin-bottom: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+      padding-right: 40px;
+    }
+    .ct-select:focus { border-color: var(--orange); }
+    .ct-select option { background: var(--surface); color: var(--t1); }
+    .ct-textarea {
+      width: 100%; padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 13px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px; color: var(--t1);
+      outline: none; resize: vertical;
+      min-height: 120px;
+      transition: border-color 0.2s;
+      margin-bottom: 0;
+    }
+    .ct-textarea:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(244,114,43,0.11); }
+    .ct-textarea::placeholder { color: var(--t3); }
+
+    /* Send button states */
+    .ct-send {
+      width: 100%; padding: 16px;
+      background: var(--orange); color: #fff;
+      border: none; border-radius: 13px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 16px; font-weight: 700;
+      cursor: pointer; margin-top: 8px;
+      transition: background 0.18s, transform 0.1s, box-shadow 0.18s;
+    }
+    .ct-send:hover { background: #e5611e; box-shadow: 0 8px 28px rgba(244,114,43,0.32); }
+    .ct-send:active { transform: scale(0.985); }
+    .ct-send.loading { opacity: 0.7; cursor: not-allowed; background: var(--surface); }
+    .ct-send.success { background: #00D084 !important; cursor: default; }
+
+    /* Success banner */
+    .ct-success {
+      text-align: center; padding: 32px;
+      animation: errIn 0.35s ease;
+    }
+    .ct-success-icon { font-size: 48px; margin-bottom: 16px; }
+    .ct-success-title {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-size: 24px; font-weight: 700;
+      color: var(--t1); margin-bottom: 8px;
+    }
+    .ct-success-body { font-size: 14px; color: var(--t2); line-height: 1.6; }
+
+    /* Socials */
+    .ct-socials {
+      display: flex; flex-wrap: wrap;
+      gap: 12px; justify-content: center;
+      margin-bottom: 64px;
+    }
+    .ct-social {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px; font-weight: 600;
+      color: var(--t2);
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color 0.2s, color 0.2s, background 0.2s;
+    }
+    .ct-social:hover {
+      border-color: rgba(244,114,43,0.3);
+      color: var(--t1);
+      background: rgba(244,114,43,0.03);
+    }
+
+    /* FAQ */
+    .ct-faq-title {
+      font-family: 'Playfair Display', serif;
+      font-style: italic; font-size: 28px; font-weight: 700;
+      color: var(--t1); margin-bottom: 24px; text-align: center;
+    }
+    .faq-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .faq-item.open { border-color: rgba(244,114,43,0.22); }
+    .faq-q {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      font-size: 15px; font-weight: 600;
+      color: var(--t1);
+      cursor: pointer;
+      user-select: none;
+      gap: 16px;
+    }
+    .faq-q:hover { color: var(--orange); }
+    .faq-icon {
+      font-size: 18px; flex-shrink: 0;
+      transition: transform 0.3s ease;
+      color: var(--t2);
+    }
+    .faq-item.open .faq-icon { transform: rotate(45deg); color: var(--orange); }
+    .faq-a {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.35s ease, padding 0.2s;
+      font-size: 14px; line-height: 1.7;
+      color: var(--t2);
+      padding: 0 24px;
+    }
+    .faq-item.open .faq-a {
+      max-height: 300px;
+      padding: 0 24px 20px;
+    }
+
+    /* Footer */
+    .ct-footer {
+      text-align: center;
+      padding: 48px 24px 32px;
+      border-top: 1px solid var(--border);
+      margin-top: 60px;
+    }
+    .ct-footer-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; font-weight: 700;
+      color: var(--t1); margin-bottom: 8px;
+    }
+    .ct-footer-logo span { color: var(--orange); font-style: italic; }
+    .ct-footer-links {
+      display: flex; flex-wrap: wrap;
+      gap: 20px; justify-content: center;
+      margin: 16px 0;
+    }
+    .ct-footer-links a {
+      font-size: 13px; color: var(--t2);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .ct-footer-links a:hover { color: var(--orange); }
+    .ct-footer-copy {
+      font-size: 12px; color: var(--t3);
+      margin-top: 8px;
+    }
+    .ct-footer-heart { color: #FF3B5C; }
+
+    @media (max-width: 768px) {
+      .ct-cards { grid-template-columns: 1fr 1fr; }
+      .ct-form-wrap { padding: 28px 20px; }
+      .ct-form-grid { grid-template-columns: 1fr; }
+      #contact { padding: 80px 20px 60px; }
+    }
+    @media (max-width: 480px) {
+      .ct-cards { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     NAVBAR
+══════════════════════════════════════════════════════════════ -->
+<nav class="navbar" role="navigation" aria-label="Main navigation">
+  <a href="#hero" class="nav-logo" aria-label="PennyWise AI home">
+    <div class="nav-logo-ico" aria-hidden="true">💰</div>
+    <div class="nav-logo-nm">PennyWise AI</div>
+  </a>
+
+  <ul class="nav-links" role="list">
+    <li><a href="#solution">Features</a></li>
+    <li><a href="#signin">Sign In</a></li>
+    <li><a href="#signup" class="nav-cta">Sign Up Free</a></li>
+  </ul>
+
+  <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+    <span class="ham-line"></span>
+    <span class="ham-line"></span>
+    <span class="ham-line"></span>
+  </button>
+</nav>
+
+<!-- Mobile overlay menu -->
+<div class="mobile-menu" id="mobile-menu" role="dialog" aria-label="Navigation menu" aria-modal="true">
+  <a href="#solution" class="mob-link" data-mob-close>Features</a>
+  <div class="mob-divider"></div>
+  <a href="#signin"   class="mob-link" data-mob-close>Sign In</a>
+  <div class="mob-divider"></div>
+  <a href="#contact"  class="mob-link" data-mob-close>Contact</a>
+  <a href="#signup"   class="mob-cta"  data-mob-close>Sign Up Free →</a>
+</div>
 
 <!-- Scroll progress -->
 <div id="progress-bar" style="width:0%" role="progressbar" aria-hidden="true"></div>
@@ -750,6 +1221,8 @@
   <div class="rail-dot"     data-s="reckoning"> <div class="rail-pip"></div><span class="rail-lbl">The reckoning</span></div>
   <div class="rail-dot"     data-s="solution">  <div class="rail-pip"></div><span class="rail-lbl">The way out</span></div>
   <div class="rail-dot"     data-s="signin">    <div class="rail-pip"></div><span class="rail-lbl">Sign in</span></div>
+  <div class="rail-dot"     data-s="signup">    <div class="rail-pip"></div><span class="rail-lbl">Sign up</span></div>
+  <div class="rail-dot"     data-s="contact">   <div class="rail-pip"></div><span class="rail-lbl">Contact</span></div>
 </nav>
 
 
@@ -989,6 +1462,230 @@
       </p>
       <div class="si-success-email" id="si-success-email"></div>
     </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     §7  SIGN UP
+══════════════════════════════════════════════════════════════ -->
+<section id="signup">
+  <div class="ledger"  aria-hidden="true"></div>
+  <div class="su-glow" aria-hidden="true"></div>
+
+  <div class="si-card rv">
+    <div class="si-logo">
+      <div class="si-logo-ico" aria-hidden="true">💰</div>
+      <div class="si-logo-nm">PennyWise AI</div>
+    </div>
+
+    <div id="su-form-wrap">
+      <h2 class="si-h3">Start for free.<br>Know every rupee.</h2>
+      <p class="si-tag">Create your account — takes 30 seconds.</p>
+
+      <form id="su-form" novalidate>
+        <label class="f-lbl" for="su-name">Full name</label>
+        <input class="f-in" type="text" id="su-name" placeholder="Rahul Sharma" autocomplete="name" required>
+
+        <label class="f-lbl" for="su-email">Email address</label>
+        <input class="f-in" type="email" id="su-email" placeholder="you@example.com" autocomplete="email" required>
+
+        <label class="f-lbl" for="su-pw">Password</label>
+        <input class="f-in" type="password" id="su-pw" placeholder="Min. 8 characters" autocomplete="new-password" required>
+
+        <button class="f-btn" id="su-btn" type="submit">Create my account</button>
+      </form>
+
+      <p class="si-switch">
+        Already have an account? <a href="#signin">Sign in →</a>
+      </p>
+    </div>
+
+    <div id="su-success-wrap" style="display:none" class="si-success">
+      <div class="si-success-icon">🎉</div>
+      <div class="si-success-title">Account created!</div>
+      <p class="si-success-body">
+        Welcome to PennyWise AI.<br>Open the app to complete setup.
+      </p>
+      <div class="si-success-email" id="su-success-email"></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     §8  CONTACT
+══════════════════════════════════════════════════════════════ -->
+<section id="contact">
+  <div class="ledger" aria-hidden="true"></div>
+
+  <div class="ct-inner">
+
+    <!-- Hero -->
+    <div class="ct-hero rv">
+      <div class="eyebrow" style="justify-content:center;margin-bottom:20px">Get In Touch</div>
+      <h2 class="ct-h2">We'd love to <em>hear from you.</em></h2>
+      <p class="ct-sub">Questions, feedback, bug reports, partnerships — we read every message and reply within 24 hours.</p>
+      <div class="ct-pills">
+        <span class="ct-pill">Questions</span>
+        <span class="ct-pill">Feedback</span>
+        <span class="ct-pill">Bug Reports</span>
+        <span class="ct-pill">Partnerships</span>
+        <span class="ct-pill">Investors</span>
+        <span class="ct-pill">Careers</span>
+        <span class="ct-pill">Media</span>
+      </div>
+    </div>
+
+    <!-- Contact cards -->
+    <div class="ct-cards rv" data-delay="0.08">
+      <a class="ct-card" href="mailto:support@pennywise.ai" title="Copy email">
+        <div class="ct-card-ico" style="background:rgba(244,114,43,0.1)">🛟</div>
+        <div class="ct-card-lbl">General Support</div>
+        <div class="ct-card-email">support@pennywise.ai</div>
+      </a>
+      <a class="ct-card" href="mailto:business@pennywise.ai">
+        <div class="ct-card-ico" style="background:rgba(99,102,241,0.1)">💼</div>
+        <div class="ct-card-lbl">Business</div>
+        <div class="ct-card-email">business@pennywise.ai</div>
+      </a>
+      <a class="ct-card" href="mailto:investors@pennywise.ai">
+        <div class="ct-card-ico" style="background:rgba(0,208,132,0.1)">📈</div>
+        <div class="ct-card-lbl">Investors</div>
+        <div class="ct-card-email">investors@pennywise.ai</div>
+      </a>
+      <a class="ct-card" href="mailto:careers@pennywise.ai">
+        <div class="ct-card-ico" style="background:rgba(255,184,48,0.1)">🚀</div>
+        <div class="ct-card-lbl">Careers</div>
+        <div class="ct-card-email">careers@pennywise.ai</div>
+      </a>
+      <a class="ct-card" href="mailto:press@pennywise.ai">
+        <div class="ct-card-ico" style="background:rgba(59,130,246,0.1)">📰</div>
+        <div class="ct-card-lbl">Press & Media</div>
+        <div class="ct-card-email">press@pennywise.ai</div>
+      </a>
+      <a class="ct-card" href="mailto:privacy@pennywise.ai">
+        <div class="ct-card-ico" style="background:rgba(239,68,68,0.1)">🔒</div>
+        <div class="ct-card-lbl">Privacy</div>
+        <div class="ct-card-email">privacy@pennywise.ai</div>
+      </a>
+    </div>
+
+    <!-- Contact form -->
+    <div class="ct-form-wrap rv" data-delay="0.12">
+      <div id="ct-form-inner">
+        <div class="ct-form-title">Send us a message</div>
+        <div class="ct-form-sub">We'll get back to you within 24 hours on business days.</div>
+        <form id="ct-form" novalidate>
+          <div class="ct-form-grid">
+            <div>
+              <label class="f-lbl" for="ct-name">Your name</label>
+              <input class="f-in" type="text" id="ct-name" placeholder="Rahul Sharma" required style="margin-bottom:0">
+            </div>
+            <div>
+              <label class="f-lbl" for="ct-email">Email address</label>
+              <input class="f-in" type="email" id="ct-email" placeholder="you@example.com" required style="margin-bottom:0">
+            </div>
+            <div class="ct-form-full">
+              <label class="f-lbl" for="ct-cat">Category</label>
+              <select class="ct-select" id="ct-cat" required>
+                <option value="" disabled selected>Select a category…</option>
+                <option>General Question</option>
+                <option>Technical Issue</option>
+                <option>Bug Report</option>
+                <option>Feature Request</option>
+                <option>Partnership</option>
+                <option>Investor Inquiry</option>
+                <option>Media</option>
+                <option>Career</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="ct-form-full">
+              <label class="f-lbl" for="ct-subject">Subject</label>
+              <input class="f-in" type="text" id="ct-subject" placeholder="What's this about?" required style="margin-bottom:0">
+            </div>
+            <div class="ct-form-full">
+              <label class="f-lbl" for="ct-msg">Message</label>
+              <textarea class="ct-textarea" id="ct-msg" placeholder="Tell us more…" required></textarea>
+            </div>
+          </div>
+          <button class="ct-send" id="ct-btn" type="submit">Send Message →</button>
+        </form>
+      </div>
+      <div id="ct-success" style="display:none" class="ct-success">
+        <div class="ct-success-icon">✅</div>
+        <div class="ct-success-title">Message sent!</div>
+        <p class="ct-success-body">Thanks for reaching out. We'll reply to your email within 24 hours on business days.</p>
+      </div>
+    </div>
+
+    <!-- Socials -->
+    <div class="ct-socials rv" data-delay="0.18">
+      <a class="ct-social" href="https://linkedin.com/company/pennywise-ai" target="_blank" rel="noopener">
+        <span>💼</span> LinkedIn
+      </a>
+      <a class="ct-social" href="https://twitter.com/pennywiseai" target="_blank" rel="noopener">
+        <span>✖</span> Twitter / X
+      </a>
+      <a class="ct-social" href="https://github.com/etarutkarsh" target="_blank" rel="noopener">
+        <span>🐙</span> GitHub
+      </a>
+      <a class="ct-social" href="https://instagram.com/pennywiseai" target="_blank" rel="noopener">
+        <span>📸</span> Instagram
+      </a>
+      <a class="ct-social" href="https://youtube.com/@pennywiseai" target="_blank" rel="noopener">
+        <span>▶</span> YouTube
+      </a>
+    </div>
+
+    <!-- FAQ -->
+    <div class="rv" data-delay="0.22">
+      <div class="ct-faq-title">Frequently Asked Questions</div>
+      <div id="faq-list">
+        <div class="faq-item">
+          <div class="faq-q">How secure is my data? <span class="faq-icon">+</span></div>
+          <div class="faq-a">All data is encrypted using AES-256-GCM. Your financial information never leaves your control and is never sold to third parties. We follow RBI and DPDP Act 2023 guidelines.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Can I delete my account? <span class="faq-icon">+</span></div>
+          <div class="faq-a">Yes. You can delete your account and all associated data at any time from Settings → Privacy. We process deletion requests within 30 days in line with DPDP Act requirements.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">How do AI recommendations work? <span class="faq-icon">+</span></div>
+          <div class="faq-a">PennyWise AI analyses your spending patterns, goals, and financial health score to generate personalised insights. AI runs on our secure backend — your raw data is never sent to third-party AI services without your explicit consent.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">Is PennyWise free? <span class="faq-icon">+</span></div>
+          <div class="faq-a">Core features — budgeting, transactions, goals, and basic AI insights — are free. Premium features including AI Tax Filing, Account Aggregator sync, and advanced AI will be available via subscription.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">When will tax filing be available? <span class="faq-icon">+</span></div>
+          <div class="faq-a">ITD ERI Type-2 integration is on our roadmap for 2027. We'll notify you in-app as soon as it's available. Sign up now to be first in line.</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q">How do bank integrations work? <span class="faq-icon">+</span></div>
+          <div class="faq-a">We use RBI-regulated Account Aggregator technology (coming soon). You authorise data sharing via OTP — we never ask for or store banking passwords or UPI PINs.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="ct-footer">
+      <div class="ct-footer-logo">Penny<span>Wise</span> AI</div>
+      <div class="ct-footer-links">
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Open Source</a>
+        <a href="#contact">Contact</a>
+      </div>
+      <div class="ct-footer-copy">
+        Made with <span class="ct-footer-heart">♥</span> in India &nbsp;·&nbsp;
+        v0.1.0 (Build 1) &nbsp;·&nbsp;
+        © 2026 PennyWise AI. All rights reserved.
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -1248,6 +1945,161 @@
 
   // Clear error on any input change
   [siEmail, siPw].forEach(el => el.addEventListener('input', clearErr));
+
+  /* ── 9. Hamburger menu ───────────────────────────────────────────────────── */
+  const hamburger  = document.getElementById('hamburger');
+  const mobileMenu = document.getElementById('mobile-menu');
+
+  function openMenu() {
+    hamburger.classList.add('open');
+    hamburger.setAttribute('aria-expanded', 'true');
+    mobileMenu.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeMenu() {
+    hamburger.classList.remove('open');
+    hamburger.setAttribute('aria-expanded', 'false');
+    mobileMenu.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  hamburger.addEventListener('click', () => {
+    hamburger.classList.contains('open') ? closeMenu() : openMenu();
+  });
+
+  // Close on overlay link click
+  document.querySelectorAll('[data-mob-close]').forEach(el => {
+    el.addEventListener('click', closeMenu);
+  });
+
+  // Close on ESC key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeMenu();
+  });
+
+  /* ── 10. Sign-up form ────────────────────────────────────────────────────── */
+  const suForm    = document.getElementById('su-form');
+  const suBtn     = document.getElementById('su-btn');
+  const suFormWrap = document.getElementById('su-form-wrap');
+  const suSuccess  = document.getElementById('su-success-wrap');
+  const suSuccessEmail = document.getElementById('su-success-email');
+  let suErrEl = null;
+
+  function showSuErr(msg) {
+    if (suErrEl) suErrEl.remove();
+    suErrEl = document.createElement('div');
+    suErrEl.className = 'f-err';
+    suErrEl.innerHTML = `<span>⚠</span><span>${msg}</span>`;
+    suBtn.insertAdjacentElement('afterend', suErrEl);
+  }
+
+  function setSuLoading(on) {
+    suBtn.disabled = on;
+    suBtn.classList.toggle('loading', on);
+    suBtn.textContent = on ? 'Creating account…' : 'Create my account';
+  }
+
+  suForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (suErrEl) { suErrEl.remove(); suErrEl = null; }
+
+    const name     = document.getElementById('su-name').value.trim();
+    const email    = document.getElementById('su-email').value.trim();
+    const password = document.getElementById('su-pw').value;
+
+    if (!name || !email || !password) {
+      showSuErr('Please fill in all fields.'); return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showSuErr('Please enter a valid email address.'); return;
+    }
+    if (password.length < 8) {
+      showSuErr('Password must be at least 8 characters.'); return;
+    }
+
+    setSuLoading(true);
+    try {
+      const res = await fetch(`${API}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      });
+      if (!res.ok) {
+        let msg = 'Something went wrong. Try again.';
+        try {
+          const body = await res.json();
+          if (body.message) msg = body.message;
+          else if (res.status === 409) msg = 'An account with that email already exists.';
+        } catch (_) {}
+        throw new Error(msg);
+      }
+      suFormWrap.style.display = 'none';
+      suSuccess.style.display = 'block';
+      suSuccessEmail.textContent = email;
+    } catch (err) {
+      setSuLoading(false);
+      showSuErr(err.message);
+    }
+  });
+
+  /* ── 11. Contact form ────────────────────────────────────────────────────── */
+  const ctForm = document.getElementById('ct-form');
+  const ctBtn  = document.getElementById('ct-btn');
+  let ctErrEl  = null;
+
+  function showCtErr(msg) {
+    if (ctErrEl) ctErrEl.remove();
+    ctErrEl = document.createElement('div');
+    ctErrEl.className = 'f-err';
+    ctErrEl.innerHTML = `<span>⚠</span><span>${msg}</span>`;
+    ctBtn.insertAdjacentElement('afterend', ctErrEl);
+  }
+
+  ctForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (ctErrEl) { ctErrEl.remove(); ctErrEl = null; }
+
+    const name    = document.getElementById('ct-name').value.trim();
+    const email   = document.getElementById('ct-email').value.trim();
+    const cat     = document.getElementById('ct-cat').value;
+    const subject = document.getElementById('ct-subject').value.trim();
+    const msg     = document.getElementById('ct-msg').value.trim();
+
+    if (!name || !email || !cat || !subject || !msg) {
+      showCtErr('Please fill in all fields.'); return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showCtErr('Please enter a valid email address.'); return;
+    }
+    if (msg.length < 10) {
+      showCtErr('Message must be at least 10 characters.'); return;
+    }
+
+    ctBtn.disabled = true;
+    ctBtn.classList.add('loading');
+    ctBtn.textContent = 'Sending…';
+
+    // Simulate send (replace with real endpoint when available)
+    await new Promise(r => setTimeout(r, 1500));
+
+    document.getElementById('ct-form-inner').style.display = 'none';
+    document.getElementById('ct-success').style.display = 'block';
+  });
+
+  /* ── 12. FAQ accordion ───────────────────────────────────────────────────── */
+  document.querySelectorAll('.faq-q').forEach(q => {
+    q.addEventListener('click', () => {
+      const item = q.parentElement;
+      const isOpen = item.classList.contains('open');
+      // Close all
+      document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+      // Toggle clicked
+      if (!isOpen) item.classList.add('open');
+    });
+  });
+
+  /* ── 13. Update rail to include signup + contact ─────────────────────────── */
+  // Rail already uses section[id] — no changes needed, sections auto-detected.
 
 }());
 </script>
