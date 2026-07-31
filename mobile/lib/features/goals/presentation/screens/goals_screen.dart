@@ -139,17 +139,37 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () async {
+                    if (nameCtrl.text.trim().isEmpty) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Please enter a goal name')),
+                      );
+                      return;
+                    }
+                    final target = double.tryParse(targetCtrl.text.trim());
+                    if (target == null || target <= 0) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Enter a valid target amount')),
+                      );
+                      return;
+                    }
                     try {
                       await AppServices.instance.goals.create(
-                        name: nameCtrl.text,
+                        name: nameCtrl.text.trim(),
                         goalType: selectedType,
-                        targetAmount: double.tryParse(targetCtrl.text) ?? 0,
-                        deadline: DateTime.tryParse(deadlineCtrl.text) ??
+                        targetAmount: target,
+                        currentSaved: double.tryParse(savedCtrl.text.trim()) ?? 0,
+                        deadline: DateTime.tryParse(deadlineCtrl.text.trim()) ??
                             DateTime.now().add(const Duration(days: 365)),
                       );
                       if (ctx.mounted) Navigator.pop(ctx);
                       _load();
-                    } catch (_) {}
+                    } catch (e) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text(friendlyError(e))),
+                        );
+                      }
+                    }
                   },
                   child: Text('Start Quest',
                       style: GoogleFonts.dmSans(fontWeight: FontWeight.w700)),
@@ -452,7 +472,7 @@ class _GoalQuestCardState extends State<_GoalQuestCard> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Icon(Icons.savings_outlined,
+                  const Icon(Icons.savings_outlined,
                       color: AppColors.textMuted, size: 12),
                   const SizedBox(width: 5),
                   Text(
