@@ -40,13 +40,49 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   void _openAddSheet() async {
+    final usedCategoryIds = _budgets.map((b) => b.categoryId).toSet();
     final added = await showModalBottomSheet<BudgetModel>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => const _AddBudgetSheet(),
+      builder: (_) => _AddBudgetSheet(usedCategoryIds: usedCategoryIds),
     );
     if (added != null) {
       setState(() => _budgets.add(added));
+    }
+  }
+
+  Future<void> _deleteBudget(BudgetModel budget) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove budget?'),
+        content: Text('${budget.categoryIcon} ${budget.categoryName} budget will be removed.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    try {
+      await AppServices.instance.budgets.delete(budget.id);
+      setState(() => _budgets.removeWhere((b) => b.id == budget.id));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(friendlyError(e)),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
     }
   }
 
@@ -137,10 +173,27 @@ class _BudgetScreenState extends State<BudgetScreen> {
       children: [
         _SummaryHeader(budgets: _budgets, overCount: overCount),
         const SizedBox(height: 16),
-        ...ListTile.divideTiles(
-          context: context,
-          tiles: _budgets.map((b) => _BudgetCard(budget: b)),
-        ),
+        ..._budgets.map((b) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Dismissible(
+            key: ValueKey(b.id),
+            direction: DismissDirection.endToStart,
+            background: Container(
+              alignment: Alignment.centerRight,
+              padding: const EdgeInsets.only(right: 20),
+              decoration: BoxDecoration(
+                color: AppColors.danger,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.delete_rounded, color: Colors.white),
+            ),
+            confirmDismiss: (_) async {
+              await _deleteBudget(b);
+              return false;
+            },
+            child: _BudgetCard(budget: b),
+          ),
+        )),
       ],
     );
   }
@@ -309,7 +362,9 @@ class _BudgetCard extends StatelessWidget {
 // ─── Add budget bottom sheet ──────────────────────────────────────────────────
 
 class _AddBudgetSheet extends StatefulWidget {
-  const _AddBudgetSheet();
+  const _AddBudgetSheet({required this.usedCategoryIds});
+
+  final Set<String> usedCategoryIds;
 
   @override
   State<_AddBudgetSheet> createState() => _AddBudgetSheetState();
@@ -332,8 +387,9 @@ class _AddBudgetSheetState extends State<_AddBudgetSheet> {
     try {
       final all = await AppServices.instance.categories.getAll();
       if (mounted) {
-        setState(() =>
-            _categories = all.where((c) => c.type == 'EXPENSE').toList());
+        setState(() => _categories = all
+            .where((c) => c.type == 'EXPENSE' && !widget.usedCategoryIds.contains(c.id))
+            .toList());
       }
     } catch (_) {}
   }
@@ -404,7 +460,7 @@ class _AddBudgetSheetState extends State<_AddBudgetSheet> {
               const Center(child: CircularProgressIndicator())
             else
               DropdownButtonFormField<String>(
-                value: _selectedCategoryId,
+                initialValue: _selectedCategoryId,
                 decoration: const InputDecoration(
                   labelText: 'Category',
                   prefixIcon: Icon(Icons.category_outlined),

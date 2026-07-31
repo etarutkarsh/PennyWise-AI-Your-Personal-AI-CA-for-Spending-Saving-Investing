@@ -1,6 +1,7 @@
 class BudgetModel {
   const BudgetModel({
     required this.id,
+    required this.categoryId,
     required this.categoryName,
     required this.categoryIcon,
     required this.monthlyLimit,
@@ -11,6 +12,7 @@ class BudgetModel {
   });
 
   final String id;
+  final String categoryId;
   final String categoryName;
   final String categoryIcon;
   final double monthlyLimit;
@@ -24,6 +26,7 @@ class BudgetModel {
 
   factory BudgetModel.fromJson(Map<String, dynamic> json) => BudgetModel(
         id: json['id'] as String,
+        categoryId: json['categoryId'] as String? ?? '',
         categoryName: json['categoryName'] as String? ?? 'Unknown',
         categoryIcon: json['categoryIcon'] as String? ?? '💰',
         monthlyLimit: (json['monthlyLimit'] as num).toDouble(),

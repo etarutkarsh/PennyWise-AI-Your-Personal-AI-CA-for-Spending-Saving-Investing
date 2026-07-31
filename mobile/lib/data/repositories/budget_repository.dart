@@ -23,4 +23,8 @@ class BudgetRepository {
     });
     return BudgetModel.fromJson(res.data as Map<String, dynamic>);
   }
+
+  Future<void> delete(String id) async {
+    await _client.dio.delete('/budgets/$id');
+  }
 }

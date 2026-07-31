@@ -77,6 +77,17 @@ public class BudgetService {
                 }).toList();
     }
 
+    @Transactional
+    public void delete(java.util.UUID id) {
+        User user = currentUserProvider.get();
+        Budget budget = budgetRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Budget not found"));
+        if (!budget.getUserId().equals(user.getId())) {
+            throw new ResourceNotFoundException("Budget not found");
+        }
+        budgetRepository.delete(budget);
+    }
+
     private BudgetDto toDto(Budget b) {
         BigDecimal remaining = b.getMonthlyLimit().subtract(b.getSpentSoFar());
         double percentUsed = b.getMonthlyLimit().compareTo(BigDecimal.ZERO) > 0
