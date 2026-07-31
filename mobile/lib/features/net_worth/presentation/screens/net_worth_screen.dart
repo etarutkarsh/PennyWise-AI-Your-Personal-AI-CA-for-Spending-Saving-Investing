@@ -240,9 +240,9 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
 
                         // Assets list
                         if (_summary!.assets.isEmpty)
-                          SliverToBoxAdapter(
+                          const SliverToBoxAdapter(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              padding: EdgeInsets.symmetric(horizontal: 20),
                               child: _EmptyHint(
                                 message: 'No assets yet. Tap + to add property, gold, or investments.',
                                 color: AppColors.success,
@@ -314,9 +314,9 @@ class _NetWorthScreenState extends State<NetWorthScreen> {
 
                         // Liabilities list
                         if (_summary!.liabilities.isEmpty)
-                          SliverToBoxAdapter(
+                          const SliverToBoxAdapter(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              padding: EdgeInsets.symmetric(horizontal: 20),
                               child: _EmptyHint(
                                 message: 'No liabilities. Tap + to add loans or credit card dues.',
                                 color: AppColors.danger,
@@ -451,10 +451,10 @@ class _SummaryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
-            const Color(0xFF16213E),
-            const Color(0xFF0F0F0F),
+            Color(0xFF16213E),
+            Color(0xFF0F0F0F),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

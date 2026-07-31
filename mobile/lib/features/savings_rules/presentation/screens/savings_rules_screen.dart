@@ -261,7 +261,7 @@ class _RuleCard extends StatelessWidget {
                 Switch(
                   value: rule.active,
                   onChanged: (_) => onToggle(),
-                  activeColor: AppColors.primary,
+                  activeThumbColor: AppColors.primary,
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded,
@@ -565,7 +565,7 @@ class _AddRuleSheetState extends State<_AddRuleSheet> {
           children: [
             if (_categories.isNotEmpty)
               DropdownButtonFormField<String>(
-                value: _selectedCategoryId,
+                initialValue: _selectedCategoryId,
                 decoration: const InputDecoration(
                   labelText: 'Category',
                   prefixIcon: Icon(Icons.category_outlined),

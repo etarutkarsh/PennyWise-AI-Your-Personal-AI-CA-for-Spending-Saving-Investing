@@ -36,14 +36,14 @@ class SummaryCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(7),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.12),
+                      color: color.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: Icon(icon, color: color, size: 18),
                   ),
                   const Spacer(),
                   if (onTap != null)
-                    Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textSecondary.withOpacity(0.6)),
+                    Icon(Icons.chevron_right_rounded, size: 16, color: AppColors.textSecondary.withValues(alpha: 0.6)),
                 ],
               ),
               const SizedBox(height: 8),

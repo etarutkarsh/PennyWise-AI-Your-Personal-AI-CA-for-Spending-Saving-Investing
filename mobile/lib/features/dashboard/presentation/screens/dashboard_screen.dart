@@ -187,7 +187,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       const SizedBox(height: 32),
 
                       // Missions
-                      _SectionHeader(
+                      const _SectionHeader(
                         title: 'Your 4 Missions',
                         subtitle: 'Complete all to earn 350 XP today',
                         badge: '350 XP',
@@ -241,7 +241,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       const SizedBox(height: 32),
 
                       // Quick Actions
-                      _SectionHeader(
+                      const _SectionHeader(
                         title: 'Explore',
                         subtitle: 'Tools to accelerate your financial growth',
                       ),

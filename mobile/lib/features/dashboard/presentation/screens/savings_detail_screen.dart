@@ -32,7 +32,7 @@ class SavingsDetailScreen extends StatelessWidget {
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [AppColors.success, AppColors.success.withOpacity(0.75)],
+                    colors: [AppColors.success, AppColors.success.withValues(alpha: 0.75)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -388,7 +388,7 @@ class _Rule72Row extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.1),
+            color: AppColors.success.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(

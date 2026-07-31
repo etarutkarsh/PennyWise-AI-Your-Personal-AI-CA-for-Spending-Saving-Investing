@@ -137,15 +137,15 @@ class BudgetDetailScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
+                    gradient: const LinearGradient(
                       colors: [
-                        AppColors.accent.withOpacity(0.1),
-                        AppColors.primary.withOpacity(0.06)
+                        Color(0x1AF2A104), // accent 0.1 opacity
+                        Color(0x0F0F9D58), // primary 0.06 opacity
                       ],
                     ),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color: AppColors.accent.withOpacity(0.3)),
+                        color: AppColors.accent.withValues(alpha: 0.3)),
                   ),
                   child: const Column(
                     children: [
@@ -301,31 +301,31 @@ class _ZeroBasedExplainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Give every rupee a job.',
           style: TextStyle(
               fontWeight: FontWeight.w700,
               fontSize: 15,
               color: AppColors.textPrimary),
         ),
-        const SizedBox(height: 8),
-        const Text(
+        SizedBox(height: 8),
+        Text(
           'At the start of each month, allocate ALL your salary to categories '
           'until zero is left over. You\'re not restricting yourself — you\'re making '
           'intentional choices about where your money goes.',
           style: TextStyle(fontSize: 13, height: 1.5, color: AppColors.textSecondary),
         ),
-        const SizedBox(height: 14),
-        const _CategoryRow(emoji: '🏠', label: 'Needs (Rent, Food, Bills)', pct: '50%', color: AppColors.blue),
-        const SizedBox(height: 6),
-        const _CategoryRow(emoji: '🎉', label: 'Wants (Fun, Shopping)', pct: '30%', color: AppColors.accent),
-        const SizedBox(height: 6),
-        const _CategoryRow(emoji: '💰', label: 'Savings & Investments', pct: '20%', color: AppColors.success),
-        const Divider(height: 16),
-        const Row(
+        SizedBox(height: 14),
+        _CategoryRow(emoji: '🏠', label: 'Needs (Rent, Food, Bills)', pct: '50%', color: AppColors.blue),
+        SizedBox(height: 6),
+        _CategoryRow(emoji: '🎉', label: 'Wants (Fun, Shopping)', pct: '30%', color: AppColors.accent),
+        SizedBox(height: 6),
+        _CategoryRow(emoji: '💰', label: 'Savings & Investments', pct: '20%', color: AppColors.success),
+        Divider(height: 16),
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text('Total Allocated',

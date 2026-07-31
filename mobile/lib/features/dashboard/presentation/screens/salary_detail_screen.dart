@@ -67,8 +67,8 @@ class SalaryDetailScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                DetailInfoCard(
-                  child: const Text(
+                const DetailInfoCard(
+                  child: Text(
                     'Your take-home salary is the base of your entire financial plan. '
                     'Every rupee you earn should have a purpose — this is where it all starts.',
                     style: TextStyle(fontSize: 14, height: 1.5, color: AppColors.textSecondary),

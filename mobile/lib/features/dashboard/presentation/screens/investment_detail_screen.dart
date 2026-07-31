@@ -295,7 +295,7 @@ class _PyramidCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
       ),
-      child: Column(
+      child: const Column(
         children: [
           _PyramidLevel(
             label: 'High Risk / High Return',
@@ -304,7 +304,7 @@ class _PyramidCard extends StatelessWidget {
             color: AppColors.danger,
             widthFactor: 0.4,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _PyramidLevel(
             label: 'Medium Risk / Medium Return',
             examples: 'Equity MFs, Index Funds',
@@ -312,7 +312,7 @@ class _PyramidCard extends StatelessWidget {
             color: AppColors.accent,
             widthFactor: 0.65,
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _PyramidLevel(
             label: 'Low Risk / Stable Base',
             examples: 'FD, Debt Funds, Gold, PPF',
@@ -320,8 +320,8 @@ class _PyramidCard extends StatelessWidget {
             color: AppColors.success,
             widthFactor: 1.0,
           ),
-          const SizedBox(height: 10),
-          const Text(
+          SizedBox(height: 10),
+          Text(
             '↑ Build from the bottom up: secure base first, then grow upward',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -359,9 +359,9 @@ class _PyramidLevel extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
+            color: color.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Column(
             children: [
@@ -496,7 +496,7 @@ class _SIPRow extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text('$years yrs',

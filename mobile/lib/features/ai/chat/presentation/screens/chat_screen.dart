@@ -82,7 +82,7 @@ class _ChatScreenState extends State<ChatScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _messages.add(_Message(
+          _messages.add(const _Message(
               text: 'Could not reach AI. Check your connection and try again.',
               isUser: false,
               isError: true));
@@ -157,9 +157,9 @@ class _ChatScreenState extends State<ChatScreen> {
             // Input bar
             Container(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.surface,
-                border: const Border(
+                border: Border(
                     top: BorderSide(color: AppColors.border)),
               ),
               child: Row(
@@ -297,12 +297,12 @@ class _TypingBubble extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (int i = 0; i < 3; i++) ...[
-              Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                      color: AppColors.textSecondary,
-                      shape: BoxShape.circle)),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                    color: AppColors.textSecondary,
+                    shape: BoxShape.circle),
+                child: SizedBox(width: 6, height: 6),
+              ),
               if (i < 2) const SizedBox(width: 4),
             ],
           ],

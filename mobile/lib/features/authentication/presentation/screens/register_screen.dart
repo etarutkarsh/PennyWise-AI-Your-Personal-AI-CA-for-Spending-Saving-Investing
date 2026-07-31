@@ -109,7 +109,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
-                  value: _userType,
+                  initialValue: _userType,
                   decoration: const InputDecoration(
                     labelText: 'I am a...',
                     prefixIcon: Icon(Icons.badge_outlined),

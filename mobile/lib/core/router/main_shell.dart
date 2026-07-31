@@ -22,9 +22,9 @@ class MainShell extends StatelessWidget {
     return Scaffold(
       body: navigationShell,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AppColors.surface,
-          border: const Border(
+          border: Border(
             top: BorderSide(color: AppColors.border, width: 1),
           ),
         ),

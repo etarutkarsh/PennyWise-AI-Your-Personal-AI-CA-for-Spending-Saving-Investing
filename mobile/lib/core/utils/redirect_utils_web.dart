@@ -1,9 +1,3 @@
-import 'dart:html' as html;
-
-/// Clears the web session flag and navigates to the landing page.
-/// Returns true so callers know navigation has been handled.
-bool redirectToLanding() {
-  html.window.localStorage.remove('pw_session');
-  html.window.location.replace('./landing.html');
-  return true;
-}
+// Stub for mobile. The web build uses a separate entrypoint that handles
+// landing-page redirects via platform-specific code.
+bool redirectToLanding() => false;

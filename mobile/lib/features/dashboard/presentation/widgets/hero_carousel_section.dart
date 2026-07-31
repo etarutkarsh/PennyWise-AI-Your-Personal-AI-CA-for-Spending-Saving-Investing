@@ -364,7 +364,7 @@ class _HeroSlideState extends State<_HeroSlide>
                 top: 0,
                 bottom: 0,
                 width: widget.height * 0.55,
-                child: CustomPaint(
+                child: const CustomPaint(
                   painter: _ChartDecoPainter(),
                 ),
               ),
