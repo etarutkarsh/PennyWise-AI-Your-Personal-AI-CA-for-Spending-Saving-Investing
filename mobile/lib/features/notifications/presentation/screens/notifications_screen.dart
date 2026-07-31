@@ -154,7 +154,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
 
       if (health.budgetScore == 0) {
-        alerts.add(_Alert(
+        alerts.add(const _Alert(
           title: 'No budgets set',
           body: 'Set monthly spending limits per category to stay on track and improve your health score.',
           icon: '📋',
@@ -162,7 +162,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ));
       }
       if (health.goalScore <= 3) {
-        alerts.add(_Alert(
+        alerts.add(const _Alert(
           title: 'Start saving for a goal',
           body: 'Users with active goals save 40% more on average. Set your first goal in the Goals tab.',
           icon: '🚀',
@@ -176,7 +176,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final totalSpent = budgets.fold(0.0, (s, b) => s + b.spent);
       final savingsRate = (salary - totalSpent) / salary;
       if (savingsRate < 0.1 && savingsRate >= 0) {
-        alerts.add(_Alert(
+        alerts.add(const _Alert(
           title: 'Low savings rate this month',
           body: 'You are saving less than 10% of your income. '
               'Try reducing discretionary spending to hit the 20% target.',
