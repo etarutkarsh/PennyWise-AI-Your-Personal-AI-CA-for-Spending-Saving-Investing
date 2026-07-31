@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/services/app_services.dart';
+import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -32,12 +33,19 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await AppServices.instance.auth
           .login(_emailCtrl.text.trim(), _passwordCtrl.text);
+      // Sync salary from backend so dashboard is correct on any device
+      try {
+        final user = await AppServices.instance.user.getMe();
+        if ((user.monthlyIncome ?? 0) > 0) {
+          await UserPrefsStorage.saveSalary(user.monthlyIncome!);
+        }
+      } catch (_) {}
       if (mounted) context.go('/dashboard');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString(),
+            content: Text(friendlyError(e),
                 style: GoogleFonts.dmSans(color: Colors.white)),
             backgroundColor: AppColors.danger,
             behavior: SnackBarBehavior.floating,

@@ -57,13 +57,17 @@ class _DashboardScreenState extends State<DashboardScreen>
     if (!mounted) return;
     setState(() => _salary = salary);
 
-    if (salary > 0) {
-      AppServices.instance.user.getMe().then((user) {
-        if ((user.monthlyIncome ?? 0) <= 0) {
-          AppServices.instance.user.updateMe(monthlyIncome: salary);
-        }
-      }).catchError((_) {});
-    }
+    AppServices.instance.user.getMe().then((user) {
+      final backendIncome = user.monthlyIncome ?? 0;
+      if (backendIncome > 0 && backendIncome != salary) {
+        // Backend is authoritative — sync to local and update UI
+        UserPrefsStorage.saveSalary(backendIncome);
+        if (mounted) setState(() => _salary = backendIncome);
+      } else if (backendIncome <= 0 && salary > 0) {
+        // Backend has no income yet — push local value up
+        AppServices.instance.user.updateMe(monthlyIncome: salary);
+      }
+    }).catchError((_) {});
 
     if (!forceRefresh && !DashboardCache.isStale) {
       if (mounted) {
