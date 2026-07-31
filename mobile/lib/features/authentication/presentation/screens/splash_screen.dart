@@ -5,7 +5,10 @@ import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+  const SplashScreen({super.key, this.accessToken, this.refreshToken});
+
+  final String? accessToken;
+  final String? refreshToken;
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -19,10 +22,20 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkSession() async {
-    // Minimum splash display time
     await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 
+    // If the landing page passed tokens via URL params, store them first.
+    final at = widget.accessToken;
+    final rt = widget.refreshToken;
+    if (at != null && at.isNotEmpty && rt != null && rt.isNotEmpty) {
+      await AppServices.instance.tokenStorage.saveTokens(
+        accessToken: at,
+        refreshToken: rt,
+      );
+    }
+
+    if (!mounted) return;
     final hasSession = await AppServices.instance.auth.hasSession();
     if (!mounted) return;
     context.go(hasSession ? '/dashboard' : '/login');

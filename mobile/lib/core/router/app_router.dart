@@ -63,7 +63,11 @@ final GoRouter appRouter = GoRouter(
   redirect: _authRedirect,
   routes: [
     // ── Auth & onboarding ────────────────────────────────────────────────────
-    GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
+    GoRoute(path: '/splash', builder: (context, state) {
+      final at = state.uri.queryParameters['at'];
+      final rt = state.uri.queryParameters['rt'];
+      return SplashScreen(accessToken: at, refreshToken: rt);
+    }),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
     GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
     GoRoute(
