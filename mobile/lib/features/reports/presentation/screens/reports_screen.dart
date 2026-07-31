@@ -20,6 +20,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   List<TransactionEntity> _txs = [];
   List<String> _insights = [];
   bool _insightsLoading = false;
+  List<String> _predictions = [];
+  bool _predictionsLoading = false;
   double _salary = 0;
 
   @override
@@ -33,6 +35,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       _isLoading = true;
       _error = null;
       _insights = [];
+      _predictions = [];
     });
     try {
       final results = await Future.wait([
@@ -47,6 +50,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           _salary = salary;
         });
         _loadInsights(txs, salary);
+        _loadPredictions(txs);
       }
     } catch (e) {
       if (mounted) setState(() => _error = friendlyError(e));
@@ -75,6 +79,40 @@ class _ReportsScreenState extends State<ReportsScreen> {
     } catch (_) {
     } finally {
       if (mounted) setState(() => _insightsLoading = false);
+    }
+  }
+
+  Future<void> _loadPredictions(List<TransactionEntity> txs) async {
+    setState(() => _predictionsLoading = true);
+    try {
+      final now = DateTime.now();
+      final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
+      final recent = txs.where(
+        (t) => t.direction == 'DEBIT' && t.transactionDate.isAfter(threeMonthsAgo),
+      ).toList();
+
+      if (recent.isEmpty) {
+        if (mounted) setState(() => _predictionsLoading = false);
+        return;
+      }
+
+      // avg per category over 3 months
+      final catTotals = <String, double>{};
+      for (final t in recent) {
+        final cat = t.categoryName.isEmpty ? 'Uncategorized' : t.categoryName;
+        catTotals[cat] = (catTotals[cat] ?? 0) + t.amount;
+      }
+      final avgByCategory = catTotals.map((k, v) => MapEntry(k, v / 3));
+      final avgTotal = recent.fold(0.0, (s, t) => s + t.amount) / 3;
+
+      final preds = await AppServices.instance.ai.getSpendingPredictions(
+        avgSpendingByCategory: avgByCategory,
+        avgMonthlyTotal: avgTotal,
+      );
+      if (mounted) setState(() => _predictions = preds);
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _predictionsLoading = false);
     }
   }
 
@@ -469,6 +507,71 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               Expanded(
                                 child: Text(
                                   insight,
+                                  style: const TextStyle(
+                                      fontSize: 13, height: 1.4),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+          ),
+        const SizedBox(height: 20),
+
+        // ── Spending Predictions ─────────────────────────────────────────────
+        Row(
+          children: [
+            const Text('Next Month Forecast',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            const SizedBox(width: 8),
+            if (_predictionsLoading)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        if (_predictions.isEmpty && !_predictionsLoading)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Predictions appear after you have transactions from the last 3 months.',
+                style: TextStyle(
+                    color: AppColors.textSecondary.withValues(alpha: 0.8),
+                    fontSize: 13),
+              ),
+            ),
+          )
+        else if (_predictions.isNotEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: _predictions
+                    .map((pred) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.only(top: 4),
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.accent,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  pred,
                                   style: const TextStyle(
                                       fontSize: 13, height: 1.4),
                                 ),
