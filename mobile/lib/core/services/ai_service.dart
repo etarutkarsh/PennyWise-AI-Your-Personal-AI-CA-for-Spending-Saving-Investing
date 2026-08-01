@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../data/models/category_model.dart';
+import '../constants/api_constants.dart';
 import 'network/api_client.dart';
 
 /// Routes AI calls through the PennyWise backend (which proxies to OpenAI).
@@ -12,6 +13,9 @@ class AiService {
 
   // Convenience getter — uses the authenticated Dio from ApiClient.
   Dio get _dio => _apiClient.dio;
+
+  // API key always lives server-side — always ready.
+  Future<bool> hasKey() async => true;
 
   /// Tests the backend AI connection. Throws on failure.
   Future<void> testConnection() async {
