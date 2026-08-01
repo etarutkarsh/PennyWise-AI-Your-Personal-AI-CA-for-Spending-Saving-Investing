@@ -21,7 +21,7 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Value("${cors.allowed-origins:http://localhost,http://localhost:80,http://localhost:8080,http://10.0.2.2:8080}")
+    @Value("${cors.allowed-origins:http://localhost,http://localhost:80,http://localhost:3000,http://localhost:8080,http://10.0.2.2:8080}")
     private String allowedOriginsRaw;
 
     private final JwtAuthFilter jwtAuthFilter;
