@@ -12,12 +12,15 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Optional;
@@ -26,10 +29,13 @@ import java.util.Optional;
 public class OtpService {
 
     private static final Logger log = LoggerFactory.getLogger(OtpService.class);
-    private static final Duration OTP_TTL    = Duration.ofMinutes(5);
-    private static final int     MAX_ATTEMPTS = 5;
-    private static final String  KEY_OTP      = "otp:code:";
-    private static final String  KEY_ATTEMPTS = "otp:attempts:";
+    private static final Duration OTP_TTL      = Duration.ofMinutes(5);
+    private static final int     MAX_ATTEMPTS  = 5;
+    private static final int     MAX_SENDS     = 3;
+    private static final Duration SEND_WINDOW  = Duration.ofMinutes(10);
+    private static final String  KEY_OTP       = "otp:code:";
+    private static final String  KEY_ATTEMPTS  = "otp:attempts:";
+    private static final String  KEY_SENDS     = "otp:sends:";
     private static final String  F2S_URL      = "https://www.fast2sms.com/dev/bulkV2";
 
     @Value("${fast2sms.api-key:}") private String fast2smsKey;
@@ -61,23 +67,32 @@ public class OtpService {
 
     public OtpSendResponse sendOtp(String phone) {
         String normalised = normalise(phone);
-        String otp = String.format("%06d", random.nextInt(1_000_000));
 
+        // Rate-limit sends: max MAX_SENDS per SEND_WINDOW per number
+        Long sends = redis.opsForValue().increment(KEY_SENDS + normalised);
+        if (sends != null && sends == 1) {
+            redis.expire(KEY_SENDS + normalised, SEND_WINDOW);
+        }
+        if (sends != null && sends > MAX_SENDS) {
+            throw new BadCredentialsException("Too many OTP requests. Please wait 10 minutes before trying again.");
+        }
+
+        String otp = String.format("%06d", random.nextInt(1_000_000));
         redis.opsForValue().set(KEY_OTP + normalised, otp, OTP_TTL);
-        redis.delete(KEY_ATTEMPTS + normalised);
+        // Do NOT reset attempt counter on re-send — would allow brute-force bypass
 
         if (smsEnabled) {
             try {
                 sendSms(normalised, otp);
-                return new OtpSendResponse("OTP sent to " + mask(normalised), null);
             } catch (Exception e) {
-                log.warn("[DEV FALLBACK] SMS failed ({}). OTP for {} → {}", e.getMessage(), mask(normalised), otp);
-                return new OtpSendResponse("OTP sent to " + mask(normalised) + " (dev: SMS unavailable)", otp);
+                log.warn("[DEV FALLBACK] SMS failed ({}). OTP for {} logged above.", e.getMessage(), mask(normalised));
+                log.info("[DEV] OTP for {} → {}", normalised, otp);
             }
         } else {
             log.info("[DEV] OTP for {} → {}", normalised, otp);
-            return new OtpSendResponse("OTP sent to " + mask(normalised), otp);
         }
+        // Never return OTP in response — check server logs in dev mode
+        return new OtpSendResponse("OTP sent to " + mask(normalised), null);
     }
 
     private void sendSms(String normalised, String otp) {
@@ -89,17 +104,18 @@ public class OtpService {
 
         String message = otp + " is your PennyWise OTP. Valid for 5 minutes. Do not share.";
 
-        String url = F2S_URL
-                + "?route=q"
-                + "&message=" + message.replace(" ", "+")
+        // POST keeps API key and OTP out of URL query strings (proxy logs)
+        String body = "route=q"
+                + "&message=" + URLEncoder.encode(message, StandardCharsets.UTF_8)
                 + "&numbers=" + tenDigit
                 + "&flash=0";
 
         HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(url))
+                .uri(URI.create(F2S_URL))
                 .header("authorization", fast2smsKey)
                 .header("Accept", "application/json")
-                .GET()
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
 
         try {
@@ -146,7 +162,15 @@ public class OtpService {
         redis.delete(attKey);
 
         Optional<User> existing = userRepository.findByPhoneNumber(normalised);
-        User user = existing.orElseGet(() -> createPhoneUser(normalised));
+        User user = existing.orElseGet(() -> {
+            try {
+                return createPhoneUser(normalised);
+            } catch (DataIntegrityViolationException e) {
+                // Concurrent request already created the user — re-fetch
+                return userRepository.findByPhoneNumber(normalised)
+                        .orElseThrow(() -> new IllegalStateException("User lookup failed after concurrent insert", e));
+            }
+        });
 
         return new AuthResponse(
                 jwtService.generateAccessToken(user.getId(), user.getEmail()),
