@@ -66,10 +66,10 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production-min-256-bits-long}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      # Paste your Fast2SMS API key below to enable real SMS OTPs.
+      # Paste your Fast2SMS API key in .env to enable real SMS OTPs.
       # Sign up free at https://www.fast2sms.com → Dev API → copy key.
-      # Leave empty to stay in dev mode (OTP shown in API response).
-      FAST2SMS_API_KEY: OvMGKW10BZhSisRAX3olqNmy82ITCpu4QjefEVFcarH5w7xtgPyZYGB3Xm7SF1HvPT6UxwrMfJq8a0iQ
+      # Leave empty to stay in dev mode (OTP logged to console only).
+      FAST2SMS_API_KEY: ${FAST2SMS_API_KEY:-}
     ports:
       - "8080:8080"
 
