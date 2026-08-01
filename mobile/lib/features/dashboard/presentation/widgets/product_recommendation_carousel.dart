@@ -509,8 +509,9 @@ class _RecommendationCard extends StatelessWidget {
       animation: pageController,
       builder: (_, child) {
         double scale = 1.0;
-        if (pageController.hasClients && pageController.page != null) {
-          final offset = (pageController.page! - index).abs();
+        final page = pageController.hasClients ? pageController.page : null;
+        if (page != null) {
+          final offset = (page - index).abs();
           scale = (1.0 - offset * 0.04).clamp(0.94, 1.0);
         }
         return Transform.scale(scale: scale, child: child);
