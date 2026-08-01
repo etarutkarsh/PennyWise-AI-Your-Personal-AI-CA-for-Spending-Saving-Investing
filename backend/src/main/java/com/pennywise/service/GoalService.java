@@ -6,6 +6,7 @@ import com.pennywise.dto.GoalUpdateRequest;
 import com.pennywise.entity.Goal;
 import com.pennywise.entity.User;
 import com.pennywise.exception.ResourceNotFoundException;
+import com.pennywise.financial.engine.ProjectionEngine;
 import com.pennywise.repository.GoalRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,10 +27,13 @@ public class GoalService {
 
     private final GoalRepository goalRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final ProjectionEngine projectionEngine;
 
-    public GoalService(GoalRepository goalRepository, CurrentUserProvider currentUserProvider) {
+    public GoalService(GoalRepository goalRepository, CurrentUserProvider currentUserProvider,
+                       ProjectionEngine projectionEngine) {
         this.goalRepository = goalRepository;
         this.currentUserProvider = currentUserProvider;
+        this.projectionEngine = projectionEngine;
     }
 
     @Transactional
@@ -90,26 +94,43 @@ public class GoalService {
         return toDto(goalRepository.save(goal));
     }
 
-    /** Recomputes recommended monthly contribution + investment vehicle suggestion. */
+    /**
+     * Recomputes recommended monthly contribution + investment vehicle suggestion.
+     *
+     * Uses ProjectionEngine.goalMonthlyContribution() with a horizon-appropriate
+     * expected return rate rather than simple division. This accounts for the
+     * compounding benefit of investing the monthly contribution in a suitable instrument.
+     */
     private void applyRecommendation(Goal goal) {
         long monthsRemaining = Math.max(1, Period.between(LocalDate.now(), goal.getDeadline()).toTotalMonths());
         BigDecimal shortfall = goal.getTargetAmount().subtract(goal.getCurrentSaved()).max(BigDecimal.ZERO);
 
-        BigDecimal monthlyContribution = shortfall.divide(
-                BigDecimal.valueOf(monthsRemaining), 0, RoundingMode.CEILING);
-        goal.setRecommendedMonthlyContribution(monthlyContribution);
-
-        // Simple horizon-based suggestion; the AI investment engine can refine this
-        // using the user's risk appetite (see investment/ package).
+        // Select expected return rate and investment vehicle based on time horizon.
+        // Rates are conservative estimates aligned with the matching asset class.
+        double annualReturnPercent;
+        String suggestion;
         if (monthsRemaining <= 6) {
-            goal.setInvestmentSuggestion("liquid_fund");
+            annualReturnPercent = 5.5;  // LIQUID_FUND rate
+            suggestion = "liquid_fund";
         } else if (monthsRemaining <= 18) {
-            goal.setInvestmentSuggestion("rd");
+            annualReturnPercent = 6.5;  // RD / ARBITRAGE rate
+            suggestion = "rd";
         } else if (monthsRemaining <= 36) {
-            goal.setInvestmentSuggestion("hybrid_fund");
+            annualReturnPercent = 7.0;  // DEBT_FUND / hybrid rate
+            suggestion = "hybrid_fund";
         } else {
-            goal.setInvestmentSuggestion("equity");
+            annualReturnPercent = 11.5; // EQUITY_INDEX rate (Nifty50 long-term CAGR)
+            suggestion = "equity";
         }
+
+        double monthlyContributionDouble = projectionEngine.goalMonthlyContribution(
+                shortfall.doubleValue(), annualReturnPercent, (int) monthsRemaining);
+
+        BigDecimal monthlyContribution = BigDecimal.valueOf(monthlyContributionDouble)
+                .setScale(0, RoundingMode.CEILING);
+
+        goal.setRecommendedMonthlyContribution(monthlyContribution);
+        goal.setInvestmentSuggestion(suggestion);
     }
 
     private GoalDto toDto(Goal g) {

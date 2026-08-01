@@ -1,45 +1,56 @@
 package com.pennywise.service;
 
 import com.pennywise.dto.HealthScoreResponse;
-import com.pennywise.entity.Budget;
 import com.pennywise.entity.Goal;
 import com.pennywise.entity.Transaction;
 import com.pennywise.entity.User;
-import com.pennywise.repository.BudgetRepository;
+import com.pennywise.financial.engine.HealthScoreEngine;
+import com.pennywise.financial.model.DimensionScore;
+import com.pennywise.financial.model.HealthScoreInput;
+import com.pennywise.financial.model.HealthScoreResult;
 import com.pennywise.repository.GoalRepository;
 import com.pennywise.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Period;
 import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.List;
 
 /**
- * Calculates a 0–100 financial health score from four pillars:
- *   Savings Rate (25) + Budget Adherence (25) + Goal Progress (25)
- *   + Activity (15) + Income Surplus (10)
+ * Calculates the financial health score by delegating all scoring logic to
+ * {@link HealthScoreEngine}. This service is responsible for gathering live
+ * user data (transactions, goals) and mapping the engine result to the
+ * existing HealthScoreResponse DTO for the /dashboard/health-score endpoint.
  */
 @Service
 public class HealthScoreService {
 
     private final TransactionRepository transactionRepository;
-    private final BudgetRepository budgetRepository;
     private final GoalRepository goalRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final HealthScoreEngine healthScoreEngine;
 
     public HealthScoreService(TransactionRepository transactionRepository,
-                               BudgetRepository budgetRepository,
                                GoalRepository goalRepository,
-                               CurrentUserProvider currentUserProvider) {
+                               CurrentUserProvider currentUserProvider,
+                               HealthScoreEngine healthScoreEngine) {
         this.transactionRepository = transactionRepository;
-        this.budgetRepository = budgetRepository;
         this.goalRepository = goalRepository;
         this.currentUserProvider = currentUserProvider;
+        this.healthScoreEngine = healthScoreEngine;
     }
 
+    /**
+     * Computes the health score for the authenticated user by:
+     * 1. Loading this month's transactions and all goals
+     * 2. Building a HealthScoreInput from live data
+     * 3. Delegating computation to HealthScoreEngine
+     * 4. Mapping the rich HealthScoreResult back to the legacy HealthScoreResponse DTO
+     */
     public HealthScoreResponse calculate() {
         User user = currentUserProvider.get();
 
@@ -50,30 +61,69 @@ public class HealthScoreService {
         List<Transaction> txs = transactionRepository
                 .findByUserIdAndTransactionDateBetween(user.getId(), from, to);
 
-        // ── Pillar 1: Savings Rate (25 pts) ────────────────────────────────
-        // Score based on how much of income is left after spending.
-        // If no salary stored, fall back to debit/credit ratio.
-        int savingsScore = calcSavingsScore(user, txs);
+        double totalIncome = txs.stream()
+                .filter(t -> "CREDIT".equals(t.getDirection().name()))
+                .mapToDouble(t -> t.getAmount().doubleValue())
+                .sum();
 
-        // ── Pillar 2: Budget Adherence (25 pts) ────────────────────────────
-        int budgetScore = calcBudgetScore(user, current);
+        double totalExpenses = txs.stream()
+                .filter(t -> "DEBIT".equals(t.getDirection().name()))
+                .mapToDouble(t -> t.getAmount().doubleValue())
+                .sum();
 
-        // ── Pillar 3: Goal Progress (25 pts) ───────────────────────────────
-        int goalScore = calcGoalScore(user);
+        List<Goal> goals = goalRepository.findByUserIdOrderByDeadlineAsc(user.getId());
+        List<HealthScoreInput.GoalProgress> goalProgresses = goals.stream()
+                .map(g -> {
+                    long months = Period.between(LocalDate.now(), g.getDeadline()).toTotalMonths();
+                    double currentSaved = g.getCurrentSaved().doubleValue();
+                    double targetAmount = g.getTargetAmount().doubleValue();
+                    boolean hasContribution = g.getRecommendedMonthlyContribution() != null
+                            && g.getRecommendedMonthlyContribution().compareTo(BigDecimal.ZERO) > 0;
+                    return new HealthScoreInput.GoalProgress(currentSaved, targetAmount, (int) months, hasContribution);
+                })
+                .toList();
 
-        // ── Pillar 4: Activity (15 pts) ────────────────────────────────────
-        int activityScore = txs.isEmpty() ? 0 : 15;
+        double monthlySalary = user.getMonthlyIncome() != null
+                ? user.getMonthlyIncome().doubleValue() : 0.0;
 
-        // ── Pillar 5: Income Surplus (10 pts) ──────────────────────────────
-        int surplusScore = calcSurplusScore(txs);
+        // Estimate monthly expenses: prefer actual transaction data, fall back to 70% of salary
+        double monthlyExpenses = totalExpenses > 0 ? totalExpenses : monthlySalary * 0.7;
 
-        int total = savingsScore + budgetScore + goalScore + activityScore + surplusScore;
-        total = Math.min(100, Math.max(0, total));
+        HealthScoreInput input = new HealthScoreInput(
+                monthlySalary,
+                monthlyExpenses,
+                0.0,  // totalSavings — Phase 2 will populate from portfolio/assets
+                0.0,  // totalDebt   — Phase 2 will populate from liabilities
+                goalProgresses,
+                new HealthScoreInput.TransactionSummary(totalIncome, totalExpenses, !txs.isEmpty())
+        );
+
+        // Delegate all scoring to the engine
+        HealthScoreResult result = healthScoreEngine.compute(input);
+
+        // Map to the existing HealthScoreResponse DTO (maintains backward compatibility
+        // with /dashboard/health-score). The richer HealthScoreResult is available
+        // via /financial/health-score for Flutter screens that need dimension breakdowns.
+        return mapToResponse(result);
+    }
+
+    /**
+     * Maps the engine's HealthScoreResult to the legacy HealthScoreResponse DTO.
+     * Pillar scores are extracted by dimension name to preserve backward compatibility.
+     */
+    private HealthScoreResponse mapToResponse(HealthScoreResult result) {
+        int savingsScore   = findDimensionScore(result, "Savings Rate");
+        int goalScore      = findDimensionScore(result, "Goal Progress");
+        int activityScore  = findDimensionScore(result, "Cash Flow Health");
+        int surplusScore   = findDimensionScore(result, "Investment Regularity");
+        // Budget score not directly in the new engine (Phase 2 will add it);
+        // use debt management as a proxy to fill the legacy field
+        int budgetScore    = findDimensionScore(result, "Debt Management");
 
         return HealthScoreResponse.builder()
-                .score(total)
-                .grade(grade(total))
-                .summary(summary(total))
+                .score(result.totalScore())
+                .grade(result.grade())
+                .summary(result.summary())
                 .savingsScore(savingsScore)
                 .budgetScore(budgetScore)
                 .goalScore(goalScore)
@@ -82,102 +132,11 @@ public class HealthScoreService {
                 .build();
     }
 
-    private int calcSavingsScore(User user, List<Transaction> txs) {
-        BigDecimal salary = user.getMonthlyIncome();
-        if (salary == null || salary.compareTo(BigDecimal.ZERO) <= 0) {
-            // No salary on record — partial score if there are credit transactions
-            boolean hasCredit = txs.stream()
-                    .anyMatch(t -> t.getDirection().name().equals("CREDIT"));
-            return hasCredit ? 12 : 5;
-        }
-
-        BigDecimal totalDebit = txs.stream()
-                .filter(t -> t.getDirection().name().equals("DEBIT"))
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Savings rate = (salary - debit) / salary
-        BigDecimal savingsRate = salary.subtract(totalDebit)
-                .divide(salary, 4, RoundingMode.HALF_UP);
-
-        if (savingsRate.compareTo(BigDecimal.valueOf(0.30)) >= 0) return 25;
-        if (savingsRate.compareTo(BigDecimal.valueOf(0.20)) >= 0) return 20;
-        if (savingsRate.compareTo(BigDecimal.valueOf(0.10)) >= 0) return 14;
-        if (savingsRate.compareTo(BigDecimal.ZERO) >= 0)           return 8;
-        return 0; // spending more than earning
-    }
-
-    private int calcBudgetScore(User user, YearMonth period) {
-        List<Budget> budgets = budgetRepository.findByUserIdAndPeriod(
-                user.getId(), period.toString());
-
-        if (budgets.isEmpty()) return 10; // no budgets set — partial credit
-
-        Instant bFrom = period.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-        Instant bTo   = period.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
-
-        long total = budgets.size();
-        long onTrack = budgets.stream()
-                .filter(b -> {
-                    BigDecimal spent = transactionRepository.sumByCategoryAndPeriod(
-                            user.getId(), b.getCategory().getId(), bFrom, bTo);
-                    return spent.compareTo(b.getMonthlyLimit()) <= 0;
-                })
-                .count();
-
-        double ratio = (double) onTrack / total;
-        if (ratio >= 1.0) return 25;
-        if (ratio >= 0.75) return 18;
-        if (ratio >= 0.50) return 12;
-        return 5;
-    }
-
-    private int calcGoalScore(User user) {
-        List<Goal> goals = goalRepository.findByUserIdOrderByDeadlineAsc(user.getId());
-        if (goals.isEmpty()) return 10; // no goals yet — partial credit
-
-        double avgProgress = goals.stream()
-                .mapToDouble(g -> {
-                    if (g.getTargetAmount().compareTo(BigDecimal.ZERO) <= 0) return 0;
-                    return g.getCurrentSaved()
-                            .divide(g.getTargetAmount(), 4, RoundingMode.HALF_UP)
-                            .doubleValue() * 100;
-                })
-                .average()
+    private int findDimensionScore(HealthScoreResult result, String dimensionName) {
+        return result.dimensions().stream()
+                .filter(d -> d.dimension().equals(dimensionName))
+                .mapToInt(DimensionScore::score)
+                .findFirst()
                 .orElse(0);
-
-        if (avgProgress >= 75) return 25;
-        if (avgProgress >= 50) return 18;
-        if (avgProgress >= 25) return 12;
-        if (avgProgress > 0)   return 7;
-        return 3;
-    }
-
-    private int calcSurplusScore(List<Transaction> txs) {
-        BigDecimal totalCredit = txs.stream()
-                .filter(t -> t.getDirection().name().equals("CREDIT"))
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        BigDecimal totalDebit = txs.stream()
-                .filter(t -> t.getDirection().name().equals("DEBIT"))
-                .map(Transaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        return totalCredit.compareTo(totalDebit) > 0 ? 10 : 0;
-    }
-
-    private String grade(int score) {
-        if (score >= 80) return "Excellent";
-        if (score >= 60) return "Good";
-        if (score >= 40) return "Fair";
-        return "Poor";
-    }
-
-    private String summary(int score) {
-        if (score >= 80) return "Great job! Your finances are in excellent shape. Keep it up.";
-        if (score >= 60) return "You're doing well. A few tweaks can push you to excellent.";
-        if (score >= 40) return "There's room to improve. Focus on budgets and saving more.";
-        return "Your finances need attention. Start by tracking all expenses and setting a budget.";
     }
 }
