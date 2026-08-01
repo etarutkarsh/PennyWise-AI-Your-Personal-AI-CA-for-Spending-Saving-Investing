@@ -41,16 +41,21 @@ Future<String?> _authRedirect(BuildContext context, GoRouterState state) async {
   final path = state.uri.path;
   if (path == '/') return '/splash';
 
-  final hasSession = await AppServices.instance.auth.hasSession();
+  try {
+    final hasSession = await AppServices.instance.auth.hasSession();
 
-  // Protected route → no valid session → landing page on web, /login on mobile
-  if (!_publicPaths.contains(path) && !hasSession) {
-    if (redirectToLanding()) return null; // web: hard-navigate, no Flutter route needed
-    return '/login';
+    // Protected route → no valid session → landing page on web, /login on mobile
+    if (!_publicPaths.contains(path) && !hasSession) {
+      if (redirectToLanding()) return null; // web: hard-navigate, no Flutter route needed
+      return '/login';
+    }
+
+    // Already authenticated → skip login/register screens
+    if ((path == '/login' || path == '/register') && hasSession) return '/dashboard';
+  } catch (_) {
+    // Auth service failure — redirect unauthenticated routes to login.
+    if (!_publicPaths.contains(path)) return '/login';
   }
-
-  // Already authenticated → skip login/register screens
-  if ((path == '/login' || path == '/register') && hasSession) return '/dashboard';
 
   return null;
 }
