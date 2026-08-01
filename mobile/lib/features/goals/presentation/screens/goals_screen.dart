@@ -180,7 +180,12 @@ class _GoalsScreenState extends State<GoalsScreen> {
           ),
         ),
       ),
-    );
+    ).then((_) {
+      nameCtrl.dispose();
+      targetCtrl.dispose();
+      savedCtrl.dispose();
+      deadlineCtrl.dispose();
+    });
   }
 
   @override
