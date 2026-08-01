@@ -33,7 +33,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
-    if (confirmed == true && context.mounted) {
+    if (confirmed == true) {
+      if (!context.mounted) return;
       await AppServices.instance.auth.logout();
       if (context.mounted && !redirectToLanding()) context.go('/login');
     }
