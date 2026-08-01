@@ -93,6 +93,7 @@ class _GoalPlanScreenState extends State<GoalPlanScreen> {
 
   Future<void> _fetchAiPlan() async {
     if (_loadingAi || _aiPlan != null) return;
+    if (!mounted) return;
     setState(() => _loadingAi = true);
     try {
       final result = await AppServices.instance.ai
