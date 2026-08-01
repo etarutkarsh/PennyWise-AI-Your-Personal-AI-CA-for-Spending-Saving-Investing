@@ -64,7 +64,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-pennywise}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production-min-256-bits-long}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env — run: openssl rand -base64 48}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       # Paste your Fast2SMS API key in .env to enable real SMS OTPs.
       # Sign up free at https://www.fast2sms.com → Dev API → copy key.
