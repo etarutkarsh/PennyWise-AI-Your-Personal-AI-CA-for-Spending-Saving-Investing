@@ -15,8 +15,11 @@ class SavingsDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
-    final threeMonthFund = salary * 3;
-    final sixMonthFund = salary * 6;
+    // Emergency fund = months × EXPENSES, not salary.
+    // Use 80% of salary as a proxy for monthly expenses (20% savings rate assumption).
+    final monthlyExpenses = salary * 0.80;
+    final threeMonthFund = monthlyExpenses * 3;
+    final sixMonthFund = monthlyExpenses * 6;
     final progress3 = (savings / threeMonthFund).clamp(0.0, 1.0);
 
     return Scaffold(
