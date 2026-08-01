@@ -246,10 +246,12 @@ class _ProductRecommendationCarouselState
   Future<void> _loadGoals() async {
     try {
       final goals = await AppServices.instance.goals.getAll();
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _goals = goals;
         _goalsLoading = false;
       });
+      }
     } catch (_) {
       if (mounted) setState(() => _goalsLoading = false);
     }
@@ -763,30 +765,30 @@ class _SkeletonCards extends StatelessWidget {
             ],
           ),
           padding: const EdgeInsets.all(16),
-          child: Column(
+          child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   _Shimmer(width: 40, height: 40, radius: 12),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _Shimmer(width: 80, height: 10, radius: 5),
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       _Shimmer(width: 130, height: 14, radius: 5),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               _Shimmer(width: double.infinity, height: 56, radius: 12),
-              const Spacer(),
+              Spacer(),
               Row(
                 children: [
                   _Shimmer(width: 90, height: 12, radius: 5),
-                  const Spacer(),
+                  Spacer(),
                   _Shimmer(width: 70, height: 32, radius: 10),
                 ],
               ),

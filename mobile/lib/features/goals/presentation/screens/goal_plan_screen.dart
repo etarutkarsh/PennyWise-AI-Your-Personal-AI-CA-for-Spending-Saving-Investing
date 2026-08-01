@@ -584,28 +584,28 @@ class _InvestPlanSection extends StatelessWidget {
     switch (ctx.goal.investmentSuggestion.toLowerCase()) {
       case 'equity':
         return [
-          _InvestOption('📈', 'Equity SIP', '12–15% p.a.', 'Best for >36 month goals'),
-          _InvestOption('🌐', 'Index Fund', '11–13% p.a.', 'Low-cost, diversified'),
+          const _InvestOption('📈', 'Equity SIP', '12–15% p.a.', 'Best for >36 month goals'),
+          const _InvestOption('🌐', 'Index Fund', '11–13% p.a.', 'Low-cost, diversified'),
         ];
       case 'hybrid_fund':
         return [
-          _InvestOption('⚖️', 'Hybrid Fund SIP', '10–12% p.a.', 'Balanced risk + return'),
-          _InvestOption('📊', 'Balanced Advantage', '9–11% p.a.', 'Auto-rebalances'),
+          const _InvestOption('⚖️', 'Hybrid Fund SIP', '10–12% p.a.', 'Balanced risk + return'),
+          const _InvestOption('📊', 'Balanced Advantage', '9–11% p.a.', 'Auto-rebalances'),
         ];
       case 'rd':
         return [
-          _InvestOption('🏦', 'Recurring Deposit', '6.5–7.5% p.a.', 'Safe, guaranteed returns'),
-          _InvestOption('💡', 'Liquid Fund', '6–7% p.a.', 'Better than savings account'),
+          const _InvestOption('🏦', 'Recurring Deposit', '6.5–7.5% p.a.', 'Safe, guaranteed returns'),
+          const _InvestOption('💡', 'Liquid Fund', '6–7% p.a.', 'Better than savings account'),
         ];
       case 'fd':
         return [
-          _InvestOption('🔒', 'Fixed Deposit', '6.5–7.5% p.a.', 'Capital protected'),
-          _InvestOption('🏦', 'Post Office TD', '7.5% p.a.', 'Government backed'),
+          const _InvestOption('🔒', 'Fixed Deposit', '6.5–7.5% p.a.', 'Capital protected'),
+          const _InvestOption('🏦', 'Post Office TD', '7.5% p.a.', 'Government backed'),
         ];
       default:
         return [
-          _InvestOption('💰', 'Liquid Fund', '6–7% p.a.', 'Park surplus here'),
-          _InvestOption('🏦', 'RD / FD', '6.5–7.5% p.a.', 'Low risk, steady growth'),
+          const _InvestOption('💰', 'Liquid Fund', '6–7% p.a.', 'Park surplus here'),
+          const _InvestOption('🏦', 'RD / FD', '6.5–7.5% p.a.', 'Low risk, steady growth'),
         ];
     }
   }
@@ -715,12 +715,12 @@ class _LoanSection extends StatelessWidget {
 
           const SizedBox(height: 20),
           _ProConList(
-            pros: [
+            pros: const [
               'Get your goal NOW without waiting',
               'Interest may be tax-deductible (home/education)',
               'Build credit history with on-time EMIs',
             ],
-            cons: [
+            cons: const [
               'Total cost is higher due to interest',
               'EMI reduces monthly cash flow',
               'Loan approval depends on CIBIL score',
@@ -802,7 +802,7 @@ class _MonthlyBreakdown extends StatelessWidget {
                       horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     border: i < rows.length - 1
-                        ? Border(
+                        ? const Border(
                             bottom:
                                 BorderSide(color: AppColors.border))
                         : null,
@@ -1057,7 +1057,7 @@ class _ExpenseTipRow extends StatelessWidget {
               ],
             ),
           ),
-          Icon(Icons.chevron_right_rounded,
+          const Icon(Icons.chevron_right_rounded,
               size: 18, color: AppColors.textSecondary),
         ],
       ),
