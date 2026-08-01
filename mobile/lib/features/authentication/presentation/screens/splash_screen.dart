@@ -26,23 +26,32 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 
-    // If the landing page passed tokens via URL params, store them first.
-    final at = widget.accessToken;
-    final rt = widget.refreshToken;
-    if (at != null && at.isNotEmpty && rt != null && rt.isNotEmpty) {
-      await AppServices.instance.tokenStorage.saveTokens(
-        accessToken: at,
-        refreshToken: rt,
-      );
-    }
+    try {
+      // If the landing page passed tokens via URL params, store them first.
+      final at = widget.accessToken;
+      final rt = widget.refreshToken;
+      if (at != null && at.isNotEmpty && rt != null && rt.isNotEmpty) {
+        try {
+          await AppServices.instance.tokenStorage.saveTokens(
+            accessToken: at,
+            refreshToken: rt,
+          );
+        } catch (_) {
+          // Storage failure is non-fatal — session check will re-auth if needed.
+        }
+      }
 
-    if (!mounted) return;
-    final hasSession = await AppServices.instance.auth.hasSession();
-    if (!mounted) return;
-    if (hasSession) {
-      context.go('/dashboard');
-    } else {
-      if (!redirectToLanding()) context.go('/login');
+      if (!mounted) return;
+      final hasSession = await AppServices.instance.auth.hasSession();
+      if (!mounted) return;
+      if (hasSession) {
+        context.go('/dashboard');
+      } else {
+        if (!redirectToLanding()) context.go('/login');
+      }
+    } catch (_) {
+      // Auth service failure — fall back to login rather than freezing.
+      if (mounted && !redirectToLanding()) context.go('/login');
     }
   }
 
