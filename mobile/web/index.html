@@ -34,14 +34,10 @@
 </head>
 <body>
   <script>
-    // Gate: send unauthenticated visitors to the landing page.
-    // Bypass if (a) landing page just handed off tokens via URL fragment, or
-    // (b) user already has an active session (flag set by landing page on login).
+    // Gate: bare root URL always goes to landing.html.
+    // Any Flutter route (/#/...) or token handoff (has hash) runs the app directly.
     (function () {
-      var hash = window.location.hash;
-      var hasTokenHandoff = hash.indexOf('at=') !== -1;
-      var hasSession = !!localStorage.getItem('pw_session');
-      if (!hasTokenHandoff && !hasSession) {
+      if (!window.location.hash) {
         window.location.replace('./landing.html');
       }
     })();

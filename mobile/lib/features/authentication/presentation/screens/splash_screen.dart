@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/redirect_utils.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key, this.accessToken, this.refreshToken});
@@ -38,7 +39,11 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
     final hasSession = await AppServices.instance.auth.hasSession();
     if (!mounted) return;
-    context.go(hasSession ? '/dashboard' : '/login');
+    if (hasSession) {
+      context.go('/dashboard');
+    } else {
+      if (!redirectToLanding()) context.go('/login');
+    }
   }
 
   @override

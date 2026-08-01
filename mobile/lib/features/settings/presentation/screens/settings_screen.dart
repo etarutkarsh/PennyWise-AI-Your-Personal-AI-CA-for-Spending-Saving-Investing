@@ -13,19 +13,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _hasAiKey = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkAiKey();
-  }
-
-  Future<void> _checkAiKey() async {
-    final has = await AppServices.instance.ai.hasKey();
-    if (mounted) setState(() => _hasAiKey = has);
-  }
-
   Future<void> _logout(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -52,22 +39,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  void _openAiKeySheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _AiKeySheet(
-        hasKey: _hasAiKey,
-        onSaved: () {
-          if (mounted) setState(() => _hasAiKey = true);
-        },
-        onDeleted: () {
-          if (mounted) setState(() => _hasAiKey = false);
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,32 +56,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () => context.push('/profile'),
           ),
           const Divider(indent: 16, endIndent: 16),
-          ListTile(
-            leading: Icon(
-              Icons.psychology_outlined,
-              color: _hasAiKey ? AppColors.primary : null,
-            ),
-            title: const Text('AI Assistant (OpenAI key)'),
+          const ListTile(
+            leading: Icon(Icons.psychology_outlined, color: AppColors.primary),
+            title: Text('AI Assistant'),
             subtitle: Text(
-              _hasAiKey
-                  ? 'Key saved — AI features active'
-                  : 'Add your key to enable AI insights',
-              style: TextStyle(
-                fontSize: 12,
-                color: _hasAiKey ? AppColors.primary : AppColors.textSecondary,
-              ),
+              'Active — powered by PennyWise AI',
+              style: TextStyle(fontSize: 12, color: AppColors.primary),
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_hasAiKey)
-                  const Icon(Icons.check_circle_rounded,
-                      color: AppColors.success, size: 18),
-                const SizedBox(width: 4),
-                const Icon(Icons.chevron_right_rounded),
-              ],
-            ),
-            onTap: _openAiKeySheet,
+            trailing: Icon(Icons.check_circle_rounded,
+                color: AppColors.success, size: 20),
           ),
 
           // ── Finance ───────────────────────────────────────────────────────
@@ -195,200 +149,3 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _AiKeySheet extends StatefulWidget {
-  const _AiKeySheet({
-    required this.hasKey,
-    required this.onSaved,
-    required this.onDeleted,
-  });
-
-  final bool hasKey;
-  final VoidCallback onSaved;
-  final VoidCallback onDeleted;
-
-  @override
-  State<_AiKeySheet> createState() => _AiKeySheetState();
-}
-
-class _AiKeySheetState extends State<_AiKeySheet> {
-  final _controller = TextEditingController();
-  bool _obscure = true;
-  bool _isSaving = false;
-  bool _isTesting = false;
-  String? _testResult;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final key = _controller.text.trim();
-    if (key.isEmpty) return;
-    setState(() {
-      _isSaving = true;
-      _testResult = null;
-    });
-    await AppServices.instance.ai.saveKey(key);
-
-    // Test the key before closing
-    try {
-      await AppServices.instance.ai.testConnection();
-      widget.onSaved();
-      if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('AI key saved & verified — insights unlocked!')),
-        );
-      }
-    } catch (e) {
-      final msg = e.toString().contains('401')
-          ? 'Invalid key — check it and try again.'
-          : e.toString().contains('429')
-              ? 'Rate limited — you may have no credits. Check your OpenAI account.'
-              : 'Connection failed: ${e.toString().replaceFirst('Exception:', '').trim()}';
-      if (mounted) setState(() => _testResult = msg);
-      // Key is saved even if test fails — user can still try
-      widget.onSaved();
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _delete() async {
-    await AppServices.instance.ai.deleteKey();
-    widget.onDeleted();
-    if (mounted) Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Text('AI Assistant Setup',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700, fontSize: 16)),
-              const Spacer(),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Text(
-              'PennyWise uses your own OpenAI key to generate personalised insights, '
-              'spending analysis, and savings recommendations.\n\n'
-              'Your key is stored securely on your device and never sent to our servers. '
-              'Get a free key at platform.openai.com → API keys.',
-              style: TextStyle(fontSize: 12, height: 1.5),
-            ),
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _controller,
-            obscureText: _obscure,
-            decoration: InputDecoration(
-              labelText: 'OpenAI API Key',
-              hintText: 'sk-...',
-              prefixIcon: const Icon(Icons.key_rounded),
-              suffixIcon: IconButton(
-                icon: Icon(
-                    _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                onPressed: () => setState(() => _obscure = !_obscure),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_testResult != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _testResult!.startsWith('Invalid') || _testResult!.startsWith('Rate') || _testResult!.startsWith('Connection')
-                    ? AppColors.danger.withValues(alpha: 0.1)
-                    : AppColors.success.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _testResult!.startsWith('Invalid') || _testResult!.startsWith('Rate') || _testResult!.startsWith('Connection')
-                        ? Icons.error_outline_rounded
-                        : Icons.check_circle_outline_rounded,
-                    size: 16,
-                    color: _testResult!.startsWith('Invalid') || _testResult!.startsWith('Rate') || _testResult!.startsWith('Connection')
-                        ? AppColors.danger
-                        : AppColors.success,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(_testResult!, style: const TextStyle(fontSize: 12))),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 8),
-          ElevatedButton(
-            onPressed: _isSaving ? null : _save,
-            child: _isSaving
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Text('Save & Test Key'),
-          ),
-          if (widget.hasKey) ...[
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: _isTesting ? null : () async {
-                setState(() { _isTesting = true; _testResult = null; });
-                try {
-                  await AppServices.instance.ai.testConnection();
-                  if (mounted) setState(() => _testResult = 'Connected! Your key is working.');
-                } catch (e) {
-                  final msg = e.toString().contains('401')
-                      ? 'Invalid key — check it and try again.'
-                      : e.toString().contains('429')
-                          ? 'Rate limited — you may have no credits. Check your OpenAI account.'
-                          : 'Connection failed: ${e.toString().replaceFirst('DioException', '').replaceFirst('Exception:', '').trim()}';
-                  if (mounted) setState(() => _testResult = msg);
-                } finally {
-                  if (mounted) setState(() => _isTesting = false);
-                }
-              },
-              child: _isTesting
-                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Text('Test existing key'),
-            ),
-            const SizedBox(height: 4),
-            TextButton(
-              onPressed: _delete,
-              child: const Text('Remove saved key',
-                  style: TextStyle(color: AppColors.danger)),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}

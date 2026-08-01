@@ -11,6 +11,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../data/repositories/health_score_repository.dart';
 import '../../domain/entities/dashboard_summary.dart';
 import '../widgets/hero_carousel_section.dart';
+import '../widgets/goal_promo_banner.dart';
 import '../widgets/market_data_section.dart';
 import '../widgets/news_ticker_widget.dart';
 import '../widgets/animated_stats_section.dart';
@@ -131,9 +132,50 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 20,
+        title: Row(
+          children: [
+            const Icon(Icons.savings_rounded, color: AppColors.primary, size: 26),
+            const SizedBox(width: 8),
+            Text(
+              'PennyWise',
+              style: GoogleFonts.manrope(
+                color: AppColors.textPrimary,
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+              ),
+            ),
+            Text(
+              ' AI',
+              style: GoogleFonts.manrope(
+                color: AppColors.orange,
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, size: 22),
+            color: AppColors.textSecondary,
+            onPressed: () => context.push('/notifications'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined, size: 22),
+            color: AppColors.textSecondary,
+            onPressed: () => context.push('/settings'),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: RefreshIndicator(
         color: AppColors.orange,
         backgroundColor: AppColors.surface,
         onRefresh: () => _load(forceRefresh: true),
@@ -150,12 +192,12 @@ class _DashboardScreenState extends State<DashboardScreen>
                 healthScore: score,
                 levelTitle: _levelTitle,
                 level: _level,
-                onNotificationsTap: () => context.push('/notifications'),
-                onSettingsTap: () => context.push('/settings'),
               ),
               const SizedBox(height: 28),
               RepaintBoundary(child: HeroCarouselSection(salary: _salary)),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
+              const RepaintBoundary(child: GoalPromoBanner()),
+              const SizedBox(height: 28),
               const RepaintBoundary(child: MarketDataSection()),
               const SizedBox(height: 4),
               const RepaintBoundary(child: FinancialNewsTicker()),
@@ -278,7 +320,6 @@ class _DashboardScreenState extends State<DashboardScreen>
           ),
         ),
       ),
-      ), // SafeArea
     );
   }
 
@@ -299,13 +340,10 @@ class _AICoachHero extends StatefulWidget {
     required this.healthScore,
     required this.levelTitle,
     required this.level,
-    required this.onNotificationsTap,
-    required this.onSettingsTap,
   });
   final double salary, savings;
   final int healthScore, level;
   final String levelTitle;
-  final VoidCallback onNotificationsTap, onSettingsTap;
 
   @override
   State<_AICoachHero> createState() => _AICoachHeroState();
@@ -402,7 +440,7 @@ class _AICoachHeroState extends State<_AICoachHero>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top row: greeting + icons
+            // Top row: streak badge
             Row(
               children: [
                 Container(
@@ -428,10 +466,6 @@ class _AICoachHeroState extends State<_AICoachHero>
                     ],
                   ),
                 ),
-                const Spacer(),
-                _GlassIconBtn(icon: Icons.notifications_none_rounded, onTap: widget.onNotificationsTap),
-                const SizedBox(width: 8),
-                _GlassIconBtn(icon: Icons.settings_outlined, onTap: widget.onSettingsTap),
               ],
             ),
 
@@ -493,29 +527,6 @@ class _AICoachHeroState extends State<_AICoachHero>
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _GlassIconBtn extends StatelessWidget {
-  const _GlassIconBtn({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-        ),
-        child: Icon(icon, color: Colors.white.withValues(alpha: 0.85), size: 18),
       ),
     );
   }

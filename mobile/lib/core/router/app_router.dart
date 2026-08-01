@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../services/app_services.dart';
+import '../utils/redirect_utils.dart';
 import '../../features/authentication/presentation/screens/login_screen.dart';
 import '../../features/authentication/presentation/screens/onboarding_goal_setup_screen.dart';
 import '../../features/authentication/presentation/screens/register_screen.dart';
@@ -42,8 +43,11 @@ Future<String?> _authRedirect(BuildContext context, GoRouterState state) async {
 
   final hasSession = await AppServices.instance.auth.hasSession();
 
-  // Protected route → no valid session → send to login
-  if (!_publicPaths.contains(path) && !hasSession) return '/login';
+  // Protected route → no valid session → landing page on web, /login on mobile
+  if (!_publicPaths.contains(path) && !hasSession) {
+    if (redirectToLanding()) return null; // web: hard-navigate, no Flutter route needed
+    return '/login';
+  }
 
   // Already authenticated → skip login/register screens
   if ((path == '/login' || path == '/register') && hasSession) return '/dashboard';

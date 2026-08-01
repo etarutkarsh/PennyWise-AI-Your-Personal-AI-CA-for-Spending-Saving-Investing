@@ -1,36 +1,17 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
-import '../constants/api_constants.dart';
 import '../../data/models/category_model.dart';
 import 'network/api_client.dart';
 
-/// Routes AI calls through the PennyWise backend (which proxies to OmniRoute/OpenAI).
-/// Direct OpenAI calls from the browser caused CORS errors and exposed the API key.
+/// Routes AI calls through the PennyWise backend (which proxies to OpenAI).
+/// The API key lives server-side in OPENAI_API_KEY — no client key needed.
 class AiService {
-  AiService(this._storage, this._apiClient);
+  AiService(this._apiClient);
 
-  final FlutterSecureStorage _storage;
   final ApiClient _apiClient;
 
   // Convenience getter — uses the authenticated Dio from ApiClient.
   Dio get _dio => _apiClient.dio;
-
-  /// Always true — AI key is now configured server-side via OPENAI_API_KEY in .env.
-  Future<bool> hasKey() async => true;
-
-  Future<void> saveKey(String key) async {
-    await _storage.write(key: ApiConstants.openAiKeyStorageKey, value: key.trim());
-  }
-
-  Future<void> deleteKey() async {
-    await _storage.delete(key: ApiConstants.openAiKeyStorageKey);
-  }
-
-  Future<String?> _getKey() => _storage.read(key: ApiConstants.openAiKeyStorageKey);
-
-  /// Public accessor for the stored key — used by ChatScreen to send as header.
-  Future<String?> getStoredKey() => _getKey();
 
   /// Tests the backend AI connection. Throws on failure.
   Future<void> testConnection() async {

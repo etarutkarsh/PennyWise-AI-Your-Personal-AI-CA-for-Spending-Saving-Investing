@@ -686,6 +686,96 @@
     }
     .f-btn.success:hover { background: #00D084 !important; }
 
+    /* ── Auth tab switcher ───────────────────────────────────────────────────── */
+    .auth-tabs {
+      display: flex; gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 24px;
+    }
+    .auth-tab {
+      flex: 1; padding: 10px 8px;
+      background: transparent; border: none;
+      border-radius: 9px; cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 600;
+      color: var(--t2);
+      transition: all 0.2s;
+    }
+    .auth-tab.active { background: var(--orange); color: #fff; }
+
+    /* ── Phone input group ───────────────────────────────────────────────────── */
+    .phone-input-group {
+      display: flex; align-items: stretch;
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 13px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .phone-input-group:focus-within {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(244,114,43,0.11);
+    }
+    .phone-prefix {
+      display: flex; align-items: center;
+      padding: 0 14px 0 18px;
+      font-size: 15px; font-weight: 600;
+      color: var(--t2);
+      border-right: 1px solid rgba(255,255,255,0.07);
+      user-select: none; white-space: nowrap;
+    }
+    .phone-num {
+      flex: 1; padding: 14px 18px;
+      background: transparent; border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px; color: var(--t1);
+      outline: none; margin-bottom: 0;
+    }
+    .phone-num::placeholder { color: var(--t3); }
+
+    /* ── OTP boxes ───────────────────────────────────────────────────────────── */
+    .otp-boxes {
+      display: flex; gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .otp-box {
+      width: 46px; height: 54px;
+      background: var(--surface);
+      border: 1.5px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 22px; font-weight: 700;
+      color: var(--t1); text-align: center;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -moz-appearance: textfield;
+    }
+    .otp-box::-webkit-outer-spin-button,
+    .otp-box::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .otp-box:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 3px rgba(244,114,43,0.13);
+    }
+    .otp-box.filled { border-color: rgba(244,114,43,0.5); }
+    .otp-sent-msg {
+      font-size: 13px; color: var(--t2);
+      text-align: center; margin-bottom: 20px; line-height: 1.5;
+    }
+    .otp-sent-msg strong { color: var(--t1); }
+    .otp-resend {
+      display: block; width: 100%;
+      background: none; border: none;
+      color: var(--orange); font-family: 'DM Sans', sans-serif;
+      font-size: 14px; font-weight: 600;
+      cursor: pointer; margin-top: 14px; text-align: center;
+    }
+    .otp-resend:hover { text-decoration: underline; }
+
     .si-success {
       text-align: center;
       padding: 8px 0 4px;
@@ -1438,6 +1528,13 @@
       <h2 class="si-h3">Take back control<br>of your money.</h2>
       <p class="si-tag">Sign in — your financial CA is ready.</p>
 
+      <!-- Tab switcher -->
+      <div class="auth-tabs" role="tablist">
+        <button class="auth-tab active" id="tab-email" role="tab" type="button">Email</button>
+        <button class="auth-tab" id="tab-phone" role="tab" type="button">📱 Phone OTP</button>
+      </div>
+
+      <!-- Email / Password -->
       <form id="si-form" novalidate>
         <label class="f-lbl" for="si-email">Email address</label>
         <input class="f-in" type="email" id="si-email" placeholder="you@example.com" autocomplete="email" required>
@@ -1447,6 +1544,40 @@
 
         <button class="f-btn" id="si-btn" type="submit">Sign in to PennyWise</button>
       </form>
+
+      <!-- Phone OTP panel -->
+      <div id="otp-panel" style="display:none">
+        <!-- Step 1: enter phone -->
+        <div id="otp-step1">
+          <label class="f-lbl" for="otp-phone">Mobile number</label>
+          <div class="phone-input-group">
+            <span class="phone-prefix">🇮🇳 +91</span>
+            <input class="phone-num" type="tel" id="otp-phone"
+                   placeholder="98765 43210" maxlength="10"
+                   autocomplete="tel" inputmode="numeric">
+          </div>
+          <button class="f-btn" id="otp-send-btn" type="button">Send OTP</button>
+        </div>
+
+        <!-- Step 2: enter OTP -->
+        <div id="otp-step2" style="display:none">
+          <p class="otp-sent-msg">
+            OTP sent to <strong id="otp-sent-phone"></strong><br>
+            <span style="font-size:11px;color:var(--t3)">Valid for 5 minutes</span>
+          </p>
+          <label class="f-lbl" style="text-align:center">Enter 6-digit OTP</label>
+          <div class="otp-boxes">
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code">
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            <input class="otp-box" type="text" maxlength="1" inputmode="numeric" pattern="[0-9]">
+          </div>
+          <button class="f-btn" id="otp-verify-btn" type="button">Verify &amp; Sign in</button>
+          <button class="otp-resend" id="otp-resend-btn" type="button">← Change number / Resend OTP</button>
+        </div>
+      </div>
 
       <p class="si-switch">
         New here? <a href="#signup">Create your account →</a>
@@ -1960,6 +2091,154 @@
 
   // Clear error on any input change
   [siEmail, siPw].forEach(el => el.addEventListener('input', clearErr));
+
+  /* ── 8b. Phone OTP flow ──────────────────────────────────────────────────── */
+  const tabEmailBtn  = document.getElementById('tab-email');
+  const tabPhoneBtn  = document.getElementById('tab-phone');
+  const otpPanel     = document.getElementById('otp-panel');
+  const otpStep1     = document.getElementById('otp-step1');
+  const otpStep2     = document.getElementById('otp-step2');
+  const otpSendBtn   = document.getElementById('otp-send-btn');
+  const otpVerifyBtn = document.getElementById('otp-verify-btn');
+  const otpResendBtn = document.getElementById('otp-resend-btn');
+  const otpPhoneIn   = document.getElementById('otp-phone');
+  const otpSentPhone = document.getElementById('otp-sent-phone');
+  const otpBoxes     = Array.from(document.querySelectorAll('.otp-box'));
+
+  // Tab switching
+  tabEmailBtn.addEventListener('click', () => {
+    tabEmailBtn.classList.add('active');
+    tabPhoneBtn.classList.remove('active');
+    siForm.style.display = '';
+    otpPanel.style.display = 'none';
+    clearErr();
+  });
+  tabPhoneBtn.addEventListener('click', () => {
+    tabPhoneBtn.classList.add('active');
+    tabEmailBtn.classList.remove('active');
+    siForm.style.display = 'none';
+    otpPanel.style.display = '';
+    clearErr();
+    otpPhoneIn.focus();
+  });
+
+  // OTP box keyboard navigation + paste
+  otpBoxes.forEach((box, i) => {
+    box.addEventListener('input', e => {
+      const v = e.target.value.replace(/\D/g, '');
+      e.target.value = v ? v[0] : '';
+      box.classList.toggle('filled', !!e.target.value);
+      if (v && i < otpBoxes.length - 1) otpBoxes[i + 1].focus();
+    });
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !box.value && i > 0) otpBoxes[i - 1].focus();
+    });
+    box.addEventListener('paste', e => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+      pasted.slice(0, 6).split('').forEach((ch, j) => {
+        if (otpBoxes[j]) { otpBoxes[j].value = ch; otpBoxes[j].classList.add('filled'); }
+      });
+      otpBoxes[Math.min(pasted.length, 5)].focus();
+    });
+  });
+
+  // Send OTP
+  async function doSendOtp() {
+    const raw = otpPhoneIn.value.trim().replace(/\s/g, '');
+    if (!/^\d{10}$/.test(raw)) { showErr('Enter a valid 10-digit mobile number.'); return; }
+    const phone = '+91' + raw;
+
+    otpSendBtn.disabled = true;
+    otpSendBtn.classList.add('loading');
+    otpSendBtn.textContent = 'Sending OTP…';
+    clearErr();
+
+    try {
+      const res = await fetch(`${API}/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+      });
+      if (!res.ok) {
+        let msg = 'Could not send OTP. Try again.';
+        try { const b = await res.json(); if (b.message) msg = b.message; } catch (_) {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+
+      otpStep1.style.display = 'none';
+      otpStep2.style.display = '';
+      otpSentPhone.textContent = '+91 ' + raw.replace(/(\d{5})(\d{5})/, '$1 $2');
+      otpBoxes[0].focus();
+
+      // Dev mode: auto-fill OTP returned from backend
+      if (data.devOtp) {
+        data.devOtp.split('').forEach((ch, j) => {
+          if (otpBoxes[j]) { otpBoxes[j].value = ch; otpBoxes[j].classList.add('filled'); }
+        });
+      }
+    } catch (err) {
+      showErr(err.message);
+      otpSendBtn.disabled = false;
+      otpSendBtn.classList.remove('loading');
+      otpSendBtn.textContent = 'Send OTP';
+    }
+  }
+
+  otpSendBtn.addEventListener('click', doSendOtp);
+  otpPhoneIn.addEventListener('keydown', e => { if (e.key === 'Enter') doSendOtp(); });
+
+  // Resend / change number
+  otpResendBtn.addEventListener('click', () => {
+    otpStep2.style.display = 'none';
+    otpStep1.style.display = '';
+    otpBoxes.forEach(b => { b.value = ''; b.classList.remove('filled'); });
+    otpSendBtn.disabled = false;
+    otpSendBtn.classList.remove('loading');
+    otpSendBtn.textContent = 'Send OTP';
+    clearErr();
+    otpPhoneIn.focus();
+  });
+
+  // Verify OTP
+  otpVerifyBtn.addEventListener('click', async () => {
+    const otp = otpBoxes.map(b => b.value).join('');
+    if (otp.length !== 6) { showErr('Enter the complete 6-digit OTP.'); return; }
+    const phone = '+91' + otpPhoneIn.value.trim().replace(/\s/g, '');
+
+    otpVerifyBtn.disabled = true;
+    otpVerifyBtn.classList.add('loading');
+    otpVerifyBtn.textContent = 'Verifying…';
+    clearErr();
+
+    try {
+      const res = await fetch(`${API}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, otp }),
+      });
+      if (!res.ok) {
+        let msg = 'Incorrect OTP. Try again.';
+        try { const b = await res.json(); if (b.message) msg = b.message; } catch (_) {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      localStorage.setItem('pw_session', '1');
+
+      otpVerifyBtn.classList.add('success');
+      otpVerifyBtn.textContent = '✓ Verified — opening dashboard…';
+      setTimeout(() => {
+        window.location.href =
+          `./index.html#/splash?at=${encodeURIComponent(data.accessToken)}&rt=${encodeURIComponent(data.refreshToken)}`;
+      }, 900);
+    } catch (err) {
+      otpVerifyBtn.disabled = false;
+      otpVerifyBtn.classList.remove('loading');
+      otpVerifyBtn.textContent = 'Verify & Sign in';
+      showErr(err.message);
+    }
+  });
 
   /* ── 9. Hamburger menu ───────────────────────────────────────────────────── */
   const hamburger  = document.getElementById('hamburger');

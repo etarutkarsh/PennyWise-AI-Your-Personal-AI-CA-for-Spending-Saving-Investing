@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/goal_entity.dart';
+import 'goal_plan_screen.dart';
 
 class GoalsScreen extends StatefulWidget {
   const GoalsScreen({super.key});
@@ -353,7 +354,13 @@ class _GoalQuestCardState extends State<_GoalQuestCard> {
     final isComplete = pct >= 1.0;
     final barColor = isComplete ? AppColors.success : AppColors.orange;
 
-    return MouseRegion(
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => GoalPlanScreen(goal: widget.goal),
+        ),
+      ),
+      child: MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
@@ -486,7 +493,8 @@ class _GoalQuestCardState extends State<_GoalQuestCard> {
           ],
         ),
       ),
-    );
+    ), // MouseRegion
+    ); // GestureDetector
   }
 }
 

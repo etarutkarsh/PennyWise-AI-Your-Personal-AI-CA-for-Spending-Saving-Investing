@@ -29,6 +29,8 @@ public class SecurityConfig {
             "/auth/register",
             "/auth/login",
             "/auth/refresh",
+            "/auth/send-otp",
+            "/auth/verify-otp",
             "/actuator/health",
             "/actuator/info"
     };

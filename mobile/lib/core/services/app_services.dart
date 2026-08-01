@@ -63,7 +63,7 @@ class AppServices {
     savingsRules = SavingsRuleRepository(apiClient);
     leaderboard = LeaderboardRepository(apiClient);
     documents = DocumentRepository(apiClient);
-    ai = AiService(secureStorage, apiClient);
+    ai = AiService(apiClient);
     learning = LearningRepository(apiClient);
     notifications = NotificationsRepository(apiClient);
   }

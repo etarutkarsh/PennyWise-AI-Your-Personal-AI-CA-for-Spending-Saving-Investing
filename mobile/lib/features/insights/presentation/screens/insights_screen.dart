@@ -26,7 +26,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
   double _totalCredit = 0;
   double _salary = 0;
   Map<String, double> _spendingByCategory = {};
-  bool _hasAiKey = false;
 
   @override
   void initState() {
@@ -43,8 +42,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
     });
     try {
       if (_salary <= 0) _salary = await UserPrefsStorage.getSalary();
-      _hasAiKey = await AppServices.instance.ai.hasKey();
-
       final txs = await AppServices.instance.transactions.getAll();
       _computeStats(txs);
 
@@ -185,7 +182,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
                           child: ListView(
                             padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
                             children: [
-                              if (!_hasAiKey) _AiKeyBanner(onReload: _load),
                               _SpendingSummaryCard(
                                 totalDebit: _totalDebit,
                                 totalCredit: _totalCredit,
@@ -269,61 +265,6 @@ Widget _darkCard({required Widget child, EdgeInsets? padding}) {
 }
 
 // ─── AI Key Banner ────────────────────────────────────────────────────────────
-
-class _AiKeyBanner extends StatelessWidget {
-  const _AiKeyBanner({required this.onReload});
-  final VoidCallback onReload;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.amber.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.amber.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.amber.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.key_rounded, color: AppColors.amber, size: 18),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Add your OpenAI key in Settings to unlock personalised AI insights.',
-              style: GoogleFonts.dmSans(
-                  fontSize: 13,
-                  color: AppColors.amber,
-                  height: 1.4),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () async {
-              await context.push('/settings');
-              onReload();
-            },
-            child: Text(
-              'Settings →',
-              style: GoogleFonts.dmSans(
-                color: AppColors.amber,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ─── Spending Summary ─────────────────────────────────────────────────────────
 

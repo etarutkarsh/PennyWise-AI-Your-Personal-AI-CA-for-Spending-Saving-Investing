@@ -54,6 +54,9 @@ logging:
     root: INFO
     com.pennywise: DEBUG
 
+fast2sms:
+  api-key: ${FAST2SMS_API_KEY:}
+
 management:
   endpoints:
     web:
