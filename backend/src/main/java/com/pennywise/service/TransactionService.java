@@ -2,6 +2,7 @@ package com.pennywise.service;
 
 import com.pennywise.dto.TransactionCreateRequest;
 import com.pennywise.dto.TransactionDto;
+import com.pennywise.dto.TransactionUpdateRequest;
 import com.pennywise.engine.events.EventBus;
 import com.pennywise.engine.events.domain.*;
 import com.pennywise.entity.Budget;
@@ -12,8 +13,10 @@ import com.pennywise.exception.ResourceNotFoundException;
 import com.pennywise.repository.BudgetRepository;
 import com.pennywise.repository.CategoryRepository;
 import com.pennywise.repository.TransactionRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -22,6 +25,7 @@ import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TransactionService {
@@ -140,6 +144,42 @@ public class TransactionService {
         User user = currentUserProvider.get();
         return transactionRepository.findByUserIdAndTransactionDateBetween(user.getId(), from, to)
                 .stream().map(this::toDto).toList();
+    }
+
+    @Transactional
+    public TransactionDto update(UUID id, TransactionUpdateRequest req) {
+        Transaction tx = transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+        User user = currentUserProvider.get();
+        if (!tx.getUserId().equals(user.getId()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+
+        if (req.getMerchant() != null) tx.setMerchant(req.getMerchant());
+        if (req.getNote() != null) tx.setNote(req.getNote());
+        if (req.getAmount() != null) tx.setAmount(req.getAmount());
+        if (req.getRecurring() != null) tx.setRecurring(req.getRecurring());
+        if (req.getPaymentMethod() != null) {
+            tx.setPaymentMethod(req.getPaymentMethod());
+        }
+        if (req.getCategoryId() != null) {
+            categoryRepository.findById(UUID.fromString(req.getCategoryId()))
+                    .ifPresent(tx::setCategory);
+        }
+        return toDto(transactionRepository.save(tx));
+    }
+
+    public List<TransactionDto> listFiltered(String direction, String categoryName, String search) {
+        User user = currentUserProvider.get();
+        List<Transaction> all = transactionRepository.findByUserIdOrderByTransactionDateDesc(user.getId());
+        return all.stream()
+                .filter(t -> direction == null || t.getDirection().name().equalsIgnoreCase(direction))
+                .filter(t -> categoryName == null || (t.getCategory() != null
+                        && t.getCategory().getName().equalsIgnoreCase(categoryName)))
+                .filter(t -> search == null || search.isBlank()
+                        || (t.getMerchant() != null && t.getMerchant().toLowerCase().contains(search.toLowerCase()))
+                        || (t.getNote() != null && t.getNote().toLowerCase().contains(search.toLowerCase())))
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
     public void delete(UUID transactionId) {
