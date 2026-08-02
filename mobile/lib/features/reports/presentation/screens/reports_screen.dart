@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/repositories/report_repository.dart';
+import '../../../transactions/domain/entities/transaction_entity.dart';
 
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
@@ -215,7 +216,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: _CategoryBreakdown(report: _monthly!, currency: _currency),
+                      child: _CategoryBreakdown(
+                        report: _monthly!,
+                        currency: _currency,
+                        selectedMonth: _selectedMonth,
+                      ),
                     ),
                   ),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
@@ -598,14 +603,35 @@ class _StatTile extends StatelessWidget {
 // ── Category Breakdown ────────────────────────────────────────────────────────
 
 class _CategoryBreakdown extends StatelessWidget {
-  const _CategoryBreakdown({required this.report, required this.currency});
+  const _CategoryBreakdown({
+    required this.report,
+    required this.currency,
+    required this.selectedMonth,
+  });
   final MonthReport report;
   final NumberFormat currency;
+  final DateTime selectedMonth;
 
   static const _barColors = [
     AppColors.primary, AppColors.accent, Color(0xFF6A1B9A),
     Color(0xFF00796B), Color(0xFFE65100),
   ];
+
+  void _openDrill(BuildContext context, CategorySpend cat) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _CategoryDrillSheet(
+        category: cat,
+        selectedMonth: selectedMonth,
+        currency: currency,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -621,51 +647,280 @@ class _CategoryBreakdown extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Where it went',
-              style: GoogleFonts.manrope(
-                fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
-              )),
+          Row(
+            children: [
+              Text('Where it went',
+                  style: GoogleFonts.manrope(
+                    fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary,
+                  )),
+              const Spacer(),
+              Text('Tap to explore →',
+                  style: GoogleFonts.dmSans(fontSize: 11, color: AppColors.textMuted)),
+            ],
+          ),
           const SizedBox(height: 16),
           ...cats.asMap().entries.map((e) {
             final cat = e.value;
             final color = _barColors[e.key % _barColors.length];
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(cat.categoryIcon, style: const TextStyle(fontSize: 15)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(cat.categoryName,
-                            style: GoogleFonts.dmSans(
-                              fontSize: 13, fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            )),
-                      ),
-                      Text(
-                        '${currency.format(cat.amount)}  ·  ${cat.percentage.toStringAsFixed(0)}%',
-                        style: GoogleFonts.dmSans(
-                            fontSize: 12, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: (cat.percentage / 100).clamp(0.0, 1.0),
-                      minHeight: 6,
-                      backgroundColor: AppColors.surfaceElevated,
-                      valueColor: AlwaysStoppedAnimation(color),
+            return GestureDetector(
+              onTap: () => _openDrill(context, cat),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(cat.categoryIcon, style: const TextStyle(fontSize: 15)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(cat.categoryName,
+                              style: GoogleFonts.dmSans(
+                                fontSize: 13, fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              )),
+                        ),
+                        Text(
+                          '${currency.format(cat.amount)}  ·  ${cat.percentage.toStringAsFixed(0)}%',
+                          style: GoogleFonts.dmSans(
+                              fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right_rounded,
+                            size: 16, color: AppColors.textMuted),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: (cat.percentage / 100).clamp(0.0, 1.0),
+                        minHeight: 6,
+                        backgroundColor: AppColors.surfaceElevated,
+                        valueColor: AlwaysStoppedAnimation(color),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           }),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Category Drill-Down Sheet ─────────────────────────────────────────────────
+
+class _CategoryDrillSheet extends StatefulWidget {
+  const _CategoryDrillSheet({
+    required this.category,
+    required this.selectedMonth,
+    required this.currency,
+  });
+  final CategorySpend category;
+  final DateTime selectedMonth;
+  final NumberFormat currency;
+
+  @override
+  State<_CategoryDrillSheet> createState() => _CategoryDrillSheetState();
+}
+
+class _CategoryDrillSheetState extends State<_CategoryDrillSheet> {
+  List<TransactionEntity> _txns = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final all = await AppServices.instance.transactions.getAll();
+      final filtered = all.where((t) =>
+        t.categoryName == widget.category.categoryName &&
+        t.transactionDate.year == widget.selectedMonth.year &&
+        t.transactionDate.month == widget.selectedMonth.month,
+      ).toList()
+        ..sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
+      if (mounted) setState(() { _txns = filtered; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      maxChildSize: 0.92,
+      minChildSize: 0.35,
+      expand: false,
+      builder: (_, ctrl) => Column(
+        children: [
+          // ── Handle + header ───────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 8, 0),
+            child: Column(
+              children: [
+                Center(
+                  child: Container(
+                    width: 36, height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text(widget.category.categoryIcon,
+                        style: const TextStyle(fontSize: 26)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(widget.category.categoryName,
+                              style: GoogleFonts.manrope(
+                                fontSize: 18, fontWeight: FontWeight.w800,
+                                color: AppColors.textPrimary,
+                              )),
+                          Text(
+                            '${widget.currency.format(widget.category.amount)} · ${widget.category.percentage.toStringAsFixed(0)}% of spend · ${DateFormat('MMM yyyy').format(widget.selectedMonth)}',
+                            style: GoogleFonts.dmSans(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded,
+                          color: AppColors.textSecondary, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 4),
+              ],
+            ),
+          ),
+
+          // ── Transaction list ──────────────────────────────────────────────
+          Expanded(
+            child: _loading
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary))
+                : _txns.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(widget.category.categoryIcon,
+                                style: const TextStyle(fontSize: 40)),
+                            const SizedBox(height: 12),
+                            Text('No transactions found',
+                                style: GoogleFonts.dmSans(
+                                  fontSize: 15, fontWeight: FontWeight.w600,
+                                  color: AppColors.textPrimary,
+                                )),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Nothing logged under ${widget.category.categoryName} this month',
+                              style: GoogleFonts.dmSans(
+                                  fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        controller: ctrl,
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+                        itemCount: _txns.length + 1,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (_, i) {
+                          // First item: count summary
+                          if (i == 0) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Text(
+                                '${_txns.length} transaction${_txns.length == 1 ? '' : 's'}',
+                                style: GoogleFonts.dmSans(
+                                    fontSize: 12,
+                                    color: AppColors.textMuted,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            );
+                          }
+                          final t = _txns[i - 1];
+                          return Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceElevated,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40, height: 40,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      t.merchant.isNotEmpty
+                                          ? t.merchant[0].toUpperCase()
+                                          : '?',
+                                      style: GoogleFonts.dmSans(
+                                        fontSize: 17, fontWeight: FontWeight.w800,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(t.merchant,
+                                          style: GoogleFonts.dmSans(
+                                            fontSize: 13, fontWeight: FontWeight.w600,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                          overflow: TextOverflow.ellipsis),
+                                      Text(
+                                        DateFormat('d MMM, HH:mm')
+                                            .format(t.transactionDate.toLocal()),
+                                        style: GoogleFonts.dmSans(
+                                            fontSize: 11, color: AppColors.textMuted),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  '${t.direction == 'DEBIT' ? '-' : '+'}${widget.currency.format(t.amount)}',
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 14, fontWeight: FontWeight.w700,
+                                    color: t.direction == 'DEBIT'
+                                        ? AppColors.danger
+                                        : AppColors.success,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+          ),
         ],
       ),
     );
