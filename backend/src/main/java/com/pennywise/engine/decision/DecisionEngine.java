@@ -459,8 +459,8 @@ public class DecisionEngine {
                         .tradeoffs(tradeoffs4)
                         .build());
             }
-        } else {
-            // Lump-sum wait scenarios
+        } else if (!isMinorPurchase) {
+            // Lump-sum wait scenarios — skipped for minor purchases (price < 15% of income)
             BigDecimal saveMonthly = surplus.multiply(SAVE_RATE_OF_SURPLUS);
 
             // Wait 3 months

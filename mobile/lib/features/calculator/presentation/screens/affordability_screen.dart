@@ -433,7 +433,10 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
                   child: _ReasonCard(result: _result!),
                 ),
               ),
-              if (_result!.scenarios.isNotEmpty) ...[
+              if (_result!.scenarios.isNotEmpty &&
+                  !(_result!.verdict == 'SAFE_TO_BUY' &&
+                    widget.salary > 0 &&
+                    _enteredPrice / widget.salary < 0.15)) ...[
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
                 SliverToBoxAdapter(
                   child: Padding(
