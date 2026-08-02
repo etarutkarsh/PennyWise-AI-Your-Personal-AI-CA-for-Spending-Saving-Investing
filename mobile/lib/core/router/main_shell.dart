@@ -13,7 +13,7 @@ class MainShell extends StatelessWidget {
     (icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Today'),
     (icon: Icons.receipt_long_outlined, activeIcon: Icons.receipt_long_rounded, label: 'Activity'),
     (icon: Icons.flag_outlined, activeIcon: Icons.flag_rounded, label: 'Goals'),
-    (icon: Icons.school_outlined, activeIcon: Icons.school_rounded, label: 'Learn'),
+    (icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart_rounded, label: 'Reports'),
     (icon: Icons.chat_bubble_outline_rounded, activeIcon: Icons.chat_bubble_rounded, label: 'AI'),
   ];
 

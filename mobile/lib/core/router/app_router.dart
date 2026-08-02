@@ -99,7 +99,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(path: '/budgets', builder: (context, state) => const BudgetScreen()),
     GoRoute(path: '/investments', builder: (context, state) => const InvestmentsScreen()),
-    GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen()),
+    GoRoute(path: '/learn', builder: (context, state) => const LearnScreen()),
     GoRoute(path: '/notifications', builder: (context, state) => const NotificationsScreen()),
     GoRoute(path: '/settings', builder: (context, state) => const SettingsScreen()),
     GoRoute(path: '/profile', builder: (context, state) => const ProfileScreen()),
@@ -181,7 +181,7 @@ final GoRouter appRouter = GoRouter(
           GoRoute(path: '/goals', builder: (context, state) => const GoalsScreen()),
         ]),
         StatefulShellBranch(routes: [
-          GoRoute(path: '/learn', builder: (context, state) => const LearnScreen()),
+          GoRoute(path: '/reports', builder: (context, state) => const ReportsScreen()),
         ]),
         StatefulShellBranch(routes: [
           GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
