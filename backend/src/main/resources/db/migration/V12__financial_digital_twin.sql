@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS financial_digital_twin (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id             UUID NOT NULL UNIQUE,
+    twin_score          INTEGER NOT NULL DEFAULT 0,
+    net_worth           NUMERIC(18,2),
+    total_assets        NUMERIC(18,2),
+    total_liabilities   NUMERIC(18,2),
+    monthly_income      NUMERIC(18,2),
+    monthly_expenses    NUMERIC(18,2),
+    monthly_surplus     NUMERIC(18,2),
+    ef_coverage_months  NUMERIC(6,2),
+    dti_ratio           NUMERIC(6,4),
+    behavior_factor     NUMERIC(6,4),
+    projection_12m      NUMERIC(18,2),
+    projection_3yr      NUMERIC(18,2),
+    projection_5yr      NUMERIC(18,2),
+    projection_10yr     NUMERIC(18,2),
+    goal_trajectories   TEXT,
+    projection_series   TEXT,
+    last_computed_at    TIMESTAMP,
+    CONSTRAINT fk_twin_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

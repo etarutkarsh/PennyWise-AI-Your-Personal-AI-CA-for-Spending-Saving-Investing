@@ -341,6 +341,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                         onJournalTap: () => context
                             .push('/journal')
                             .then((_) { if (mounted) _load(); }),
+                        onTwinTap: () => context
+                            .push('/twin')
+                            .then((_) { if (mounted) _load(); }),
                       ),
 
                       const SizedBox(height: 28),
@@ -1084,8 +1087,9 @@ class _QuickActions extends StatelessWidget {
     required this.onChatTap,
     required this.onNetWorthTap,
     required this.onJournalTap,
+    required this.onTwinTap,
   });
-  final VoidCallback onAffordabilityTap, onGoalsTap, onInsightsTap, onChatTap, onNetWorthTap, onJournalTap;
+  final VoidCallback onAffordabilityTap, onGoalsTap, onInsightsTap, onChatTap, onNetWorthTap, onJournalTap, onTwinTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1150,6 +1154,9 @@ class _QuickActions extends StatelessWidget {
         const SizedBox(height: 12),
         // Financial Journal — decision history
         _JournalCard(onTap: onJournalTap),
+        const SizedBox(height: 12),
+        // Financial Digital Twin
+        _TwinCard(onTap: onTwinTap),
       ],
     );
   }
@@ -1419,6 +1426,104 @@ class _JournalCardState extends State<_JournalCard> {
               Icon(
                 Icons.arrow_forward_rounded,
                 color: _hovered ? AppColors.primary : AppColors.textMuted,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Financial Digital Twin Card ──────────────────────────────────────────────
+
+class _TwinCard extends StatefulWidget {
+  const _TwinCard({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  State<_TwinCard> createState() => _TwinCardState();
+}
+
+class _TwinCardState extends State<_TwinCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: _hovered
+                  ? [const Color(0xFF0A1628), const Color(0xFF0D1B35)]
+                  : [AppColors.surface, AppColors.surface],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: _hovered
+                  ? const Color(0xFF22C55E).withValues(alpha: 0.45)
+                  : AppColors.border,
+              width: _hovered ? 1.5 : 1,
+            ),
+            boxShadow: _hovered
+                ? [BoxShadow(color: const Color(0xFF22C55E).withValues(alpha: 0.10), blurRadius: 20, offset: const Offset(0, 6))]
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF16213E), Color(0xFF0F9D58)],
+                  ),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(Icons.hub_rounded, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Financial Digital Twin',
+                      style: GoogleFonts.manrope(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'See your complete financial picture — projections, goals & behavior',
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: _hovered ? const Color(0xFF22C55E) : AppColors.textMuted,
                 size: 20,
               ),
             ],
