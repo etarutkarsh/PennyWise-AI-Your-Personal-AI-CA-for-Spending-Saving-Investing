@@ -11,8 +11,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../data/repositories/health_score_repository.dart';
 import '../../domain/entities/dashboard_summary.dart';
 import '../widgets/hero_carousel_section.dart';
-import '../widgets/goal_recommendation_card.dart';
 import '../widgets/market_data_section.dart';
+import '../widgets/next_best_action_carousel.dart';
 import '../widgets/news_ticker_widget.dart';
 import '../widgets/animated_stats_section.dart';
 import '../widgets/motivation_cards_section.dart';
@@ -196,8 +196,6 @@ class _DashboardScreenState extends State<DashboardScreen>
               const SizedBox(height: 28),
               RepaintBoundary(child: HeroCarouselSection(salary: _salary)),
               const SizedBox(height: 28),
-              const RepaintBoundary(child: GoalRecommendationCard()),
-              const SizedBox(height: 28),
               const RepaintBoundary(child: MarketDataSection()),
               const SizedBox(height: 4),
               const RepaintBoundary(child: FinancialNewsTicker()),
@@ -284,6 +282,21 @@ class _DashboardScreenState extends State<DashboardScreen>
                       ),
 
                       const SizedBox(height: 32),
+                    ],
+                  ],
+                ),
+              ),
+
+              // ── Next Best Action Carousel ─────────────────────────────
+              const RepaintBoundary(child: NextBestActionCarousel()),
+              const SizedBox(height: 32),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_loadedSalary) ...[
 
                       // Quick Actions
                       const _SectionHeader(
