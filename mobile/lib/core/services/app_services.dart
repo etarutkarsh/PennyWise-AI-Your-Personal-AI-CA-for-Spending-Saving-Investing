@@ -18,6 +18,7 @@ import '../../data/repositories/leaderboard_repository.dart';
 import '../../data/repositories/document_repository.dart';
 import '../../data/repositories/learning_repository.dart';
 import '../../data/repositories/notifications_repository.dart';
+import '../../data/repositories/decision_memory_repository.dart';
 
 /// Global service locator. Call [AppServices.init()] in main() before runApp.
 /// Access everywhere via [AppServices.instance].
@@ -43,6 +44,7 @@ class AppServices {
   late final AiService ai;
   late final LearningRepository learning;
   late final NotificationsRepository notifications;
+  late final DecisionMemoryRepository decisionMemory;
 
   Future<void> init() async {
     const secureStorage = FlutterSecureStorage(
@@ -66,6 +68,7 @@ class AppServices {
     ai = AiService(apiClient);
     learning = LearningRepository(apiClient);
     notifications = NotificationsRepository(apiClient);
+    decisionMemory = DecisionMemoryRepository(apiClient);
   }
 }
 

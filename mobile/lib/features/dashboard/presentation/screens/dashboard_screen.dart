@@ -320,6 +320,9 @@ class _DashboardScreenState extends State<DashboardScreen>
                         onNetWorthTap: () => context
                             .push('/net-worth')
                             .then((_) { if (mounted) _load(); }),
+                        onJournalTap: () => context
+                            .push('/journal')
+                            .then((_) { if (mounted) _load(); }),
                       ),
 
                       const SizedBox(height: 28),
@@ -1062,8 +1065,9 @@ class _QuickActions extends StatelessWidget {
     required this.onInsightsTap,
     required this.onChatTap,
     required this.onNetWorthTap,
+    required this.onJournalTap,
   });
-  final VoidCallback onAffordabilityTap, onGoalsTap, onInsightsTap, onChatTap, onNetWorthTap;
+  final VoidCallback onAffordabilityTap, onGoalsTap, onInsightsTap, onChatTap, onNetWorthTap, onJournalTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1125,6 +1129,9 @@ class _QuickActions extends StatelessWidget {
         const SizedBox(height: 12),
         // Net Worth — full width hero card
         _NetWorthCard(onTap: onNetWorthTap),
+        const SizedBox(height: 12),
+        // Financial Journal — decision history
+        _JournalCard(onTap: onJournalTap),
       ],
     );
   }
@@ -1298,6 +1305,102 @@ class _NetWorthCardState extends State<_NetWorthCard> {
               Icon(
                 Icons.arrow_forward_rounded,
                 color: _hovered ? AppColors.amber : AppColors.textMuted,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Financial Journal Card ────────────────────────────────────────────────────
+
+class _JournalCard extends StatefulWidget {
+  const _JournalCard({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  State<_JournalCard> createState() => _JournalCardState();
+}
+
+class _JournalCardState extends State<_JournalCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: _hovered
+                  ? [const Color(0xFF0F1C2E), const Color(0xFF162033)]
+                  : [AppColors.surface, AppColors.surface],
+            ),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: _hovered
+                  ? AppColors.primary.withValues(alpha: 0.45)
+                  : AppColors.border,
+              width: _hovered ? 1.5 : 1,
+            ),
+            boxShadow: _hovered
+                ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.10), blurRadius: 20, offset: const Offset(0, 6))]
+                : null,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0A7A40), Color(0xFF0F9D58)],
+                  ),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(Icons.history_edu_rounded, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Financial Journal',
+                      style: GoogleFonts.manrope(
+                        color: AppColors.textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Your decision history — every recommendation, outcome, and lesson',
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                Icons.arrow_forward_rounded,
+                color: _hovered ? AppColors.primary : AppColors.textMuted,
                 size: 20,
               ),
             ],
