@@ -13,28 +13,32 @@ import '../../../goals/domain/entities/goal_entity.dart';
 class _NextBestAction {
   final String goalName;
   final String goalEmoji;
-  final String action;       // HERO: what the user should do
-  final String why;          // 1 sentence explaining the impact
+  final String goalType;
+  final String action;           // HERO: what the user should do
+  final List<String> whyToday;  // 2-3 contextual trigger bullets
   final int currentPct;
   final int projectedPct;
   final List<String> factors;
   final int confidencePct;
-  final String instrument;   // supporting product (shown last)
+  final int healthScoreDelta;    // estimated health score improvement
+  final int freedomRunwayMonths; // estimated additional months of financial runway
+  final String instrument;       // supporting product (shown last, subdued)
   final String? partnerName;
-  final String? partnerCta;
 
   const _NextBestAction({
     required this.goalName,
     required this.goalEmoji,
+    required this.goalType,
     required this.action,
-    required this.why,
+    required this.whyToday,
     required this.currentPct,
     required this.projectedPct,
     required this.factors,
     required this.confidencePct,
+    required this.healthScoreDelta,
+    required this.freedomRunwayMonths,
     required this.instrument,
     this.partnerName,
-    this.partnerCta,
   });
 
   int get delta => projectedPct - currentPct;
@@ -50,6 +54,8 @@ class _NextBestAction {
     if (confidencePct >= 70) return AppColors.warning;
     return AppColors.danger;
   }
+
+  bool get isEfGoal => goalType.toLowerCase() == 'emergency_fund';
 }
 
 // ── Action Engine ─────────────────────────────────────────────────────────────
@@ -92,27 +98,34 @@ class _ActionEngine {
     final gap = monthlyNeeded - monthlyHave;
 
     String action;
-    String why;
+    List<String> whyToday;
     int projectedPct;
     int confidencePct;
 
     if (goal.currentSaved >= goal.targetAmount) {
       action = 'Move your surplus toward your next milestone.';
-      why = 'This goal is complete. Your discipline is compounding.';
+      whyToday = [
+        'This goal is complete — momentum is your biggest asset now.',
+        'Idle surplus loses value to inflation every month.',
+      ];
       projectedPct = 100;
       confidencePct = 99;
     } else if (coverage >= 1.05) {
-      action =
-          'Optimise your $instrument for ${_yieldHint(instrument)} returns.';
-      why =
-          'You\'re on track — a better rate could reach your goal ${max(1, (monthsLeft * 0.10).round())} months early.';
+      action = 'Optimise your $instrument for ${_yieldHint(instrument)} returns.';
+      whyToday = [
+        'You\'re on track — better rate could reach goal ${max(1, (monthsLeft * 0.10).round())} months early.',
+        'Market conditions favour switching to a higher-yield option.',
+      ];
       projectedPct = min(currentPct + 7, 96);
       confidencePct = 88;
     } else if (gap > 0 && gap <= salary * 0.12) {
       action = 'Increase monthly saving by ${_fmt.format(gap.round())}.';
       final newPct = min(currentPct + 22, 92);
-      why =
-          'Closes the gap on ${goal.name} and raises success probability from $currentPct% to $newPct%.';
+      whyToday = [
+        'Small gap — closeable with ${_fmt.format(gap.round())} more per month.',
+        'Raises success probability from $currentPct% to $newPct% immediately.',
+        'Your current income level supports this increase.',
+      ];
       projectedPct = newPct;
       confidencePct = 85;
     } else {
@@ -120,42 +133,55 @@ class _ActionEngine {
           ? max(3, (gap / monthlyHave * monthsLeft).round())
           : 12;
       action = 'Extend deadline by $extendMonths months, or increase savings.';
-      why = 'Brings ${goal.name} within reach at your current income level.';
+      whyToday = [
+        'Current contributions won\'t reach the target by ${_month(goal.deadline)}.',
+        'Extending deadline or increasing savings are both viable paths.',
+      ];
       projectedPct = min(currentPct + 18, 85);
       confidencePct = 72;
     }
 
+    final healthDelta = _healthDelta(confidencePct, currentPct, projectedPct);
+    final runwayDelta = _runwayDelta(projectedPct - currentPct, goal.goalType);
+
     return _NextBestAction(
       goalName: goal.name,
       goalEmoji: _emoji(goal.goalType),
+      goalType: goal.goalType,
       action: action,
-      why: why,
+      whyToday: whyToday,
       currentPct: currentPct,
       projectedPct: projectedPct,
       factors: _factors(goal, monthsLeft, salary, gap),
       confidencePct: confidencePct,
+      healthScoreDelta: healthDelta,
+      freedomRunwayMonths: runwayDelta,
       instrument: instrument,
       partnerName: _partner(instrument),
-      partnerCta: _partnerCta(instrument),
     );
   }
 
   static List<_NextBestAction> _defaults(double salary) {
     final monthlyExpenses = salary * 0.80;
-    final emergencyTarget = monthlyExpenses * 6;
+    final efTarget = monthlyExpenses * 6;
     final sipAmount = (salary * 0.08).round();
 
     return [
       _NextBestAction(
         goalName: 'Emergency Fund',
         goalEmoji: '🛡️',
-        action:
-            'Start saving ${_fmt.format((salary * 0.12).round())}/month for emergencies.',
-        why:
-            'Builds a ${_fmt.format(emergencyTarget.round())} safety net in ~2 years — the single highest-impact financial move you can make.',
+        goalType: 'emergency_fund',
+        action: 'Start saving ${_fmt.format((salary * 0.12).round())}/month for emergencies.',
+        whyToday: [
+          'No emergency fund detected — your highest financial risk right now.',
+          'Six months of expenses (${_fmt.format(efTarget.round())}) is the gold standard. You\'re at zero.',
+          'One unexpected event could destabilise your entire financial plan.',
+        ],
         currentPct: 0,
         projectedPct: 62,
         confidencePct: 91,
+        healthScoreDelta: 9,
+        freedomRunwayMonths: 8,
         factors: [
           'No existing emergency goal detected',
           '6-month target is the financial gold standard',
@@ -163,17 +189,22 @@ class _ActionEngine {
         ],
         instrument: 'Recurring Deposit',
         partnerName: 'HDFC Bank',
-        partnerCta: 'Open RD',
       ),
       _NextBestAction(
         goalName: 'Long-term Wealth',
         goalEmoji: '📈',
+        goalType: 'investment',
         action: 'Start a SIP of ${_fmt.format(sipAmount)}/month.',
-        why:
-            'At 12% p.a., ₹$sipAmount/month becomes ${_fmt.format(sipAmount * 240)} in 20 years through compounding.',
+        whyToday: [
+          'No investment goal detected — time in market beats timing the market.',
+          'At 12% p.a., ₹$sipAmount/month becomes ${_fmt.format(sipAmount * 240)} in 20 years.',
+          '8% of salary is the minimum recommended starting rate.',
+        ],
         currentPct: 0,
         projectedPct: 58,
         confidencePct: 84,
+        healthScoreDelta: 6,
+        freedomRunwayMonths: 5,
         factors: [
           'Long horizon supports equity growth',
           'SIP averages out market volatility',
@@ -181,13 +212,34 @@ class _ActionEngine {
         ],
         instrument: 'Equity Mutual Fund',
         partnerName: 'Mirae Asset',
-        partnerCta: 'Start SIP',
       ),
     ];
   }
 
+  static int _healthDelta(int confidencePct, int currentPct, int projectedPct) {
+    final goalDelta = projectedPct - currentPct;
+    if (confidencePct >= 85) return (goalDelta * 0.38).round().clamp(5, 12);
+    if (confidencePct >= 70) return (goalDelta * 0.25).round().clamp(3, 8);
+    return (goalDelta * 0.15).round().clamp(1, 4);
+  }
+
+  static int _runwayDelta(int goalDelta, String goalType) {
+    if (goalType.toLowerCase() == 'emergency_fund') {
+      return (goalDelta * 0.25).round().clamp(1, 12);
+    }
+    return (goalDelta * 0.15).round().clamp(1, 8);
+  }
+
   static int _monthsBetween(DateTime from, DateTime to) =>
       (to.year - from.year) * 12 + (to.month - from.month);
+
+  static String _month(DateTime dt) {
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    return '${months[dt.month]} ${dt.year}';
+  }
 
   static String _instrument(String goalType, int monthsLeft) {
     if (monthsLeft < 12) return 'Liquid Fund';
@@ -204,9 +256,7 @@ class _ActionEngine {
     if (instrument.contains('Equity')) return '12–14%';
     if (instrument.contains('Hybrid')) return '9–11%';
     if (instrument.contains('PPF')) return '7.1%';
-    if (instrument.contains('RD') || instrument.contains('Recurring')) {
-      return '6.5–7.5%';
-    }
+    if (instrument.contains('RD') || instrument.contains('Recurring')) return '6.5–7.5%';
     return '6–7%';
   }
 
@@ -214,47 +264,23 @@ class _ActionEngine {
     if (instrument.contains('ELSS')) return 'Mirae Asset';
     if (instrument.contains('Equity')) return 'Axis Mutual Fund';
     if (instrument.contains('Hybrid')) return 'HDFC MF';
-    if (instrument.contains('RD') || instrument.contains('Recurring')) {
-      return 'HDFC Bank';
-    }
+    if (instrument.contains('RD') || instrument.contains('Recurring')) return 'HDFC Bank';
     if (instrument.contains('Liquid')) return 'Parag Parikh';
     if (instrument.contains('PPF')) return 'SBI Bank';
     return null;
   }
 
-  static String? _partnerCta(String instrument) {
-    if (instrument.contains('Equity') ||
-        instrument.contains('Hybrid') ||
-        instrument.contains('Liquid')) {
-      return 'Start SIP';
-    }
-    if (instrument.contains('RD') || instrument.contains('Recurring')) {
-      return 'Open RD';
-    }
-    if (instrument.contains('PPF')) return 'Open PPF Account';
-    return null;
-  }
-
   static String _emoji(String goalType) {
     switch (goalType.toLowerCase()) {
-      case 'emergency_fund':
-        return '🛡️';
-      case 'house':
-        return '🏠';
-      case 'car':
-        return '🚗';
-      case 'vacation':
-        return '✈️';
-      case 'education':
-        return '🎓';
-      case 'retirement':
-        return '🌅';
-      case 'wedding':
-        return '💍';
-      case 'laptop':
-        return '💻';
-      default:
-        return '🎯';
+      case 'emergency_fund': return '🛡️';
+      case 'house':          return '🏠';
+      case 'car':            return '🚗';
+      case 'vacation':       return '✈️';
+      case 'education':      return '🎓';
+      case 'retirement':     return '🌅';
+      case 'wedding':        return '💍';
+      case 'laptop':         return '💻';
+      default:               return '🎯';
     }
   }
 
@@ -353,8 +379,7 @@ class _NextBestActionCarouselState extends State<NextBestActionCarousel> {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(5),
@@ -384,10 +409,7 @@ class _NextBestActionCarouselState extends State<NextBestActionCarousel> {
               if (!_loading && _actions.isNotEmpty)
                 Text(
                   '${_page + 1} / ${_actions.length}',
-                  style: GoogleFonts.dmSans(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
+                  style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
                 ),
             ],
           ),
@@ -402,7 +424,7 @@ class _NextBestActionCarouselState extends State<NextBestActionCarousel> {
           _EmptyState()
         else
           SizedBox(
-            height: 340,
+            height: 390,
             child: PageView.builder(
               controller: _pageController,
               itemCount: _actions.length,
@@ -463,7 +485,7 @@ class _ActionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Eyebrow: goal context + strength ────────────────────────
+            // ── 1. Eyebrow: goal context + strength ─────────────────────
             Row(
               children: [
                 Text(action.goalEmoji, style: const TextStyle(fontSize: 15)),
@@ -488,9 +510,9 @@ class _ActionCard extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
-            // ── HERO: the action ────────────────────────────────────────
+            // ── 2. HERO: the recommended action ─────────────────────────
             Text(
               action.action,
               style: GoogleFonts.manrope(
@@ -499,58 +521,107 @@ class _ActionCard extends StatelessWidget {
                 color: AppColors.textPrimary,
                 height: 1.45,
               ),
-              maxLines: 3,
+              maxLines: 2,
             ),
 
-            const SizedBox(height: 6),
+            const SizedBox(height: 12),
 
-            // ── Why ─────────────────────────────────────────────────────
+            // ── 3. Why today? ────────────────────────────────────────────
             Text(
-              action.why,
+              'WHY TODAY?',
               style: GoogleFonts.dmSans(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                height: 1.5,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+                letterSpacing: 1.0,
               ),
-              maxLines: 3,
+            ),
+            const SizedBox(height: 6),
+            ...action.whyToday.take(2).map(
+              (bullet) => Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Container(
+                        width: 4,
+                        height: 4,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        bullet,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          height: 1.45,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
 
             const SizedBox(height: 14),
             const Divider(color: AppColors.border, height: 1),
             const SizedBox(height: 12),
 
-            // ── Expected outcome: before → after ────────────────────────
+            // ── 4. Decision Impact ───────────────────────────────────────
+            Text(
+              'DECISION IMPACT',
+              style: GoogleFonts.dmSans(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textMuted,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(
-                  child: _OutcomeBox(
-                    label: 'Now',
-                    pct: action.currentPct,
-                    isProjected: false,
-                  ),
+                _ImpactChip(
+                  icon: Icons.favorite_rounded,
+                  label: 'Health',
+                  value: '+${action.healthScoreDelta}',
+                  color: AppColors.success,
                 ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
+                const SizedBox(width: 6),
+                _ImpactChip(
+                  icon: Icons.flag_rounded,
+                  label: 'Goal',
+                  value: '${action.currentPct}→${action.projectedPct}%',
+                  color: AppColors.primary,
                 ),
-                Expanded(
-                  child: _OutcomeBox(
-                    label: 'With action',
-                    pct: action.projectedPct,
-                    isProjected: true,
-                    delta: action.delta,
-                  ),
+                const SizedBox(width: 6),
+                _ImpactChip(
+                  icon: Icons.shield_rounded,
+                  label: action.isEfGoal ? 'EF' : 'Risk',
+                  value: action.isEfGoal
+                      ? '+${action.freedomRunwayMonths}mo'
+                      : 'Lower',
+                  color: AppColors.accent,
+                ),
+                const SizedBox(width: 6),
+                _ImpactChip(
+                  icon: Icons.timelapse_rounded,
+                  label: 'Runway',
+                  value: '+${action.freedomRunwayMonths}mo',
+                  color: AppColors.textSecondary,
                 ),
               ],
             ),
 
             const Spacer(),
 
-            // ── Product row (supporting, subdued) ───────────────────────
+            // ── 5. Product row (supporting, subdued) ────────────────────
             if (action.partnerName != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -562,53 +633,48 @@ class _ActionCard extends StatelessWidget {
                       color: AppColors.textMuted,
                     ),
                     const SizedBox(width: 5),
-                    Text(
-                      '${action.instrument} via ${action.partnerName}',
-                      style: GoogleFonts.dmSans(
-                        fontSize: 11,
-                        color: AppColors.textMuted,
+                    Expanded(
+                      child: Text(
+                        '${action.instrument} · ${action.partnerName}',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
 
-            // ── CTA row ─────────────────────────────────────────────────
+            // ── 6. CTA row ───────────────────────────────────────────────
             Row(
               children: [
-                _TextCta(
-                  label: 'Explain',
-                  onTap: () => _showExplain(context),
-                ),
+                _TextCta(label: 'Explain', onTap: () => _showExplain(context)),
                 const SizedBox(width: 8),
-                _TextCta(
-                  label: 'Compare',
-                  onTap: () {},
-                ),
+                _TextCta(label: 'Compare', onTap: () {}),
                 const Spacer(),
-                if (action.partnerCta != null)
-                  GestureDetector(
-                    onTap: () {},
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          action.partnerCta!,
-                          style: GoogleFonts.dmSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        const SizedBox(width: 3),
-                        const Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 10,
+                GestureDetector(
+                  onTap: () {},
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View Options',
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.primary,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 3),
+                      const Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 10,
+                        color: AppColors.primary,
+                      ),
+                    ],
                   ),
+                ),
               ],
             ),
           ],
@@ -642,25 +708,49 @@ class _ActionCard extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Why this action?',
+              'Why this action, why today?',
               style: GoogleFonts.manrope(
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              action.why,
-              style: GoogleFonts.dmSans(
-                fontSize: 14,
-                color: AppColors.textSecondary,
-                height: 1.5,
+            const SizedBox(height: 12),
+            ...action.whyToday.map(
+              (bullet) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        bullet,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
             Text(
-              'Based on your data:',
+              'Supporting factors:',
               style: GoogleFonts.dmSans(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -688,7 +778,7 @@ class _ActionCard extends StatelessWidget {
                         f,
                         style: GoogleFonts.dmSans(
                           fontSize: 13,
-                          color: AppColors.textPrimary,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ),
@@ -714,7 +804,7 @@ class _ActionCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Strength: ${action.strengthLabel} — based on your income, goal progress, and spending patterns.',
+                      'Strength: ${action.strengthLabel} · Confidence: ${action.confidencePct}%',
                       style: GoogleFonts.dmSans(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -726,15 +816,66 @@ class _ActionCard extends StatelessWidget {
               ),
             ),
             if (action.partnerName != null) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               Text(
                 'Suggested instrument: ${action.instrument} via ${action.partnerName}',
-                style: GoogleFonts.dmSans(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                ),
+                style: GoogleFonts.dmSans(fontSize: 12, color: AppColors.textMuted),
               ),
             ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Impact Chip ───────────────────────────────────────────────────────────────
+
+class _ImpactChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _ImpactChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 12, color: color),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: GoogleFonts.manrope(
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                color: color,
+                height: 1.1,
+              ),
+            ),
+            Text(
+              label,
+              style: GoogleFonts.dmSans(
+                fontSize: 9,
+                color: AppColors.textMuted,
+                height: 1.2,
+              ),
+            ),
           ],
         ),
       ),
@@ -764,10 +905,7 @@ class _StrengthBadge extends StatelessWidget {
           Container(
             width: 5,
             height: 5,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 5),
           Text(
@@ -777,103 +915,6 @@ class _StrengthBadge extends StatelessWidget {
               fontWeight: FontWeight.w700,
               color: color,
               letterSpacing: 0.3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Outcome Box ───────────────────────────────────────────────────────────────
-
-class _OutcomeBox extends StatelessWidget {
-  final String label;
-  final int pct;
-  final bool isProjected;
-  final int? delta;
-
-  const _OutcomeBox({
-    required this.label,
-    required this.pct,
-    required this.isProjected,
-    this.delta,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color =
-        isProjected ? AppColors.success : AppColors.textSecondary;
-    final bgColor = isProjected
-        ? AppColors.success.withValues(alpha: 0.08)
-        : AppColors.surfaceElevated;
-    final borderColor = isProjected
-        ? AppColors.success.withValues(alpha: 0.25)
-        : AppColors.border;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.dmSans(
-              fontSize: 10,
-              color: isProjected
-                  ? AppColors.success.withValues(alpha: 0.7)
-                  : AppColors.textMuted,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                '$pct%',
-                style: GoogleFonts.manrope(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: color,
-                  height: 1.0,
-                ),
-              ),
-              if (isProjected && delta != null && delta! > 0) ...[
-                const SizedBox(width: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.success.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                  child: Text(
-                    '+$delta%',
-                    style: GoogleFonts.dmSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.success,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: (pct / 100).clamp(0.0, 1.0),
-              minHeight: 4,
-              backgroundColor: Colors.white.withValues(alpha: 0.05),
-              valueColor: AlwaysStoppedAnimation(color),
             ),
           ),
         ],
@@ -950,7 +991,7 @@ class _SkeletonCardState extends State<_SkeletonCard>
           _anim.value,
         )!;
         return Container(
-          height: 340,
+          height: 390,
           margin: const EdgeInsets.symmetric(horizontal: 20),
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
@@ -966,55 +1007,53 @@ class _SkeletonCardState extends State<_SkeletonCard>
                     width: 20,
                     height: 20,
                     decoration: BoxDecoration(
-                        color: shimmer,
-                        borderRadius: BorderRadius.circular(6))),
+                        color: shimmer, borderRadius: BorderRadius.circular(6))),
                 const SizedBox(width: 8),
                 Container(
                     width: 120,
                     height: 10,
                     decoration: BoxDecoration(
-                        color: shimmer,
-                        borderRadius: BorderRadius.circular(5))),
+                        color: shimmer, borderRadius: BorderRadius.circular(5))),
               ]),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               Container(
                   width: double.infinity,
                   height: 18,
                   decoration: BoxDecoration(
-                      color: shimmer,
-                      borderRadius: BorderRadius.circular(6))),
+                      color: shimmer, borderRadius: BorderRadius.circular(6))),
               const SizedBox(height: 8),
               Container(
-                  width: 200,
+                  width: 220,
                   height: 18,
                   decoration: BoxDecoration(
-                      color: shimmer,
-                      borderRadius: BorderRadius.circular(6))),
+                      color: shimmer, borderRadius: BorderRadius.circular(6))),
+              const SizedBox(height: 16),
+              Container(
+                  width: 80,
+                  height: 9,
+                  decoration: BoxDecoration(
+                      color: shimmer, borderRadius: BorderRadius.circular(4))),
               const SizedBox(height: 8),
               Container(
-                  width: 240,
-                  height: 12,
+                  width: double.infinity,
+                  height: 11,
                   decoration: BoxDecoration(
-                      color: shimmer,
-                      borderRadius: BorderRadius.circular(5))),
-              const SizedBox(height: 24),
-              Row(children: [
-                Expanded(
-                  child: Container(
-                      height: 72,
-                      decoration: BoxDecoration(
-                          color: shimmer,
-                          borderRadius: BorderRadius.circular(12))),
+                      color: shimmer, borderRadius: BorderRadius.circular(5))),
+              const SizedBox(height: 6),
+              Container(
+                  width: 260,
+                  height: 11,
+                  decoration: BoxDecoration(
+                      color: shimmer, borderRadius: BorderRadius.circular(5))),
+              const SizedBox(height: 20),
+              Row(children: List.generate(4, (i) => Expanded(
+                child: Container(
+                  margin: EdgeInsets.only(right: i < 3 ? 6 : 0),
+                  height: 52,
+                  decoration: BoxDecoration(
+                      color: shimmer, borderRadius: BorderRadius.circular(10)),
                 ),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: Container(
-                      height: 72,
-                      decoration: BoxDecoration(
-                          color: shimmer,
-                          borderRadius: BorderRadius.circular(12))),
-                ),
-              ]),
+              ))),
             ],
           ),
         );
