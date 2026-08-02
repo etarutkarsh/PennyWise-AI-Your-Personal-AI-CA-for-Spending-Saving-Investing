@@ -77,8 +77,13 @@ public class DecisionEngine {
         List<String> warnings = new ArrayList<>();
         List<String> recommendations = new ArrayList<>();
 
+        // Purchases under 15% of monthly income are "minor" — don't block them over a missing EF.
+        boolean isMinorPurchase = monthlyIncome.compareTo(BigDecimal.ZERO) > 0
+                && price.divide(monthlyIncome, CALC_SCALE, RoundingMode.HALF_UP)
+                        .compareTo(new BigDecimal("0.15")) < 0;
+
         String verdict = determineVerdict(grossSurplus, dtiRatio, efAfterPurchase,
-                recommendedEF, isLoan, newEmi, reasons);
+                recommendedEF, isLoan, newEmi, isMinorPurchase, reasons);
 
         enrichWarnings(warnings, dtiRatio, efAfterPurchase, avgMonthlyExpenses,
                 surplusAfterEmi, monthlyIncome, isLoan);
@@ -160,7 +165,8 @@ public class DecisionEngine {
 
     private String determineVerdict(BigDecimal grossSurplus, BigDecimal dtiRatio,
                                      BigDecimal efAfterPurchase, BigDecimal recommendedEF,
-                                     boolean isLoan, BigDecimal newEmi, List<String> reasons) {
+                                     boolean isLoan, BigDecimal newEmi, boolean isMinorPurchase,
+                                     List<String> reasons) {
         if (grossSurplus.compareTo(BigDecimal.ZERO) <= 0) {
             reasons.add("Your monthly expenses meet or exceed your income — no surplus to fund this purchase.");
             return "DONT_BUY";
@@ -175,8 +181,9 @@ public class DecisionEngine {
                     + "% of income — above the 50% danger threshold.");
             return "DONT_BUY";
         }
-        // Only apply EF rule when we have real expense data; recommendedEF=0 means no transaction history yet.
-        if (recommendedEF.compareTo(BigDecimal.ZERO) > 0 && efAfterPurchase.compareTo(recommendedEF) < 0) {
+        // Skip EF rule for minor purchases (< 15% of income) or when we have no expense history.
+        if (!isMinorPurchase && recommendedEF.compareTo(BigDecimal.ZERO) > 0
+                && efAfterPurchase.compareTo(recommendedEF) < 0) {
             reasons.add("This purchase would drop your emergency fund below the recommended 6-month safety floor.");
             return "WAIT_AND_SAVE";
         }
@@ -295,6 +302,9 @@ public class DecisionEngine {
         BigDecimal rate = ctx.getInterestRatePercent();
         int tenure = ctx.getTenureMonths() != null ? ctx.getTenureMonths() : 0;
         BigDecimal recommendedEF = expenses.multiply(EMERGENCY_FUND_MONTHS);
+        boolean isMinorPurchase = income.compareTo(BigDecimal.ZERO) > 0
+                && price.divide(income, CALC_SCALE, RoundingMode.HALF_UP)
+                        .compareTo(new BigDecimal("0.15")) < 0;
 
         // Baseline EMI and interest (for Buy Today — used for delta comparisons in tradeoffs)
         BigDecimal baselineEmi = isLoan ? currentEmi : BigDecimal.ZERO;
@@ -309,7 +319,7 @@ public class DecisionEngine {
             BigDecimal dti = calcDti(existingEmi.add(emi), income);
             BigDecimal efAfter = ef.subtract(cashOut);
             BigDecimal surplusAfter = surplus.subtract(emi).max(BigDecimal.ZERO);
-            String v = quickVerdict(surplus, dti, efAfter, recommendedEF, isLoan, emi);
+            String v = quickVerdict(surplus, dti, efAfter, recommendedEF, isLoan, emi, isMinorPurchase);
             int conf = computeConfidence(v, dti, efAfter, expenses, surplusAfter, income);
             BigDecimal totalInterest = isLoan
                     ? emi.multiply(BigDecimal.valueOf(tenure)).subtract(loanAmount).max(BigDecimal.ZERO)
@@ -350,7 +360,7 @@ public class DecisionEngine {
                 BigDecimal newEf = ef.add(surplus.multiply(SAVE_RATE_OF_SURPLUS).multiply(BigDecimal.valueOf(6)));
                 BigDecimal efAfter2 = newEf.subtract(newDown);
                 BigDecimal surplusAfter2 = surplus.subtract(emi2).max(BigDecimal.ZERO);
-                String v2 = quickVerdict(surplus, dti2, efAfter2, recommendedEF, true, emi2);
+                String v2 = quickVerdict(surplus, dti2, efAfter2, recommendedEF, true, emi2, isMinorPurchase);
                 int conf2 = computeConfidence(v2, dti2, efAfter2, expenses, surplusAfter2, income);
                 BigDecimal totalInterest2 = emi2.multiply(BigDecimal.valueOf(tenure)).subtract(newLoan).max(BigDecimal.ZERO);
                 BigDecimal emiReduction = currentEmi.subtract(emi2).max(BigDecimal.ZERO);
@@ -386,7 +396,7 @@ public class DecisionEngine {
                 BigDecimal dti3 = calcDti(existingEmi.add(emi3), income);
                 BigDecimal efAfter3 = ef.subtract(newDown3);
                 BigDecimal surplusAfter3 = surplus.subtract(emi3).max(BigDecimal.ZERO);
-                String v3 = quickVerdict(surplus, dti3, efAfter3, recommendedEF, true, emi3);
+                String v3 = quickVerdict(surplus, dti3, efAfter3, recommendedEF, true, emi3, isMinorPurchase);
                 int conf3 = computeConfidence(v3, dti3, efAfter3, expenses, surplusAfter3, income);
                 BigDecimal totalInterest3 = emi3.multiply(BigDecimal.valueOf(tenure)).subtract(newLoan3).max(BigDecimal.ZERO);
                 BigDecimal emiSaving = currentEmi.subtract(emi3).max(BigDecimal.ZERO);
@@ -420,7 +430,7 @@ public class DecisionEngine {
                 BigDecimal dti4 = calcDti(existingEmi.add(emi4), income);
                 BigDecimal efAfter4 = ef.subtract(downPayment);
                 BigDecimal surplusAfter4 = surplus.subtract(emi4).max(BigDecimal.ZERO);
-                String v4 = quickVerdict(surplus, dti4, efAfter4, recommendedEF, true, emi4);
+                String v4 = quickVerdict(surplus, dti4, efAfter4, recommendedEF, true, emi4, isMinorPurchase);
                 int conf4 = computeConfidence(v4, dti4, efAfter4, expenses, surplusAfter4, income);
                 BigDecimal totalInterest4 = emi4.multiply(BigDecimal.valueOf(extTenure)).subtract(loanAmount).max(BigDecimal.ZERO);
                 BigDecimal extraInterest = totalInterest4.subtract(
@@ -458,7 +468,7 @@ public class DecisionEngine {
                 BigDecimal extra3 = saveMonthly.multiply(BigDecimal.valueOf(3));
                 BigDecimal newEf3 = ef.add(extra3);
                 BigDecimal efAfter3 = newEf3.subtract(price);
-                String v3 = quickVerdict(surplus, BigDecimal.ZERO, efAfter3, recommendedEF, false, BigDecimal.ZERO);
+                String v3 = quickVerdict(surplus, BigDecimal.ZERO, efAfter3, recommendedEF, false, BigDecimal.ZERO, isMinorPurchase);
                 int conf3 = computeConfidence(v3, BigDecimal.ZERO, efAfter3, expenses, surplus, income);
 
                 List<TradeoffDto> tradeoffs3 = tradeoffEngine.forScenario(
@@ -488,7 +498,7 @@ public class DecisionEngine {
                 BigDecimal extra6 = saveMonthly.multiply(BigDecimal.valueOf(6));
                 BigDecimal newEf6 = ef.add(extra6);
                 BigDecimal efAfter6 = newEf6.subtract(price);
-                String v6 = quickVerdict(surplus, BigDecimal.ZERO, efAfter6, recommendedEF, false, BigDecimal.ZERO);
+                String v6 = quickVerdict(surplus, BigDecimal.ZERO, efAfter6, recommendedEF, false, BigDecimal.ZERO, isMinorPurchase);
                 int conf6 = computeConfidence(v6, BigDecimal.ZERO, efAfter6, expenses, surplus, income);
 
                 List<TradeoffDto> tradeoffs6 = tradeoffEngine.forScenario(
@@ -527,7 +537,7 @@ public class DecisionEngine {
             BigDecimal emi5 = currentEmi;
             BigDecimal dti5 = calcDti(existingEmi.add(emi5), income);
             BigDecimal surplusAfter5 = surplus.subtract(emi5).max(BigDecimal.ZERO);
-            String v5 = quickVerdict(surplus, dti5, efAfter5, recommendedEF, isLoan, emi5);
+            String v5 = quickVerdict(surplus, dti5, efAfter5, recommendedEF, isLoan, emi5, isMinorPurchase);
             int conf5 = Math.min(95, computeConfidence(v5, dti5, efAfter5, expenses, surplusAfter5, income) + 5);
             BigDecimal totalInterest5 = (isLoan && tenure > 0) ? emi5.multiply(BigDecimal.valueOf(tenure)).subtract(loanAmount).max(BigDecimal.ZERO) : BigDecimal.ZERO;
             String scenarioLabel = months5 <= 0 ? "EF Already Adequate" : "Build Safety Net First (" + months5 + " mo)";
@@ -632,11 +642,13 @@ public class DecisionEngine {
     }
 
     private String quickVerdict(BigDecimal surplus, BigDecimal dtiRatio, BigDecimal efAfterPurchase,
-                                 BigDecimal recommendedEF, boolean isLoan, BigDecimal newEmi) {
+                                 BigDecimal recommendedEF, boolean isLoan, BigDecimal newEmi,
+                                 boolean isMinorPurchase) {
         if (surplus.compareTo(BigDecimal.ZERO) <= 0) return "DONT_BUY";
         if (dtiRatio.compareTo(BigDecimal.valueOf(50)) > 0) return "DONT_BUY";
         if (isLoan && newEmi.compareTo(surplus) >= 0) return "DONT_BUY";
-        if (recommendedEF.compareTo(BigDecimal.ZERO) > 0 && efAfterPurchase.compareTo(recommendedEF) < 0) return "WAIT_AND_SAVE";
+        if (!isMinorPurchase && recommendedEF.compareTo(BigDecimal.ZERO) > 0
+                && efAfterPurchase.compareTo(recommendedEF) < 0) return "WAIT_AND_SAVE";
         if (dtiRatio.compareTo(BigDecimal.valueOf(40)) > 0) return "WAIT_AND_SAVE";
         return "SAFE_TO_BUY";
     }
