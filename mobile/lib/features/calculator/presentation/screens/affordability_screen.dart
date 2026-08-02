@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/services/app_services.dart' show AppServices, friendlyError;
+import '../../../../core/services/storage/user_prefs_storage.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/affordability_result.dart';
 
@@ -30,6 +31,7 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
   String? _error;
   double _enteredPrice = 0.0;
   String? _purposeAnswer;
+  double _salary = 0.0; // effective salary — from widget param or loaded from prefs
 
   static const _tenureOptions = [12, 24, 36, 48, 60, 84, 120, 180, 240];
 
@@ -37,6 +39,13 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
   void initState() {
     super.initState();
     _priceCtrl.addListener(_onPriceChanged);
+    _salary = widget.salary;
+    if (_salary <= 0) _loadSalary();
+  }
+
+  Future<void> _loadSalary() async {
+    final s = await UserPrefsStorage.getSalary();
+    if (mounted && s > 0) setState(() => _salary = s);
   }
 
   void _onPriceChanged() {
@@ -57,7 +66,7 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
 
   // Returns "3.2 months of salary", "14 working days", "6.1 hours", etc.
   String _timeToEarnLabel() {
-    final s = widget.salary;
+    final s = _salary;
     if (s <= 0 || _enteredPrice <= 0) return '';
     final hourlyRate = s / (22 * 8);
     final hours = _enteredPrice / hourlyRate;
@@ -149,14 +158,14 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
             // ── Salary strip ───────────────────────────────────────────────
-            if (widget.salary > 0)
+            if (_salary > 0)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _SalaryStrip(salary: widget.salary),
+                  child: _SalaryStrip(salary: _salary),
                 ),
               ),
-            if (widget.salary > 0)
+            if (_salary > 0)
               const SliverToBoxAdapter(child: SizedBox(height: 16)),
 
             // ── Form ───────────────────────────────────────────────────────
@@ -193,11 +202,11 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
                                   ? 'Enter a valid price'
                                   : null,
                             ),
-                            if (_enteredPrice > 0 && widget.salary > 0) ...[
+                            if (_enteredPrice > 0 && _salary > 0) ...[
                               const SizedBox(height: 10),
                               _TimeToEarnBanner(
                                 label: _timeToEarnLabel(),
-                                months: _enteredPrice / widget.salary,
+                                months: _enteredPrice / _salary,
                               ),
                             ],
                           ],
@@ -394,15 +403,15 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
 
               // Purpose Challenge — shown for expensive items when verdict isn't green
               if (_result!.verdict != 'SAFE_TO_BUY' &&
-                  widget.salary > 0 &&
-                  _enteredPrice >= widget.salary) ...[
+                  _salary > 0 &&
+                  _enteredPrice >= _salary) ...[
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: _PurposeCheckCard(
                       itemName: _itemCtrl.text.trim(),
                       price: _enteredPrice,
-                      salary: widget.salary,
+                      salary: _salary,
                       selected: _purposeAnswer,
                       onSelected: (ans) => setState(() => _purposeAnswer = ans),
                     ),
