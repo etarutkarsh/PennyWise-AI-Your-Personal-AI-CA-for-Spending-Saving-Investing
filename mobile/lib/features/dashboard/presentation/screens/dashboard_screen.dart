@@ -13,6 +13,7 @@ import '../../domain/entities/dashboard_summary.dart';
 import '../widgets/hero_carousel_section.dart';
 import '../widgets/market_data_section.dart';
 import '../widgets/next_best_action_carousel.dart';
+import '../widgets/behavior_insights_section.dart';
 import '../widgets/news_ticker_widget.dart';
 import '../widgets/animated_stats_section.dart';
 import '../widgets/motivation_cards_section.dart';
@@ -289,6 +290,23 @@ class _DashboardScreenState extends State<DashboardScreen>
 
               // ── Next Best Action Carousel ─────────────────────────────
               const RepaintBoundary(child: NextBestActionCarousel()),
+              const SizedBox(height: 32),
+
+              // ── Behavioral Profile ────────────────────────────────────
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SectionHeader(
+                      title: 'Behavioral Profile',
+                      subtitle: 'How PennyWise understands your financial habits',
+                    ),
+                    SizedBox(height: 14),
+                    RepaintBoundary(child: BehaviorInsightsSection()),
+                  ],
+                ),
+              ),
               const SizedBox(height: 32),
 
               Padding(
