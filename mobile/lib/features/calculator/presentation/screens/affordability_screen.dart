@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/services/app_services.dart';
+import '../../../../core/services/app_services.dart' show AppServices, friendlyError;
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/affordability_result.dart';
 
@@ -342,7 +342,7 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: _ErrorBanner(message: _error!),
+                  child: _ErrorBanner(message: _error!, onRetry: _check),
                 ),
               ),
 
@@ -609,8 +609,9 @@ class _DarkField extends StatelessWidget {
 // ─── Error banner ─────────────────────────────────────────────────────────────
 
 class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
+  const _ErrorBanner({required this.message, required this.onRetry});
   final String message;
+  final VoidCallback onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -621,13 +622,41 @@ class _ErrorBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, color: AppColors.danger, size: 16),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(message,
-                style: GoogleFonts.dmSans(color: AppColors.danger, fontSize: 13)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 1),
+                child: Icon(Icons.error_outline, color: AppColors.danger, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(message,
+                    style: GoogleFonts.dmSans(color: AppColors.danger, fontSize: 13, height: 1.4)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: onRetry,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+              decoration: BoxDecoration(
+                color: AppColors.danger,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                'Try Again',
+                style: GoogleFonts.dmSans(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -1800,17 +1829,3 @@ class _MaxAffordableCard extends StatelessWidget {
   }
 }
 
-// ─── Error helper ─────────────────────────────────────────────────────────────
-
-String friendlyError(Object e) {
-  final msg = e.toString().toLowerCase();
-  if (msg.contains('timeout')) return 'Request timed out. Check your connection.';
-  if (msg.contains('401') || msg.contains('unauthorized')) {
-    return 'Session expired. Please log in again.';
-  }
-  if (msg.contains('500')) return 'Server error. Try again in a moment.';
-  if (msg.contains('socketexception') || msg.contains('connection refused')) {
-    return 'Cannot reach server. Make sure the backend is running.';
-  }
-  return 'Something went wrong. Please try again.';
-}
