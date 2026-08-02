@@ -17,6 +17,15 @@ public class AffordabilityRequest {
     @Positive
     private BigDecimal price;
 
-    /** Optional: if the user would pay via EMI instead of lump sum. */
-    private Integer emiMonths;
+    /** Upfront payment; null or 0 means full lump-sum purchase. */
+    private BigDecimal downPayment;
+
+    /** Annual interest rate in percent (e.g. 10.5 means 10.5%). */
+    private BigDecimal interestRatePercent;
+
+    /** Loan repayment period in months. */
+    private Integer tenureMonths;
+
+    /** Sum of all existing monthly EMI obligations. */
+    private BigDecimal existingMonthlyEmi;
 }

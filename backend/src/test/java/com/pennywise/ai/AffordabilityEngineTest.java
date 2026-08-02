@@ -2,6 +2,10 @@ package com.pennywise.ai;
 
 import com.pennywise.dto.AffordabilityRequest;
 import com.pennywise.dto.AffordabilityResponse;
+import com.pennywise.engine.decision.DecisionEngine;
+import com.pennywise.engine.decision.ExplainabilityEngine;
+import com.pennywise.engine.decision.RiskEngine;
+import com.pennywise.engine.decision.TradeoffEngine;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -11,7 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class AffordabilityEngineTest {
 
-    private final AffordabilityEngine engine = new AffordabilityEngine();
+    private final AffordabilityEngine engine = new AffordabilityEngine(
+            new DecisionEngine(new RiskEngine(), new TradeoffEngine(), new ExplainabilityEngine()));
 
     private AffordabilityRequest request(String item, long price) {
         AffordabilityRequest req = new AffordabilityRequest();
