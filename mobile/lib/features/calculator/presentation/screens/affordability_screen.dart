@@ -28,11 +28,25 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
   int? _selectedTenure; // months
   AffordabilityResult? _result;
   String? _error;
+  double _enteredPrice = 0.0;
+  String? _purposeAnswer;
 
   static const _tenureOptions = [12, 24, 36, 48, 60, 84, 120, 180, 240];
 
   @override
+  void initState() {
+    super.initState();
+    _priceCtrl.addListener(_onPriceChanged);
+  }
+
+  void _onPriceChanged() {
+    final price = double.tryParse(_priceCtrl.text.trim()) ?? 0.0;
+    if (price != _enteredPrice) setState(() => _enteredPrice = price);
+  }
+
+  @override
   void dispose() {
+    _priceCtrl.removeListener(_onPriceChanged);
     _itemCtrl.dispose();
     _priceCtrl.dispose();
     _downPayCtrl.dispose();
@@ -41,12 +55,27 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
     super.dispose();
   }
 
+  // Returns "3.2 months of salary", "14 working days", "6.1 hours", etc.
+  String _timeToEarnLabel() {
+    final s = widget.salary;
+    if (s <= 0 || _enteredPrice <= 0) return '';
+    final hourlyRate = s / (22 * 8);
+    final hours = _enteredPrice / hourlyRate;
+    if (hours < 8) return '${hours.toStringAsFixed(1)} hours of work';
+    final days = _enteredPrice / (s / 22);
+    if (days < 22) return '${days.toStringAsFixed(1)} working days';
+    final months = _enteredPrice / s;
+    if (months < 12) return '${months.toStringAsFixed(1)} months of salary';
+    return '${(months / 12).toStringAsFixed(1)} years of salary';
+  }
+
   Future<void> _check() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _isLoading = true;
       _result = null;
       _error = null;
+      _purposeAnswer = null;
     });
     try {
       final result = await AppServices.instance.affordability.check(
@@ -164,6 +193,13 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
                                   ? 'Enter a valid price'
                                   : null,
                             ),
+                            if (_enteredPrice > 0 && widget.salary > 0) ...[
+                              const SizedBox(height: 10),
+                              _TimeToEarnBanner(
+                                label: _timeToEarnLabel(),
+                                months: _enteredPrice / widget.salary,
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -355,6 +391,26 @@ class _AffordabilityScreenState extends State<AffordabilityScreen> {
                 ),
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+              // Purpose Challenge — shown for expensive items when verdict isn't green
+              if (_result!.verdict != 'SAFE_TO_BUY' &&
+                  widget.salary > 0 &&
+                  _enteredPrice >= widget.salary) ...[
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: _PurposeCheckCard(
+                      itemName: _itemCtrl.text.trim(),
+                      price: _enteredPrice,
+                      salary: widget.salary,
+                      selected: _purposeAnswer,
+                      onSelected: (ans) => setState(() => _purposeAnswer = ans),
+                    ),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              ],
+
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1829,3 +1885,243 @@ class _MaxAffordableCard extends StatelessWidget {
   }
 }
 
+
+// ─── Time-to-earn banner ──────────────────────────────────────────────────────
+
+class _TimeToEarnBanner extends StatelessWidget {
+  const _TimeToEarnBanner({required this.label, required this.months});
+  final String label;
+  final double months;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = months >= 3
+        ? AppColors.danger
+        : months >= 1
+            ? AppColors.warning
+            : AppColors.success;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.access_time_rounded, color: color, size: 14),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'You would need to work ',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                  TextSpan(
+                    text: label,
+                    style: GoogleFonts.manrope(
+                      fontSize: 12,
+                      color: color,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  TextSpan(
+                    text: months >= 1 ? ' to afford this.' : ' to earn this.',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Purpose challenge card ───────────────────────────────────────────────────
+
+const _kPurposes = [
+  (icon: '💼', label: 'Essential for work'),
+  (icon: '💊', label: 'Health or wellbeing'),
+  (icon: '📈', label: 'Will help me earn more'),
+  (icon: '🎁', label: "It's a gift"),
+  (icon: '✨', label: "I've wanted this for long"),
+  (icon: '⚡', label: 'Honestly, impulse'),
+];
+
+const _kPurposeInsights = {
+  'Essential for work':
+      'If this directly enables your livelihood, it may be worth the cost. Calculate the ROI — will it save or generate more than it costs within 12 months?',
+  'Health or wellbeing':
+      'Your health is worth investing in. Before committing, check if a lower-cost alternative achieves the same outcome.',
+  'Will help me earn more':
+      'If this genuinely accelerates your income, model the returns first. What is your expected revenue increase vs. cost within 6 months?',
+  "It's a gift":
+      'Meaningful gifts do not need to be expensive. Consider whether a more personal gesture would create the same impact at lower cost.',
+  "I've wanted this for long":
+      'Long desire is real — but desire and financial readiness are different things. The data says wait. If you still feel the same in 30 days, revisit.',
+  'Honestly, impulse':
+      'You just diagnosed the situation yourself. Impulse purchases have an 80% regret rate above 1 month of salary. Sleep on it for 30 days.',
+};
+
+class _PurposeCheckCard extends StatelessWidget {
+  const _PurposeCheckCard({
+    required this.itemName,
+    required this.price,
+    required this.salary,
+    required this.selected,
+    required this.onSelected,
+  });
+  final String itemName;
+  final double price, salary;
+  final String? selected;
+  final ValueChanged<String> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+    final months = price / salary;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.amber.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: AppColors.amber.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: const Icon(Icons.psychology_outlined,
+                    color: AppColors.amber, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Before you decide…',
+                      style: GoogleFonts.manrope(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      '${fmt.format(price)} = ${months.toStringAsFixed(1)} months of your income',
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.amber,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'Why do you need ${itemName.isNotEmpty ? itemName : 'this'}?',
+            style: GoogleFonts.dmSans(
+              color: AppColors.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _kPurposes.map((p) {
+              final isSelected = selected == p.label;
+              return GestureDetector(
+                onTap: () => onSelected(p.label),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.amber.withValues(alpha: 0.15)
+                        : AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isSelected ? AppColors.amber : AppColors.border,
+                      width: isSelected ? 1.5 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(p.icon, style: const TextStyle(fontSize: 13)),
+                      const SizedBox(width: 6),
+                      Text(
+                        p.label,
+                        style: GoogleFonts.dmSans(
+                          fontSize: 12,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: isSelected
+                              ? AppColors.amber
+                              : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          if (selected != null) ...[
+            const SizedBox(height: 14),
+            const Divider(height: 1, color: AppColors.border),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.lightbulb_outline_rounded,
+                    color: AppColors.amber, size: 15),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _kPurposeInsights[selected] ?? '',
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      height: 1.55,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
