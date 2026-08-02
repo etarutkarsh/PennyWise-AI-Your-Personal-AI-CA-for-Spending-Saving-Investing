@@ -32,6 +32,7 @@ import '../../features/documents/presentation/screens/document_vault_screen.dart
 import '../../features/about/presentation/screens/about_screen.dart';
 import '../../features/contact/presentation/screens/contact_screen.dart';
 import '../../features/decisions/presentation/screens/financial_journal_screen.dart';
+import '../../features/twin/presentation/screens/digital_twin_screen.dart';
 import 'main_shell.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -110,6 +111,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/about', builder: (context, state) => const AboutScreen()),
     GoRoute(path: '/contact', builder: (context, state) => const ContactScreen()),
     GoRoute(path: '/journal', builder: (context, state) => const FinancialJournalScreen()),
+    GoRoute(path: '/twin', builder: (context, state) => const DigitalTwinScreen()),
     GoRoute(
       path: '/insights',
       builder: (context, state) {
