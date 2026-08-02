@@ -123,7 +123,7 @@ class _HeroCarouselSectionState extends State<HeroCarouselSection>
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final slideHeight = (screenWidth * 0.55).clamp(240.0, 440.0);
+    final slideHeight = (screenWidth * 0.62).clamp(220.0, 440.0);
     final showArrows = screenWidth > 600;
 
     return GestureDetector(
@@ -416,10 +416,11 @@ class _GlassCard extends StatelessWidget {
             color: Colors.white.withValues(alpha: 0.12),
           ),
         ),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               headline,
@@ -429,24 +430,28 @@ class _GlassCard extends StatelessWidget {
                 fontWeight: FontWeight.w800,
                 height: 1.2,
               ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 6),
             Text(
               subline,
               style: GoogleFonts.dmSans(
                 color: Colors.white.withValues(alpha: 0.75),
-                fontSize: 13,
-                height: 1.4,
+                fontSize: 12,
+                height: 1.3,
               ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Flexible(
                   child: GestureDetector(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
+                          horizontal: 16, vertical: 9),
                       decoration: BoxDecoration(
                         color: AppColors.orange,
                         borderRadius: BorderRadius.circular(12),
@@ -468,7 +473,7 @@ class _GlassCard extends StatelessWidget {
                   child: GestureDetector(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
+                          horizontal: 12, vertical: 9),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(

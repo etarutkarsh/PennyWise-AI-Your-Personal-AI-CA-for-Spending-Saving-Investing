@@ -178,7 +178,46 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+
+              // Divider
+              Row(children: [
+                Expanded(child: Divider(color: AppColors.textMuted.withValues(alpha: 0.3))),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text('or',
+                      style: GoogleFonts.dmSans(
+                          color: AppColors.textMuted, fontSize: 13)),
+                ),
+                Expanded(child: Divider(color: AppColors.textMuted.withValues(alpha: 0.3))),
+              ]),
+              const SizedBox(height: 16),
+
+              // Phone OTP button
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: OutlinedButton.icon(
+                  onPressed: () => context.push('/phone-login'),
+                  icon: const Text('📱', style: TextStyle(fontSize: 18)),
+                  label: Text(
+                    'Continue with Phone Number',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFFDDE2E8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    backgroundColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
+
               Center(
                 child: GestureDetector(
                   onTap: () => context.push('/register'),

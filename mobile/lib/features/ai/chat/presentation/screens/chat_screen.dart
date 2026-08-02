@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../../core/services/app_services.dart';
+import '../../../../../core/services/chat_context_builder.dart';
 import '../../../../../core/theme/app_colors.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -15,19 +16,17 @@ class _ChatScreenState extends State<ChatScreen> {
   final _msgCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   final List<_Message> _messages = [];
+
   bool _loading = false;
   bool _typing = false;
 
-  static const _suggestions = [
-    'How can I save more this month?',
-    'Should I invest in mutual funds?',
-    'What\'s the 50-30-20 rule?',
-    'How do I build an emergency fund?',
-  ];
+  ChatContext? _ctx;
+  bool _ctxLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _loadContext();
     _loadHistory();
   }
 
@@ -36,6 +35,11 @@ class _ChatScreenState extends State<ChatScreen> {
     _msgCtrl.dispose();
     _scrollCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadContext() async {
+    final ctx = await ChatContextBuilder.build();
+    if (mounted) setState(() { _ctx = ctx; _ctxLoading = false; });
   }
 
   Future<void> _loadHistory() async {
@@ -70,7 +74,14 @@ class _ChatScreenState extends State<ChatScreen> {
     _scrollToBottom();
 
     try {
-      final reply = await AppServices.instance.ai.sendMessage(text);
+      final String reply;
+      final ctx = _ctx;
+      if (ctx != null && ctx.systemPrompt.isNotEmpty) {
+        reply = await AppServices.instance.ai
+            .sendWithContext(text, ctx.systemPrompt);
+      } else {
+        reply = await AppServices.instance.ai.sendMessage(text);
+      }
       if (mounted) {
         setState(() {
           _messages.add(_Message(text: reply, isUser: false));
@@ -106,6 +117,9 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
+  List<String> get _suggestions =>
+      _ctx?.suggestions ?? ChatContext.fallback.suggestions;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,37 +127,19 @@ class _ChatScreenState extends State<ChatScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Ask AI',
-                          style: GoogleFonts.dmSans(
-                              color: AppColors.textPrimary,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800)),
-                      Text('Your financial CA',
-                          style: GoogleFonts.dmSans(
-                              color: AppColors.textSecondary, fontSize: 14)),
-                    ],
-                  ),
-                  const Spacer(),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Messages
+            _Header(ctxLoading: _ctxLoading, ctx: _ctx),
+            const Divider(height: 1, color: AppColors.border),
             Expanded(
               child: _messages.isEmpty
-                  ? _EmptyState(onSuggestionTap: _send, suggestions: _suggestions)
+                  ? _EmptyState(
+                      onSuggestionTap: _send,
+                      suggestions: _suggestions,
+                      ctxLoading: _ctxLoading,
+                    )
                   : ListView.builder(
                       controller: _scrollCtrl,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding:
+                          const EdgeInsets.fromLTRB(20, 16, 20, 8),
                       itemCount: _messages.length + (_typing ? 1 : 0),
                       itemBuilder: (_, i) {
                         if (i == _messages.length) {
@@ -153,64 +149,10 @@ class _ChatScreenState extends State<ChatScreen> {
                       },
                     ),
             ),
-
-            // Input bar
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
-                border: Border(
-                    top: BorderSide(color: AppColors.border)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _msgCtrl,
-                      style: GoogleFonts.dmSans(
-                          color: AppColors.textPrimary, fontSize: 14),
-                      textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _send(),
-                      decoration: InputDecoration(
-                        hintText: 'Ask anything about your money…',
-                        hintStyle: GoogleFonts.dmSans(
-                            color: AppColors.textMuted, fontSize: 14),
-                        filled: true,
-                        fillColor: AppColors.surfaceElevated,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(22),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: () => _send(),
-                    child: Container(
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(
-                        color: _loading ? AppColors.border : AppColors.orange,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: _loading
-                          ? const Center(
-                              child: SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: AppColors.textSecondary),
-                              ),
-                            )
-                          : const Icon(Icons.arrow_upward_rounded,
-                              color: Colors.white, size: 20),
-                    ),
-                  ),
-                ],
-              ),
+            _InputBar(
+              controller: _msgCtrl,
+              loading: _loading,
+              onSend: () => _send(),
             ),
           ],
         ),
@@ -218,6 +160,211 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
+
+// ── Header ────────────────────────────────────────────────────────────────────
+
+class _Header extends StatelessWidget {
+  const _Header({required this.ctxLoading, required this.ctx});
+  final bool ctxLoading;
+  final ChatContext? ctx;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Ask AI',
+                  style: GoogleFonts.manrope(
+                    color: AppColors.textPrimary,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // Context status pill
+                if (ctxLoading)
+                  Row(
+                    children: [
+                      const SizedBox(
+                        width: 10,
+                        height: 10,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Loading your finances…',
+                        style: GoogleFonts.dmSans(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  )
+                else if (ctx != null &&
+                    ctx!.statusLabel != 'Generic mode')
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                          color: AppColors.success.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: const BoxDecoration(
+                            color: AppColors.success,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          ctx!.statusLabel,
+                          style: GoogleFonts.dmSans(
+                            color: AppColors.success,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Text(
+                    'Your personal financial CA',
+                    style: GoogleFonts.dmSans(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // AI badge
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.orange.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border:
+                  Border.all(color: AppColors.orange.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.psychology_outlined,
+                    size: 13, color: AppColors.orange),
+                const SizedBox(width: 4),
+                Text(
+                  'GPT-4o',
+                  style: GoogleFonts.dmSans(
+                    color: AppColors.orange,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Input Bar ─────────────────────────────────────────────────────────────────
+
+class _InputBar extends StatelessWidget {
+  const _InputBar({
+    required this.controller,
+    required this.loading,
+    required this.onSend,
+  });
+  final TextEditingController controller;
+  final bool loading;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: controller,
+              style: GoogleFonts.dmSans(
+                  color: AppColors.textPrimary, fontSize: 14),
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => onSend(),
+              decoration: InputDecoration(
+                hintText: 'Ask about your money…',
+                hintStyle: GoogleFonts.dmSans(
+                    color: AppColors.textMuted, fontSize: 14),
+                filled: true,
+                fillColor: AppColors.surfaceElevated,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: loading ? null : onSend,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: loading ? AppColors.border : AppColors.orange,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: loading
+                  ? const Center(
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.textSecondary),
+                      ),
+                    )
+                  : const Icon(Icons.arrow_upward_rounded,
+                      color: Colors.white, size: 20),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Message Bubble ────────────────────────────────────────────────────────────
 
 class _Message {
   const _Message(
@@ -234,12 +381,14 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Align(
-      alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment:
+          msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
             maxWidth: MediaQuery.of(context).size.width * 0.78),
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: msg.isUser
               ? AppColors.orange
@@ -265,7 +414,7 @@ class _MessageBubble extends StatelessWidget {
                     ? AppColors.danger
                     : AppColors.textPrimary,
             fontSize: 14,
-            height: 1.5,
+            height: 1.55,
           ),
         ),
       ),
@@ -273,8 +422,33 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _TypingBubble extends StatelessWidget {
+// ── Typing Indicator ──────────────────────────────────────────────────────────
+
+class _TypingBubble extends StatefulWidget {
   const _TypingBubble();
+
+  @override
+  State<_TypingBubble> createState() => _TypingBubbleState();
+}
+
+class _TypingBubbleState extends State<_TypingBubble>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -282,7 +456,8 @@ class _TypingBubble extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: const BorderRadius.only(
@@ -293,37 +468,56 @@ class _TypingBubble extends StatelessWidget {
           ),
           border: Border.all(color: AppColors.border),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (int i = 0; i < 3; i++) ...[
-              const DecoratedBox(
-                decoration: BoxDecoration(
-                    color: AppColors.textSecondary,
-                    shape: BoxShape.circle),
-                child: SizedBox(width: 6, height: 6),
-              ),
-              if (i < 2) const SizedBox(width: 4),
-            ],
-          ],
+        child: AnimatedBuilder(
+          animation: _ctrl,
+          builder: (_, __) {
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (i) {
+                final t = (_ctrl.value + i / 3) % 1.0;
+                final scale = 0.6 + 0.4 * (1 - (2 * t - 1).abs());
+                return Padding(
+                  padding: EdgeInsets.only(right: i < 2 ? 4 : 0),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: AppColors.textMuted
+                            .withValues(alpha: 0.4 + 0.6 * scale),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            );
+          },
         ),
       ),
     );
   }
 }
 
+// ── Empty / Welcome State ─────────────────────────────────────────────────────
+
 class _EmptyState extends StatelessWidget {
-  const _EmptyState(
-      {required this.onSuggestionTap, required this.suggestions});
+  const _EmptyState({
+    required this.onSuggestionTap,
+    required this.suggestions,
+    required this.ctxLoading,
+  });
   final void Function(String) onSuggestionTap;
   final List<String> suggestions;
+  final bool ctxLoading;
 
   static const _capabilities = [
     (Icons.savings_outlined, AppColors.success, 'Savings & Emergency Fund',
         'How much to save, when to pause, where to park it'),
     (Icons.trending_up_rounded, AppColors.orange, 'Investments & SIP',
         'Mutual funds, index funds, SIP calculations, risk profiling'),
-    (Icons.account_balance_wallet_outlined, AppColors.questBlue, 'Budgeting',
+    (Icons.account_balance_wallet_outlined, AppColors.primary, 'Budgeting',
         '50-30-20, zero-based budgeting, cutting unnecessary spend'),
   ];
 
@@ -334,106 +528,70 @@ class _EmptyState extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+
           // Hero banner
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.orange.withValues(alpha: 0.18),
-                  const Color(0xFF6A1B9A).withValues(alpha: 0.12),
+                  AppColors.orange.withValues(alpha: 0.14),
+                  const Color(0xFF6A1B9A).withValues(alpha: 0.10),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                  color: AppColors.orange.withValues(alpha: 0.2)),
+                  color: AppColors.orange.withValues(alpha: 0.18)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: AppColors.orange.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(Icons.psychology_outlined,
-                          color: AppColors.orange, size: 28),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'PennyWise AI',
-                          style: GoogleFonts.dmSans(
-                            color: AppColors.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          'Your personal financial CA',
-                          style: GoogleFonts.dmSans(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.success.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                                color: AppColors.success,
-                                shape: BoxShape.circle),
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            'Online',
-                            style: GoogleFonts.dmSans(
-                              color: AppColors.success,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppColors.orange.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: const Icon(Icons.psychology_outlined,
+                      color: AppColors.orange, size: 26),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Ask me anything about your\nmoney, savings, or investments.',
-                  style: GoogleFonts.playfairDisplay(
-                    color: AppColors.textPrimary,
-                    fontSize: 17,
-                    fontStyle: FontStyle.italic,
-                    fontWeight: FontWeight.w600,
-                    height: 1.4,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ctxLoading
+                            ? 'Loading your context…'
+                            : 'Ready for your questions',
+                        style: GoogleFonts.manrope(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        ctxLoading
+                            ? 'Fetching your transactions, goals and health score'
+                            : 'Personalised to your actual finances',
+                        style: GoogleFonts.dmSans(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+
           const SizedBox(height: 22),
 
           // Capabilities
@@ -470,46 +628,83 @@ class _EmptyState extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            c.$3,
-                            style: GoogleFonts.dmSans(
-                              color: AppColors.textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                          Text(c.$3,
+                              style: GoogleFonts.dmSans(
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              )),
                           const SizedBox(height: 2),
-                          Text(
-                            c.$4,
-                            style: GoogleFonts.dmSans(
-                              color: AppColors.textSecondary,
-                              fontSize: 11,
-                            ),
-                          ),
+                          Text(c.$4,
+                              style: GoogleFonts.dmSans(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                              )),
                         ],
                       ),
                     ),
                   ],
                 ),
               )),
+
           const SizedBox(height: 22),
 
-          // Suggestions
-          Text(
-            'Try asking',
-            style: GoogleFonts.dmSans(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.4,
-            ),
+          Row(
+            children: [
+              Text(
+                ctxLoading ? 'Loading suggestions…' : 'Try asking',
+                style: GoogleFonts.dmSans(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                ),
+              ),
+              if (!ctxLoading) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Personalised',
+                    style: GoogleFonts.dmSans(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.success,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 10),
-          ...suggestions.asMap().entries.map((e) => _SuggestionChip(
-                text: e.value,
-                onTap: () => onSuggestionTap(e.value),
-              )),
-          const SizedBox(height: 20),
+
+          if (ctxLoading)
+            // Skeleton placeholders
+            ...List.generate(
+              4,
+              (i) => Container(
+                height: 46,
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceElevated,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+              ),
+            )
+          else
+            ...suggestions.map((s) => _SuggestionChip(
+                  text: s,
+                  onTap: () => onSuggestionTap(s),
+                )),
+
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -566,9 +761,7 @@ class _SuggestionChipState extends State<_SuggestionChip> {
                 ),
               ),
               Icon(Icons.arrow_forward_ios_rounded,
-                  color: _hovered
-                      ? AppColors.orange
-                      : AppColors.textMuted,
+                  color: _hovered ? AppColors.orange : AppColors.textMuted,
                   size: 13),
             ],
           ),

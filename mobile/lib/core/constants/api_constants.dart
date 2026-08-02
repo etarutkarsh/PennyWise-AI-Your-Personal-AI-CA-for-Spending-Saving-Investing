@@ -8,8 +8,9 @@ class ApiConstants {
     const envUrl = String.fromEnvironment('API_BASE_URL', defaultValue: '');
     if (envUrl.isNotEmpty) return envUrl;
     if (kIsWeb) return 'http://localhost:8080/api';
-    // Android emulator maps 10.0.2.2 → host machine; iOS simulator uses localhost directly
-    if (Platform.isIOS || Platform.isMacOS) return 'http://localhost:8080/api';
+    // iOS simulator uses localhost; real iOS device needs Mac's LAN IP (same WiFi)
+    if (Platform.isMacOS) return 'http://localhost:8080/api';
+    if (Platform.isIOS) return 'http://192.168.1.10:8080/api';
     return 'http://10.0.2.2:8080/api';
   }
 

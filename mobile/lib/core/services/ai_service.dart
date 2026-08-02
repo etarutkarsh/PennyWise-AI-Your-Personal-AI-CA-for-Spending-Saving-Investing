@@ -28,6 +28,12 @@ class AiService {
     return resp.data['message'] as String? ?? '…';
   }
 
+  /// Sends a message with a pre-built system context injected as a prefix.
+  /// The backend stores the raw string, but history loading filters [Context: ...] out.
+  Future<String> sendWithContext(String message, String systemPrompt) async {
+    return _chat(systemPrompt, message);
+  }
+
   /// Returns the full chat history for the current user.
   Future<List<Map<String, dynamic>>> getChatHistory() async {
     final resp = await _dio.get(ApiConstants.chatHistory);

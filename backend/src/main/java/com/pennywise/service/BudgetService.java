@@ -78,6 +78,18 @@ public class BudgetService {
     }
 
     @Transactional
+    public BudgetDto update(java.util.UUID id, BigDecimal newLimit) {
+        User user = currentUserProvider.get();
+        Budget budget = budgetRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Budget not found"));
+        if (!budget.getUserId().equals(user.getId())) {
+            throw new ResourceNotFoundException("Budget not found");
+        }
+        budget.setMonthlyLimit(newLimit);
+        return toDto(budgetRepository.save(budget));
+    }
+
+    @Transactional
     public void delete(java.util.UUID id) {
         User user = currentUserProvider.get();
         Budget budget = budgetRepository.findById(id)

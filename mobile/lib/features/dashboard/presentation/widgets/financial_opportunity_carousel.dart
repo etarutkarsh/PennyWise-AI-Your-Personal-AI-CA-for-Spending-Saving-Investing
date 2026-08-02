@@ -450,7 +450,7 @@ class _FinancialOpportunityCarouselState
 
         // Carousel
         SizedBox(
-          height: 196,
+          height: 220,
           child: NotificationListener<ScrollNotification>(
             onNotification: (n) {
               if (n is ScrollStartNotification) _userScrolling = true;
@@ -563,7 +563,7 @@ class _OpportunityCard extends StatelessWidget {
             ),
 
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -608,13 +608,13 @@ class _OpportunityCard extends StatelessWidget {
                     ],
                   ),
 
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
 
                   // Title
                   Text(
                     opp.title,
                     style: GoogleFonts.manrope(
-                      fontSize: 17,
+                      fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
                       letterSpacing: -0.3,
@@ -622,7 +622,7 @@ class _OpportunityCard extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 4),
 
                   // Reason
                   Text(

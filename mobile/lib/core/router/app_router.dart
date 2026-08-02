@@ -5,6 +5,7 @@ import '../services/app_services.dart';
 import '../utils/redirect_utils.dart';
 import '../../features/authentication/presentation/screens/login_screen.dart';
 import '../../features/authentication/presentation/screens/onboarding_goal_setup_screen.dart';
+import '../../features/authentication/presentation/screens/phone_otp_screen.dart';
 import '../../features/authentication/presentation/screens/register_screen.dart';
 import '../../features/authentication/presentation/screens/splash_screen.dart';
 import '../../features/budget/presentation/screens/budget_screen.dart';
@@ -31,13 +32,14 @@ import '../../features/sms/presentation/screens/sms_import_screen.dart';
 import '../../features/documents/presentation/screens/document_vault_screen.dart';
 import '../../features/about/presentation/screens/about_screen.dart';
 import '../../features/contact/presentation/screens/contact_screen.dart';
+import '../../features/commitments/presentation/screens/commitments_screen.dart';
 import '../../features/decisions/presentation/screens/financial_journal_screen.dart';
 import '../../features/twin/presentation/screens/digital_twin_screen.dart';
 import 'main_shell.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
-const _publicPaths = {'/splash', '/login', '/register', '/onboarding/goal-setup'};
+const _publicPaths = {'/splash', '/login', '/register', '/phone-login', '/onboarding/goal-setup'};
 
 Future<String?> _authRedirect(BuildContext context, GoRouterState state) async {
   final path = state.uri.path;
@@ -80,6 +82,7 @@ final GoRouter appRouter = GoRouter(
       return SplashScreen(accessToken: at, refreshToken: rt);
     }),
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+    GoRoute(path: '/phone-login', builder: (context, state) => const PhoneOtpScreen()),
     GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
     GoRoute(
       path: '/onboarding/goal-setup',
@@ -112,6 +115,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/contact', builder: (context, state) => const ContactScreen()),
     GoRoute(path: '/journal', builder: (context, state) => const FinancialJournalScreen()),
     GoRoute(path: '/twin', builder: (context, state) => const DigitalTwinScreen()),
+    GoRoute(path: '/commitments', builder: (context, state) => const CommitmentsScreen()),
     GoRoute(
       path: '/insights',
       builder: (context, state) {

@@ -18,6 +18,9 @@ import '../widgets/news_ticker_widget.dart';
 import '../widgets/animated_stats_section.dart';
 import '../widgets/motivation_cards_section.dart';
 import '../widgets/financial_opportunity_carousel.dart';
+import '../widgets/goal_pathway_banner.dart';
+import '../widgets/bank_program_slider.dart';
+import '../../../../core/services/commitment_intelligence/commitment_engine.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -298,6 +301,24 @@ class _DashboardScreenState extends State<DashboardScreen>
                     healthScore: _healthScore,
                   ),
                 ),
+              ),
+              const SizedBox(height: 32),
+
+              // ── Goal Pathway Banner ───────────────────────────────────
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: RepaintBoundary(child: GoalPathwayBanner()),
+              ),
+              const SizedBox(height: 32),
+
+              // ── Bank Program Slider ───────────────────────────────────
+              const RepaintBoundary(child: BankProgramSlider()),
+              const SizedBox(height: 32),
+
+              // ── Commitment Intelligence Card ──────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _CommitmentsCard(salary: _salary),
               ),
               const SizedBox(height: 32),
 
@@ -1622,4 +1643,347 @@ class _AIInsightCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Commitment Intelligence Dashboard Card ────────────────────────────────────
+
+class _CommitmentsCard extends StatefulWidget {
+  const _CommitmentsCard({required this.salary});
+  final double salary;
+
+  @override
+  State<_CommitmentsCard> createState() => _CommitmentsCardState();
+}
+
+class _CommitmentsCardState extends State<_CommitmentsCard> {
+  CommitmentSummary? _summary;
+  bool _loading = true;
+
+  final _fmt = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final txns = await AppServices.instance.transactions.getAll(direction: 'DEBIT');
+      final summary = CommitmentEngine.analyze(txns, widget.salary);
+      if (mounted) setState(() { _summary = summary; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.push('/commitments'),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF1E1B4B), Color(0xFF2D1B69)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF4338CA).withValues(alpha: 0.3)),
+        ),
+        child: _loading ? _buildSkeleton() : _buildContent(),
+      ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(width: 160, height: 13, decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(6),
+            )),
+            const Spacer(),
+            Container(width: 60, height: 13, decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(6),
+            )),
+          ]),
+          const SizedBox(height: 16),
+          Container(width: 180, height: 28, decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+          )),
+          const SizedBox(height: 12),
+          Container(height: 6, decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(3),
+          )),
+          const SizedBox(height: 16),
+          Row(children: List.generate(3, (i) => Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: i < 2 ? 8 : 0),
+              child: Container(height: 44, decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(10),
+              )),
+            ),
+          ))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    final s = _summary;
+
+    if (s == null || s.all.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _header(),
+            const SizedBox(height: 20),
+            Center(
+              child: Column(
+                children: [
+                  const Text('📊', style: TextStyle(fontSize: 32)),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Add 2+ months of transactions\nto detect recurring commitments.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.dmSans(
+                        color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      );
+    }
+
+    final topCats = s.byType.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final chips = topCats.take(3).toList();
+
+    final upcoming = List<ForecastPayment>.from(s.next30Days)
+      ..sort((a, b) => a.expectedDate.compareTo(b.expectedDate));
+    final next = upcoming.isNotEmpty ? upcoming.first : null;
+    final daysUntil = next?.expectedDate.difference(DateTime.now()).inDays;
+
+    final unusedCount = s.unusedCommitments.length;
+    final ratio = s.commitmentRatio.clamp(0.0, 1.0);
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _header(),
+          const SizedBox(height: 16),
+
+          Text(
+            _fmt.format(s.totalMonthlyCommitted),
+            style: GoogleFonts.manrope(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
+            ),
+          ),
+          Text(
+            'committed /month · ${_fmt.format(s.flexibleIncome)} free',
+            style: GoogleFonts.dmSans(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          Stack(
+            children: [
+              Container(
+                height: 6,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: ratio,
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF818CF8), Color(0xFFA78BFA)],
+                    ),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${(ratio * 100).round()}% of income committed',
+            style: GoogleFonts.dmSans(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: chips.asMap().entries.map((entry) {
+              final i = entry.key;
+              final e = entry.value;
+              final label = _catLabel(e.key);
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: i < chips.length - 1 ? 8 : 0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.07),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(label.$1, style: const TextStyle(fontSize: 14)),
+                        const SizedBox(height: 2),
+                        Text(
+                          _fmtCompact(e.value),
+                          style: GoogleFonts.manrope(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          label.$2,
+                          style: GoogleFonts.dmSans(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 10,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          if (next != null || unusedCount > 0) ...[
+            const SizedBox(height: 14),
+            const Divider(color: Color(0x1AFFFFFF), height: 1),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (next != null)
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 6, height: 6,
+                          decoration: BoxDecoration(
+                            color: daysUntil != null && daysUntil <= 3
+                                ? AppColors.warning
+                                : AppColors.success,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Next: ${next.merchantName} · '
+                            '${daysUntil == 0 ? "Today" : daysUntil == 1 ? "Tomorrow" : "in ${daysUntil}d"}',
+                            style: GoogleFonts.dmSans(
+                              color: Colors.white.withValues(alpha: 0.65),
+                              fontSize: 11,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (unusedCount > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '⚠ $unusedCount unused',
+                      style: GoogleFonts.dmSans(
+                        color: AppColors.warning,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _header() {
+    return Row(
+      children: [
+        Text(
+          'Financial Commitments',
+          style: GoogleFonts.manrope(
+            color: Colors.white.withValues(alpha: 0.7),
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.5,
+          ),
+        ),
+        const Spacer(),
+        Text(
+          'View all →',
+          style: GoogleFonts.dmSans(
+            color: const Color(0xFF818CF8),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _fmtCompact(double v) {
+    if (v >= 100000) return '₹${(v / 100000).toStringAsFixed(1)}L';
+    if (v >= 1000)   return '₹${(v / 1000).toStringAsFixed(0)}k';
+    return '₹${v.round()}';
+  }
+
+  (String, String) _catLabel(CommitmentType t) => switch (t) {
+    CommitmentType.emi          => ('🏦', 'Loans & EMIs'),
+    CommitmentType.investment   => ('📈', 'Investments'),
+    CommitmentType.savings      => ('🪙', 'Savings'),
+    CommitmentType.subscription => ('📺', 'Subscriptions'),
+    CommitmentType.utility      => ('⚡', 'Utilities'),
+    CommitmentType.insurance    => ('🛡️', 'Insurance'),
+    CommitmentType.rent         => ('🏠', 'Rent'),
+    CommitmentType.education    => ('🎓', 'Education'),
+    CommitmentType.tax          => ('🏛️', 'Tax'),
+    CommitmentType.membership   => ('💪', 'Memberships'),
+    CommitmentType.other        => ('📦', 'Other'),
+  };
 }

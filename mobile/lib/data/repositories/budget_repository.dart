@@ -24,6 +24,13 @@ class BudgetRepository {
     return BudgetModel.fromJson(res.data as Map<String, dynamic>);
   }
 
+  Future<BudgetModel> update(String id, {required double monthlyLimit}) async {
+    final res = await _client.dio.patch('/budgets/$id', data: {
+      'monthlyLimit': monthlyLimit,
+    });
+    return BudgetModel.fromJson(res.data as Map<String, dynamic>);
+  }
+
   Future<void> delete(String id) async {
     await _client.dio.delete('/budgets/$id');
   }

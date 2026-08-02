@@ -63,6 +63,25 @@ class AuthRepository {
     }
   }
 
+  /// Sends a 6-digit OTP to the phone number (must include +91 prefix).
+  /// Returns `devOtp` string in dev-mode (no SMS key configured), null in production.
+  Future<String?> sendOtp(String phone) async {
+    final res = await _client.dio.post('/auth/send-otp', data: {'phone': phone});
+    return res.data['devOtp'] as String?;
+  }
+
+  /// Verifies OTP and stores JWT tokens on success.
+  Future<void> verifyOtp(String phone, String otp) async {
+    final res = await _client.dio.post('/auth/verify-otp', data: {
+      'phone': phone,
+      'otp': otp,
+    });
+    await _storage.saveTokens(
+      accessToken: res.data['accessToken'] as String,
+      refreshToken: res.data['refreshToken'] as String,
+    );
+  }
+
   Future<void> logout() async {
     await _storage.clear();
   }

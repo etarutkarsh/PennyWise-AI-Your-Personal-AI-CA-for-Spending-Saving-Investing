@@ -9,6 +9,7 @@ class BudgetModel {
     required this.remainingAmount,
     required this.overBudget,
     required this.period,
+    this.percentUsed = 0.0,
   });
 
   final String id;
@@ -20,6 +21,7 @@ class BudgetModel {
   final double remainingAmount;
   final bool overBudget;
   final String period;
+  final double percentUsed;
 
   double get progressFraction =>
       monthlyLimit > 0 ? (spent / monthlyLimit).clamp(0.0, 1.0) : 0.0;
@@ -34,5 +36,19 @@ class BudgetModel {
         remainingAmount: (json['remaining'] as num? ?? 0).toDouble(),
         overBudget: json['overBudget'] as bool? ?? false,
         period: json['period'] as String? ?? '',
+        percentUsed: (json['percentUsed'] as num? ?? 0).toDouble(),
+      );
+
+  BudgetModel copyWith({double? monthlyLimit}) => BudgetModel(
+        id: id,
+        categoryId: categoryId,
+        categoryName: categoryName,
+        categoryIcon: categoryIcon,
+        monthlyLimit: monthlyLimit ?? this.monthlyLimit,
+        spent: spent,
+        remainingAmount: remainingAmount,
+        overBudget: overBudget,
+        period: period,
+        percentUsed: percentUsed,
       );
 }
