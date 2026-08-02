@@ -175,7 +175,8 @@ public class DecisionEngine {
                     + "% of income — above the 50% danger threshold.");
             return "DONT_BUY";
         }
-        if (efAfterPurchase.compareTo(recommendedEF) < 0) {
+        // Only apply EF rule when we have real expense data; recommendedEF=0 means no transaction history yet.
+        if (recommendedEF.compareTo(BigDecimal.ZERO) > 0 && efAfterPurchase.compareTo(recommendedEF) < 0) {
             reasons.add("This purchase would drop your emergency fund below the recommended 6-month safety floor.");
             return "WAIT_AND_SAVE";
         }
@@ -229,7 +230,7 @@ public class DecisionEngine {
             case "WAIT_AND_SAVE" -> {
                 BigDecimal savingRate = surplus.multiply(SAVE_RATE_OF_SURPLUS).setScale(0, RoundingMode.CEILING);
                 recs.add("Auto-transfer ₹" + savingRate + "/month to a liquid fund. You'll hit your target sooner than you think.");
-                if (efAfterPurchase.compareTo(recommendedEF) < 0) {
+                if (recommendedEF.compareTo(BigDecimal.ZERO) > 0 && efAfterPurchase.compareTo(recommendedEF) < 0) {
                     BigDecimal gap = recommendedEF.subtract(currentEF).max(BigDecimal.ZERO);
                     recs.add("Build your emergency fund by ₹" + gap.setScale(0, RoundingMode.CEILING) + " before making this purchase.");
                 }
@@ -635,7 +636,7 @@ public class DecisionEngine {
         if (surplus.compareTo(BigDecimal.ZERO) <= 0) return "DONT_BUY";
         if (dtiRatio.compareTo(BigDecimal.valueOf(50)) > 0) return "DONT_BUY";
         if (isLoan && newEmi.compareTo(surplus) >= 0) return "DONT_BUY";
-        if (efAfterPurchase.compareTo(recommendedEF) < 0) return "WAIT_AND_SAVE";
+        if (recommendedEF.compareTo(BigDecimal.ZERO) > 0 && efAfterPurchase.compareTo(recommendedEF) < 0) return "WAIT_AND_SAVE";
         if (dtiRatio.compareTo(BigDecimal.valueOf(40)) > 0) return "WAIT_AND_SAVE";
         return "SAFE_TO_BUY";
     }
