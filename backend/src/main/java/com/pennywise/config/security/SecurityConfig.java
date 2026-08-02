@@ -24,6 +24,10 @@ public class SecurityConfig {
     @Value("${cors.allowed-origins:http://localhost,http://localhost:80,http://localhost:3000,http://localhost:8080,http://10.0.2.2:8080}")
     private String allowedOriginsRaw;
 
+    // Wildcard patterns for local dev — allows any localhost port (Flutter dev server, Vite, etc.)
+    @Value("${cors.allowed-origin-patterns:http://localhost:*,http://127.0.0.1:*}")
+    private String allowedOriginPatternsRaw;
+
     private final JwtAuthFilter jwtAuthFilter;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
@@ -64,8 +68,12 @@ public class SecurityConfig {
         List<String> origins = Arrays.stream(allowedOriginsRaw.split(","))
                 .map(String::trim).filter(s -> !s.isBlank()).toList();
 
+        List<String> patterns = Arrays.stream(allowedOriginPatternsRaw.split(","))
+                .map(String::trim).filter(s -> !s.isBlank()).toList();
+
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(origins);
+        config.setAllowedOriginPatterns(patterns);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
