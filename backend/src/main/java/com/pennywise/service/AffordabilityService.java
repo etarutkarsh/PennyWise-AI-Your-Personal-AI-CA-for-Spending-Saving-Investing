@@ -6,6 +6,7 @@ import com.pennywise.dto.GoalImpactDto;
 import com.pennywise.engine.decision.DecisionContext;
 import com.pennywise.engine.decision.DecisionEngine;
 import com.pennywise.engine.decision.GoalImpactEngine;
+import com.pennywise.engine.memory.DecisionRecorder;
 import com.pennywise.entity.Goal;
 import com.pennywise.entity.Transaction;
 import com.pennywise.entity.User;
@@ -33,19 +34,22 @@ public class AffordabilityService {
     private final GoalRepository goalRepository;
     private final DecisionEngine decisionEngine;
     private final GoalImpactEngine goalImpactEngine;
+    private final DecisionRecorder decisionRecorder;
 
     public AffordabilityService(CurrentUserProvider currentUserProvider,
                                 TransactionRepository transactionRepository,
                                 AssetRepository assetRepository,
                                 GoalRepository goalRepository,
                                 DecisionEngine decisionEngine,
-                                GoalImpactEngine goalImpactEngine) {
+                                GoalImpactEngine goalImpactEngine,
+                                DecisionRecorder decisionRecorder) {
         this.currentUserProvider = currentUserProvider;
         this.transactionRepository = transactionRepository;
         this.assetRepository = assetRepository;
         this.goalRepository = goalRepository;
         this.decisionEngine = decisionEngine;
         this.goalImpactEngine = goalImpactEngine;
+        this.decisionRecorder = decisionRecorder;
     }
 
     public AffordabilityResponse check(AffordabilityRequest request) {
@@ -106,6 +110,10 @@ public class AffordabilityService {
                 goals, grossSurplus, surplusAfterPurchase, immediateOutflow, ctx.getCurrentEmergencyFund());
 
         response.setGoalImpacts(goalImpacts);
+
+        // Auto-record every decision into permanent memory
+        decisionRecorder.record(user, ctx, response);
+
         return response;
     }
 }
