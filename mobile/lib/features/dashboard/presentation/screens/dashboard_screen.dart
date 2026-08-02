@@ -17,7 +17,7 @@ import '../widgets/behavior_insights_section.dart';
 import '../widgets/news_ticker_widget.dart';
 import '../widgets/animated_stats_section.dart';
 import '../widgets/motivation_cards_section.dart';
-import '../widgets/partner_product_carousel.dart';
+import '../widgets/financial_opportunity_carousel.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -289,10 +289,15 @@ class _DashboardScreenState extends State<DashboardScreen>
                 ),
               ),
 
-              // ── Partner Product Carousel ──────────────────────────────
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: RepaintBoundary(child: PartnerProductCarousel()),
+              // ── Financial Opportunity Engine ──────────────────────────
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: RepaintBoundary(
+                  child: FinancialOpportunityCarousel(
+                    salary: _salary,
+                    healthScore: _healthScore,
+                  ),
+                ),
               ),
               const SizedBox(height: 32),
 
