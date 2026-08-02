@@ -39,6 +39,10 @@ public class DecisionEngine {
         this.explainEngine = explainEngine;
     }
 
+    // TODO (Sprint 3): inject BehaviorProfileRepository here and load the user's BehaviorProfile
+    // before determining verdict. If impulseScore < 40, apply a stronger bias toward WAIT_AND_SAVE.
+    // If disciplineScore >= 80, trust the user more with SAFE_TO_BUY thresholds.
+    // This personalizes recommendations based on the user's historical behavioral patterns.
     public AffordabilityResponse evaluate(DecisionContext ctx) {
 
         BigDecimal price = ctx.getPrice();

@@ -10,6 +10,8 @@ import java.util.UUID;
 
 public interface FinancialEventRepository extends JpaRepository<FinancialEvent, UUID> {
 
+    List<FinancialEvent> findByUserId(UUID userId);
+
     List<FinancialEvent> findByUserIdOrderByOccurredAtDesc(UUID userId, Pageable pageable);
 
     List<FinancialEvent> findByUserIdAndEventTypeOrderByOccurredAtDesc(UUID userId, String eventType);

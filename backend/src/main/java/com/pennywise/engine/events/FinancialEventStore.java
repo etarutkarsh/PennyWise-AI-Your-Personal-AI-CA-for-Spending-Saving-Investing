@@ -43,6 +43,10 @@ public class FinancialEventStore {
             entity.setProcessedAt(Instant.now());
             repository.save(entity);
             log.debug("Persisted event: type={} id={}", event.eventType(), entity.getId());
+            // TODO (Sprint 3): publish async BehavioralRecomputeEvent here to trigger
+            // BehavioralEngine.computeAndSave() after each event commit, keeping the
+            // behavior profile near-real-time. Use ApplicationEventPublisher to avoid
+            // circular dependency with BehavioralEngine.
         } catch (Exception e) {
             log.warn("Failed to persist event type={}: {}", event.eventType(), e.getMessage());
         }
