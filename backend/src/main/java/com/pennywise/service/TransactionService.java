@@ -2,16 +2,24 @@ package com.pennywise.service;
 
 import com.pennywise.dto.TransactionCreateRequest;
 import com.pennywise.dto.TransactionDto;
+import com.pennywise.engine.events.EventBus;
+import com.pennywise.engine.events.domain.*;
+import com.pennywise.entity.Budget;
 import com.pennywise.entity.Category;
 import com.pennywise.entity.Transaction;
 import com.pennywise.entity.User;
 import com.pennywise.exception.ResourceNotFoundException;
+import com.pennywise.repository.BudgetRepository;
 import com.pennywise.repository.CategoryRepository;
 import com.pennywise.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
@@ -20,14 +28,20 @@ public class TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final CategoryRepository categoryRepository;
+    private final BudgetRepository budgetRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final EventBus eventBus;
 
     public TransactionService(TransactionRepository transactionRepository,
                                CategoryRepository categoryRepository,
-                               CurrentUserProvider currentUserProvider) {
+                               BudgetRepository budgetRepository,
+                               CurrentUserProvider currentUserProvider,
+                               EventBus eventBus) {
         this.transactionRepository = transactionRepository;
         this.categoryRepository = categoryRepository;
+        this.budgetRepository = budgetRepository;
         this.currentUserProvider = currentUserProvider;
+        this.eventBus = eventBus;
     }
 
     @Transactional
@@ -56,7 +70,64 @@ public class TransactionService {
         // Expense AI auto-categorization model here (see ai/ package) and set
         // tx.setCategoryConfidence(...) accordingly.
 
-        return toDto(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        publishTransactionEvents(user, saved);
+        return toDto(saved);
+    }
+
+    private void publishTransactionEvents(User user, Transaction tx) {
+        String direction = tx.getDirection().name();
+        String categoryName = tx.getCategory() != null ? tx.getCategory().getName() : "Uncategorized";
+
+        // Always emit transaction added
+        eventBus.publish(new TransactionAddedEvent(
+                user.getId(), tx.getAmount(), direction, categoryName, tx.getMerchant()));
+
+        BigDecimal income = user.getMonthlyIncome();
+
+        if ("CREDIT".equals(direction)) {
+            // Salary detection: credit >= 50% of monthly income
+            if (income != null && income.compareTo(BigDecimal.ZERO) > 0
+                    && tx.getAmount().compareTo(income.multiply(new BigDecimal("0.5"))) >= 0) {
+                eventBus.publish(new SalaryCreditedEvent(user.getId(), tx.getAmount()));
+            }
+        } else if ("DEBIT".equals(direction)) {
+            // Large purchase detection: debit > 15% of monthly income
+            if (income != null && income.compareTo(BigDecimal.ZERO) > 0
+                    && tx.getAmount().compareTo(income.multiply(new BigDecimal("0.15"))) > 0) {
+                double incomePercent = tx.getAmount()
+                        .divide(income, 4, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100))
+                        .doubleValue();
+                eventBus.publish(new LargePurchaseDetectedEvent(
+                        user.getId(), tx.getAmount(), tx.getMerchant(), income, incomePercent));
+            }
+
+            // Budget exceeded detection
+            if (tx.getCategory() != null) {
+                checkBudgetExceeded(user, tx);
+            }
+        }
+    }
+
+    private void checkBudgetExceeded(User user, Transaction tx) {
+        String period = YearMonth.now().toString();
+        budgetRepository.findByUserIdAndCategoryIdAndPeriod(
+                user.getId(), tx.getCategory().getId(), period)
+            .ifPresent(budget -> {
+                YearMonth ym = YearMonth.now();
+                Instant from = ym.atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+                Instant to = ym.plusMonths(1).atDay(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+                BigDecimal totalSpent = transactionRepository.sumByCategoryAndPeriod(
+                        user.getId(), tx.getCategory().getId(), from, to);
+                if (totalSpent.compareTo(budget.getMonthlyLimit()) > 0) {
+                    eventBus.publish(new BudgetExceededEvent(
+                            user.getId(),
+                            tx.getCategory().getName(),
+                            budget.getMonthlyLimit(),
+                            totalSpent));
+                }
+            });
     }
 
     public List<TransactionDto> listForCurrentUser() {

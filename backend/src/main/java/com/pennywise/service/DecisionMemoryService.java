@@ -1,6 +1,8 @@
 package com.pennywise.service;
 
 import com.pennywise.dto.memory.*;
+import com.pennywise.engine.events.EventBus;
+import com.pennywise.engine.events.domain.DecisionReviewedEvent;
 import com.pennywise.engine.memory.DecisionMemoryEngine;
 import com.pennywise.entity.DecisionMemory;
 import com.pennywise.entity.DecisionOutcome;
@@ -20,6 +22,7 @@ public class DecisionMemoryService {
     private final DecisionMemoryRepository memoryRepository;
     private final DecisionOutcomeRepository outcomeRepository;
     private final DecisionMemoryEngine memoryEngine;
+    private final EventBus eventBus;
 
     public List<DecisionMemoryDto> listAll() {
         User user = currentUserProvider.get();
@@ -42,6 +45,12 @@ public class DecisionMemoryService {
             .filter(dm -> dm.getUserId().equals(user.getId()))
             .orElseThrow(() -> new RuntimeException("Decision memory not found"));
         DecisionOutcome outcome = memoryEngine.submitReview(memory, req, user.getId());
+        eventBus.publish(new DecisionReviewedEvent(
+                user.getId(),
+                memory.getId(),
+                Boolean.TRUE.equals(outcome.getFollowedRecommendation()),
+                outcome.getAccuracyScore(),
+                outcome.getHealthDelta()));
         return toOutcomeDto(outcome);
     }
 

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pennywise.dto.AffordabilityResponse;
 import com.pennywise.dto.ScenarioDto;
 import com.pennywise.engine.decision.DecisionContext;
+import com.pennywise.engine.events.EventBus;
+import com.pennywise.engine.events.domain.DecisionRecordedEvent;
 import com.pennywise.entity.DecisionMemory;
 import com.pennywise.entity.User;
 import com.pennywise.repository.DecisionMemoryRepository;
@@ -23,6 +25,7 @@ public class DecisionRecorder {
     private final DecisionMemoryRepository repository;
     private final DecisionReviewScheduler reviewScheduler;
     private final ObjectMapper objectMapper;
+    private final EventBus eventBus;
 
     public void record(User user, DecisionContext ctx, AffordabilityResponse response) {
         try {
@@ -56,8 +59,15 @@ public class DecisionRecorder {
             memory.setReviewAfter(reviewScheduler.reviewDateFor(ctx.getItemName()));
             memory.setStatus("PENDING_REVIEW");
 
-            repository.save(memory);
+            DecisionMemory saved = repository.save(memory);
             log.info("Recorded decision memory for user={} item={}", user.getId(), ctx.getItemName());
+            eventBus.publish(new DecisionRecordedEvent(
+                    user.getId(),
+                    saved.getId(),
+                    saved.getItemName(),
+                    saved.getItemPrice(),
+                    saved.getRecommendation(),
+                    saved.getRecommendationStrength()));
         } catch (Exception e) {
             log.warn("Decision recording failed — not blocking API response", e);
         }

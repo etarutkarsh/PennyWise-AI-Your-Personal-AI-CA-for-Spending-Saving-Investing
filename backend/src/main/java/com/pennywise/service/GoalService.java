@@ -3,6 +3,9 @@ package com.pennywise.service;
 import com.pennywise.dto.GoalCreateRequest;
 import com.pennywise.dto.GoalDto;
 import com.pennywise.dto.GoalUpdateRequest;
+import com.pennywise.engine.events.EventBus;
+import com.pennywise.engine.events.domain.GoalCompletedEvent;
+import com.pennywise.engine.events.domain.GoalCreatedEvent;
 import com.pennywise.entity.Goal;
 import com.pennywise.entity.User;
 import com.pennywise.exception.ResourceNotFoundException;
@@ -28,12 +31,14 @@ public class GoalService {
     private final GoalRepository goalRepository;
     private final CurrentUserProvider currentUserProvider;
     private final ProjectionEngine projectionEngine;
+    private final EventBus eventBus;
 
     public GoalService(GoalRepository goalRepository, CurrentUserProvider currentUserProvider,
-                       ProjectionEngine projectionEngine) {
+                       ProjectionEngine projectionEngine, EventBus eventBus) {
         this.goalRepository = goalRepository;
         this.currentUserProvider = currentUserProvider;
         this.projectionEngine = projectionEngine;
+        this.eventBus = eventBus;
     }
 
     @Transactional
@@ -51,7 +56,9 @@ public class GoalService {
 
         applyRecommendation(goal);
 
-        return toDto(goalRepository.save(goal));
+        Goal saved = goalRepository.save(goal);
+        eventBus.publish(new GoalCreatedEvent(user.getId(), saved.getId(), saved.getName(), saved.getTargetAmount()));
+        return toDto(saved);
     }
 
     public List<GoalDto> listForCurrentUser() {
@@ -88,10 +95,16 @@ public class GoalService {
     public GoalDto updateSavedAmount(UUID goalId, BigDecimal newSavedAmount) {
         Goal goal = goalRepository.findById(goalId)
                 .orElseThrow(() -> new ResourceNotFoundException("Goal not found"));
+        boolean wasAchieved = goal.isAchieved();
         goal.setCurrentSaved(newSavedAmount);
         goal.setAchieved(newSavedAmount.compareTo(goal.getTargetAmount()) >= 0);
         applyRecommendation(goal);
-        return toDto(goalRepository.save(goal));
+        Goal saved = goalRepository.save(goal);
+        if (!wasAchieved && saved.isAchieved()) {
+            eventBus.publish(new GoalCompletedEvent(
+                    saved.getUserId(), saved.getId(), saved.getName(), saved.getTargetAmount()));
+        }
+        return toDto(saved);
     }
 
     /**
