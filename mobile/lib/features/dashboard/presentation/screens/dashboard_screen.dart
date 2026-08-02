@@ -17,6 +17,7 @@ import '../widgets/behavior_insights_section.dart';
 import '../widgets/news_ticker_widget.dart';
 import '../widgets/animated_stats_section.dart';
 import '../widgets/motivation_cards_section.dart';
+import '../widgets/partner_product_carousel.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -287,6 +288,13 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ],
                 ),
               ),
+
+              // ── Partner Product Carousel ──────────────────────────────
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: RepaintBoundary(child: PartnerProductCarousel()),
+              ),
+              const SizedBox(height: 32),
 
               // ── Next Best Action Carousel ─────────────────────────────
               const RepaintBoundary(child: NextBestActionCarousel()),
