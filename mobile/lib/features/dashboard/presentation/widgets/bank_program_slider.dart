@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:pennywise_ai/domain/partner/partner_assets.dart';
 import 'package:pennywise_ai/domain/partner/partner_brand.dart';
 import 'package:pennywise_ai/domain/partner/partner_icon_type.dart';
 import 'package:pennywise_ai/domain/partner/ranked_partner_program.dart';

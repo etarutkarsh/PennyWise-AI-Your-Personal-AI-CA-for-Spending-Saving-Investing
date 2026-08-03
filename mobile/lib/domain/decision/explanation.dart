@@ -2,23 +2,41 @@
 
 import 'package:flutter/foundation.dart';
 
-/// A single piece of evidence supporting a decision, with source and freshness.
+/// A single piece of evidence supporting a decision, with full provenance.
+///
+/// Provenance fields ([confidence], [engineVersion]) make recommendations
+/// auditable: you can see exactly how confident we were in each fact,
+/// and which engine version produced it. This is the XAI contract.
 @immutable
 class EvidenceItem {
   final String label;
   final String value;
 
-  /// Data source identifier (e.g. "TRANSACTION_HISTORY", "AA_DATA", "SMS_INTELLIGENCE").
+  /// Data source identifier (use [DataSource.id] values).
   final String source;
 
+  /// When this evidence was last observed or computed.
   final DateTime freshness;
+
+  /// Confidence in this evidence. 1.0 = bank-verified. 0.3 = estimated.
+  /// Evidence older than 7 days or sourced from MANUAL gets a lower confidence.
+  final double confidence;
+
+  /// Which engine version produced this evidence. null = manually entered.
+  final String? engineVersion;
 
   const EvidenceItem({
     required this.label,
     required this.value,
     required this.source,
     required this.freshness,
-  });
+    this.confidence = 1.0,
+    this.engineVersion,
+  }) : assert(confidence >= 0.0 && confidence <= 1.0,
+            'confidence must be 0.0–1.0');
+
+  bool get isStale => DateTime.now().difference(freshness).inDays > 7;
+  bool get isHighConfidence => confidence >= 0.80;
 
   @override
   bool operator ==(Object other) =>
@@ -29,7 +47,8 @@ class EvidenceItem {
   int get hashCode => Object.hash(label, source, freshness);
 
   @override
-  String toString() => 'EvidenceItem(label: $label, source: $source)';
+  String toString() =>
+      'EvidenceItem(label: $label, source: $source, confidence: $confidence)';
 }
 
 /// An alternative action the user could take instead of the primary recommendation.

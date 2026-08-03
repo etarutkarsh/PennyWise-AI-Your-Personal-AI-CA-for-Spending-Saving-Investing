@@ -1,21 +1,43 @@
-// Defines PartnerProgram — a financial product offered by a partner, ranked by the Partner Matching Engine.
+// Defines PartnerProgram — a financial product offered by a partner.
 
 import 'package:flutter/foundation.dart';
+
 import '../value_objects/ids.dart';
 import '../value_objects/money.dart';
 import '../value_objects/risk_level.dart';
 import 'financial_instrument.dart';
 import 'partner_brand.dart';
+import 'product_metadata.dart';
 
 /// A financial product from a partner that can be recommended to users.
 ///
-/// Brand identity (name, colors, logo) lives on [PartnerBrand], not here.
-/// One brand can own many products — this separation keeps product data
-/// clean and avoids duplicating logo/color data per product.
+/// Brand identity (name, colors, logo) lives on [PartnerBrand].
+/// Regulatory and suitability metadata lives on [ProductMetadata].
+/// This class owns product-specific data only.
 ///
 /// [commissionRate] is always 0.0 — the fiduciary invariant of PennyWise.
 @immutable
 class PartnerProgram {
+  const PartnerProgram({
+    required this.programId,
+    required this.brand,
+    required this.productName,
+    required this.instrument,
+    required this.suitableDecisionTypes,
+    required this.keyMetric,
+    required this.keyMetricLabel,
+    this.returnRate,
+    required this.minAmount,
+    required this.riskLevel,
+    required this.taxBenefit,
+    required this.active,
+    this.tagline = '',
+    required this.metadata,
+    this.commissionRate = 0.0,
+    required this.lastUpdated,
+  }) : assert(commissionRate == 0.0,
+            'Fiduciary invariant violated: commissionRate must always be 0.0');
+
   final ProgramId programId;
   final PartnerBrand brand;
   final String productName;
@@ -32,36 +54,15 @@ class PartnerProgram {
   /// One-line product benefit shown on the card face.
   final String tagline;
 
-  /// Fiduciary invariant: PennyWise never earns commission on ranked programs.
+  /// Regulatory, tax, liquidity, and suitability metadata.
+  final ProductMetadata metadata;
+
   final double commissionRate;
-
   final DateTime lastUpdated;
-
-  const PartnerProgram({
-    required this.programId,
-    required this.brand,
-    required this.productName,
-    required this.instrument,
-    required this.suitableDecisionTypes,
-    required this.keyMetric,
-    required this.keyMetricLabel,
-    this.returnRate,
-    required this.minAmount,
-    required this.riskLevel,
-    required this.taxBenefit,
-    required this.active,
-    this.tagline = '',
-    this.commissionRate = 0.0,
-    required this.lastUpdated,
-  }) : assert(commissionRate == 0.0,
-            'Fiduciary invariant violated: commissionRate must always be 0.0');
 
   // ── Convenience accessors (delegate to brand) ─────────────────────────────
 
-  /// Short accessor for widgets that display the partner name.
   String get partnerName => brand.displayName;
-
-  /// Partner identifier — delegates to brand.id.
   String get partnerId => brand.id;
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -79,6 +80,7 @@ class PartnerProgram {
     bool? taxBenefit,
     bool? active,
     String? tagline,
+    ProductMetadata? metadata,
     DateTime? lastUpdated,
   }) =>
       PartnerProgram(
@@ -86,7 +88,8 @@ class PartnerProgram {
         brand: brand ?? this.brand,
         productName: productName ?? this.productName,
         instrument: instrument ?? this.instrument,
-        suitableDecisionTypes: suitableDecisionTypes ?? this.suitableDecisionTypes,
+        suitableDecisionTypes:
+            suitableDecisionTypes ?? this.suitableDecisionTypes,
         keyMetric: keyMetric ?? this.keyMetric,
         keyMetricLabel: keyMetricLabel ?? this.keyMetricLabel,
         returnRate: returnRate ?? this.returnRate,
@@ -95,6 +98,7 @@ class PartnerProgram {
         taxBenefit: taxBenefit ?? this.taxBenefit,
         active: active ?? this.active,
         tagline: tagline ?? this.tagline,
+        metadata: metadata ?? this.metadata,
         commissionRate: 0.0,
         lastUpdated: lastUpdated ?? this.lastUpdated,
       );

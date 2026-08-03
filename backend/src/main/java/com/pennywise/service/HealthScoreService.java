@@ -1,5 +1,6 @@
 package com.pennywise.service;
 
+import com.pennywise.dto.HealthDimensionDto;
 import com.pennywise.dto.HealthScoreResponse;
 import com.pennywise.entity.Goal;
 import com.pennywise.entity.Transaction;
@@ -108,17 +109,28 @@ public class HealthScoreService {
     }
 
     /**
-     * Maps the engine's HealthScoreResult to the legacy HealthScoreResponse DTO.
-     * Pillar scores are extracted by dimension name to preserve backward compatibility.
+     * Maps the engine's HealthScoreResult to the HealthScoreResponse DTO.
+     *
+     * Legacy pillar fields are preserved for backward compatibility.
+     * The new [dimensions] array exposes the full breakdown to Flutter clients
+     * that can render the 10-dimension explainability view.
      */
     private HealthScoreResponse mapToResponse(HealthScoreResult result) {
-        int savingsScore   = findDimensionScore(result, "Savings Rate");
-        int goalScore      = findDimensionScore(result, "Goal Progress");
-        int activityScore  = findDimensionScore(result, "Cash Flow Health");
-        int surplusScore   = findDimensionScore(result, "Investment Regularity");
-        // Budget score not directly in the new engine (Phase 2 will add it);
-        // use debt management as a proxy to fill the legacy field
-        int budgetScore    = findDimensionScore(result, "Debt Management");
+        int savingsScore  = findDimensionScore(result, "Savings Rate");
+        int goalScore     = findDimensionScore(result, "Goal Progress");
+        int activityScore = findDimensionScore(result, "Cash Flow Health");
+        int surplusScore  = findDimensionScore(result, "Investment Regularity");
+        int budgetScore   = findDimensionScore(result, "Debt Management");
+
+        List<HealthDimensionDto> dimensionDtos = result.dimensions().stream()
+                .map(d -> new HealthDimensionDto(
+                        d.dimension(),
+                        d.score(),
+                        d.maxScore(),
+                        d.status(),
+                        d.insight(),
+                        d.recommendation()))
+                .collect(java.util.stream.Collectors.toList());
 
         return HealthScoreResponse.builder()
                 .score(result.totalScore())
@@ -129,6 +141,8 @@ public class HealthScoreService {
                 .goalScore(goalScore)
                 .activityScore(activityScore)
                 .surplusScore(surplusScore)
+                .dimensions(dimensionDtos)
+                .topActions(result.topActions())
                 .build();
     }
 

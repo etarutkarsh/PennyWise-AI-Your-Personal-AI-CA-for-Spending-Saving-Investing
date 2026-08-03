@@ -1,16 +1,13 @@
-import '../../domain/decision/behavioral_context.dart';
-import '../../domain/decision/decision_type.dart';
+import '../../domain/partner/matching_context.dart';
 import '../../domain/partner/ranked_partner_program.dart';
 import '../../domain/partner/repositories/partner_repository.dart';
 import '../../domain/shared/result.dart';
 
 class GetPartnerProgramsParams {
-  final DecisionType decisionContext;
-  final BehavioralContext behavioral;
+  final MatchingContext context;
   final int limit;
   const GetPartnerProgramsParams({
-    required this.decisionContext,
-    required this.behavioral,
+    required this.context,
     this.limit = 6,
   });
 }
@@ -22,8 +19,7 @@ class GetPartnerProgramsUseCase {
   Future<Result<List<RankedPartnerProgram>>> call(
           GetPartnerProgramsParams params) =>
       _repository.getRankedPrograms(
-        decisionContext: params.decisionContext,
-        behavioral: params.behavioral,
+        context: params.context,
         limit: params.limit,
       );
 }

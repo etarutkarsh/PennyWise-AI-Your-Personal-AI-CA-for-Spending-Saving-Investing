@@ -5,17 +5,30 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class HealthScoreResponse {
-    private int score;          // 0–100
-    private String grade;       // Excellent | Good | Fair | Poor
+    // ── Composite score ───────────────────────────────────────────────
+    private int score;          // 0–100 weighted composite
+    private String grade;       // A+ | A | B+ | B | C | D
     private String summary;
-    private int savingsScore;   // max 25
-    private int budgetScore;    // max 25
-    private int goalScore;      // max 25
-    private int activityScore;  // max 15
-    private int surplusScore;   // max 10
+
+    // ── Legacy pillar scores (backward compat — kept for existing Flutter clients) ──
+    private int savingsScore;
+    private int budgetScore;
+    private int goalScore;
+    private int activityScore;
+    private int surplusScore;
+
+    // ── Full dimension breakdown (Sprint 6) ───────────────────────────
+    // Each item: name, score, maxScore, status, insight, recommendation.
+    // Flutter maps these to the 10-dimension health model.
+    private List<HealthDimensionDto> dimensions;
+
+    // Top 3 highest-ROI actions sorted by weighted score gap.
+    private List<String> topActions;
 }

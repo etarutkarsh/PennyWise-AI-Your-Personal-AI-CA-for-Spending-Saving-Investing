@@ -15,6 +15,7 @@ Target users: students, salaried professionals, freelancers, families.
 ├── mobile/          → Flutter app (iOS + Android)
 ├── backend/         → Spring Boot REST API
 ├── database/        → schema.sql (11 tables)
+├── docs/architecture/ → ADRs + API contracts
 └── docker-compose.yml
 ```
 
@@ -24,16 +25,17 @@ Target users: students, salaried professionals, freelancers, families.
 
 | Layer | Choice |
 |-------|--------|
-| Mobile | Flutter (Dart), go_router, flutter_bloc (declared, not wired yet), SharedPreferences |
+| Mobile | Flutter (Dart), go_router, SharedPreferences, Flutter Secure Storage |
 | Backend | Spring Boot 3, Java 17, Spring Security, JJWT 0.12.6 |
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 |
 | Charts | fl_chart |
 | AI (planned) | OpenAI GPT-4o-mini via LangChain |
-| Auth (planned) | Firebase Auth or JWT (JWT currently wired on backend) |
+| Auth | JWT — fully wired on backend + mobile |
 | Push (planned) | Firebase Cloud Messaging |
 | SMS parsing | another_telephony (declared, not implemented) |
 | OCR | google_mlkit_text_recognition (declared, not implemented) |
+| DI (mobile) | get_it — wired via `mobile/lib/core/di/injection.dart` |
 
 ---
 
@@ -53,12 +55,14 @@ Default: `http://10.0.2.2:8080/api` (Android emulator) — change to `localhost`
 
 ---
 
-## Backend API (All Implemented & Working)
+## Backend API
 
 | Method | Endpoint | Status |
 |--------|----------|--------|
 | POST | /auth/register | ✅ Done |
 | POST | /auth/login | ✅ Done |
+| GET | /users/me | ✅ Done |
+| PATCH | /users/me | ✅ Done |
 | POST | /transactions | ✅ Done |
 | GET | /transactions | ✅ Done |
 | DELETE | /transactions/{id} | ✅ Done |
@@ -67,11 +71,17 @@ Default: `http://10.0.2.2:8080/api` (Android emulator) — change to `localhost`
 | POST | /goals | ✅ Done |
 | GET | /goals | ✅ Done |
 | PATCH | /goals/{id}/saved-amount | ✅ Done |
-| POST | /affordability/check | ✅ Done |
+| POST | /affordability/check | ✅ Done — returns AffordabilityResponse (pre-migration) |
 | GET | /categories | ✅ Done |
+| GET | /decisions/today | ✅ Done — returns **DecisionResponse v2 envelope** |
+| POST | /decisions/{id}/lifecycle | ✅ Done — stub (fire-and-forget) |
+| GET | /decision-memory | ✅ Done |
+| GET | /decision-memory/timeline | ✅ Done |
+| GET | /decision-memory/insights | ✅ Done |
+| POST | /decision-memory/{id}/review | ✅ Done |
+| GET | /health-score | ✅ Done |
 
-**Missing backend endpoints:** `/dashboard`, `/ai/chat`, `/reports`, `/notifications`, `/investments`
-**Confirmed present:** `/users/me` (GET + PATCH, UserController fully implemented)
+**Missing backend endpoints:** `/ai/chat`, `/reports`, `/notifications`, `/investments`
 
 ---
 
@@ -88,56 +98,211 @@ Default: `http://10.0.2.2:8080/api` (Android emulator) — change to `localhost`
 - `investment_portfolio`, `assets`, `liabilities` (Phase 3/4)
 - `learning_progress`, `achievements`, `savings_rules` (Phase 2)
 - `notifications`, `affordability_history`, `chat_history` (Phase 2/3)
+- `decision_memory`, `decision_outcome` — ✅ active, wired to DecisionMemoryService
+
+---
+
+## Architecture — Current Layer Status
+
+### Canonical Build Order (agreed 2026-08-03)
+
+| Phase | What | Status |
+|-------|------|--------|
+| Phase 0 | Flutter domain layer (Decision aggregate, 8 bounded contexts, domain events) | ✅ Complete — commit `36e79f0` |
+| Phase 1 | Application layer + DI + Partner Recommendation pipeline | ✅ Complete — commit `b2dd0ec` |
+| Phase 2 Sprint 1 | Backend `DecisionResponse` envelope + `FinancialPolicy` + `DecisionResponseMapper` | ✅ Complete — commit `8794b12` |
+| Phase 2 Sprint 2 | `AffordabilityEngine` → `DecisionResponse` | ⬜ Next |
+| Phase 2 Sprint 3 | Financial Journal → `DecisionResponse` | ⬜ |
+| Phase 2 Sprint 4 | Partner Programs → `DecisionResponse` | ⬜ |
+| Phase 2 Sprint 5 | Behavioral Engine → `DecisionResponse` | ⬜ |
+| Phase 3 | Policy Engine wired into TodayDecisionService + DecisionEngine | ⬜ |
+| Phase 4 | Behavioral Engine (pattern detection on real transaction history) | ⬜ |
+| Phase 5 | Financial Digital Twin (Bayesian behavioral vector) | ⬜ |
+| Phase 6 | Knowledge Graph (PostgreSQL entity graph) | ⬜ |
+| Phase 7 | Unified Decision Platform | ⬜ |
+
+### The Canonical Feature Architecture (reference: commit `b2dd0ec`)
+
+Every new feature must follow this 7-layer pattern:
+
+```
+Domain (interfaces, value objects, aggregates — no Flutter, no Spring)
+    ↓
+Infrastructure (concrete implementations — HardcodedRepo, RestRepo)
+    ↓
+Mapper (infrastructure model → domain entity)
+    ↓
+Use Case (application layer — orchestrates domain + infrastructure)
+    ↓
+Dependency Injection (injection.dart — get_it service locator)
+    ↓
+Screen (calls sl<UseCase>().call(), no business logic)
+    ↓
+Widget (pure renderer — receives domain objects as constructor params)
+```
+
+**10 architectural invariants (all verified at every commit):**
+1. Widgets never instantiate repositories directly
+2. Widgets depend only on use cases or domain models
+3. Infrastructure never imports Flutter
+4. Domain only imports `flutter/foundation.dart` (for @immutable)
+5. Repository contracts are interfaces in the domain layer
+6. Concrete implementations live only in infrastructure
+7. Business logic (ranking, scoring, filtering) lives in repositories/use cases, never widgets
+8. No hardcoded data lists inside widgets
+9. `flutter analyze` passes with zero errors at commit time
+10. All DI wiring goes through use cases
+
+### Backend Domain Layer (com.pennywise.domain.decision)
+
+Introduced in Phase 2 Sprint 1. Pure Java records, no Spring/JPA/Lombok.
+
+| Class | Purpose |
+|-------|---------|
+| `DecisionResponse` | Canonical envelope — every decision endpoint will eventually return this |
+| `DecisionData` | Core decision (type, headline, priority, icon, recommendation, goalImpact) |
+| `RecommendationData` | actionType, instrument, timeline, confidenceScore |
+| `GoalImpactData` | Health score + goal success rate deltas |
+| `ExplanationData` | Structured explanation — because[], evidence[], alternatives[], limitations[], confidenceDrivers[] |
+| `BehavioralContextData` | Always present. status="uncalibrated" until Behavioral Engine ships. Never omit. |
+| `PartnerRecommendation` | Canonical partner shape — programId, matchScore, trustStatement, taxBenefit, rank |
+| `TrustData` | Fiduciary proof block — engineVersion, basedOn, missingData, commissionPolicy |
+| `DecisionVersioning` | schemaVersion, engineVersion, decisionVersion, behaviorVersion, knowledgeVersion |
+
+### Backend Policy Engine (com.pennywise.policy.FinancialPolicy)
+
+All financial constants live here — not inside engine code. When RBI rules or tax slabs change, update this file only.
+
+Constants: `MIN_EMERGENCY_FUND_MONTHS`, `TARGET_EMERGENCY_FUND_MONTHS`, `MIN_SAVINGS_RATE`, `SAFE_EMI_INCOME_RATIO`, SIP rates by horizon, `SECTION_80C_LIMIT`, `MAX_SIP_INCOME_RATIO`, health score weights, `COMMISSION_POLICY`, `FIDUCIARY_STATEMENT`.
+
+Method: `sipRateForHorizon(int months)` — returns 7%/8%/10%/12% by horizon bucket.
+
+### Backend Mapper Layer (com.pennywise.mapper)
+
+`DecisionResponseMapper` — bridges `TodayDecisionService` (unchanged legacy service) → `DecisionResponse`. The controller is the only change point. Services are untouched.
 
 ---
 
 ## Flutter App — Feature Status
 
-### Screens with Real Implementation
+### Screens — Fully Wired
+
 | Screen | File | What Works |
 |--------|------|------------|
-| Dashboard | `features/dashboard/presentation/screens/dashboard_screen.dart` | Loads salary from SharedPreferences, calculates savings/investments/budget using 50-30-20 rule, 4 clickable summary cards |
-| Salary Detail | `features/dashboard/presentation/screens/salary_detail_screen.dart` | 50-30-20 breakdown, case study, 5-question quiz, XP + achievement |
-| Savings Detail | `features/dashboard/presentation/screens/savings_detail_screen.dart` | Emergency fund calculator, Rule of 72, 5 tips, quiz |
-| Investment Detail | `features/dashboard/presentation/screens/investment_detail_screen.dart` | Pyramid, portfolio allocation, SIP compounding table, quiz |
-| Budget Detail | `features/dashboard/presentation/screens/budget_detail_screen.dart` | Zero-based budgeting, budget killers, 30-day challenge, quiz |
-| Affordability | `features/calculator/presentation/screens/affordability_screen.dart` | Full UI + real POST /affordability/check + salary auto-loads from prefs |
-| Onboarding | `features/authentication/presentation/screens/onboarding_goal_setup_screen.dart` | Saves salary to SharedPreferences |
+| Login | `features/authentication/.../login_screen.dart` | POST /auth/login + JWT save + salary sync from /users/me |
+| Register | `features/authentication/.../register_screen.dart` | POST /auth/register + JWT save |
+| Splash | `features/authentication/.../splash_screen.dart` | URL token (web), hasSession() check, routes to /dashboard or /login |
+| Dashboard | `features/dashboard/.../dashboard_screen.dart` | Health score ring, 4 mission quest cards, Today's Best Decision card, Bank Program Slider, Commitment Intelligence, Behavioral Profile, Quick Actions |
+| Transactions | `features/transactions/.../` | GET/POST/PATCH/DELETE, OCR, AI category suggestion |
+| Goals | `features/goals/.../` | GET/POST /goals, animated quest cards, GoalPlanScreen with AI plan |
+| Budget | `features/budget/.../` | GET/POST /budgets, create/edit/delete, donut chart, swipe-to-delete |
+| Affordability | `features/calculator/.../affordability_screen.dart` | POST /affordability/check, salary auto-loads from prefs |
+| Profile | `features/profile/.../` | salary, risk appetite, PAN, tax regime → PATCH /users/me |
+| Settings | `features/settings/.../` | logout + JWT clear, navigation to sub-screens |
+| Salary Detail | `features/dashboard/.../salary_detail_screen.dart` | 50-30-20 breakdown, case study, quiz, XP |
+| Savings Detail | `features/dashboard/.../savings_detail_screen.dart` | Emergency fund calculator, Rule of 72, quiz |
+| Investment Detail | `features/dashboard/.../investment_detail_screen.dart` | SIP pyramid, portfolio allocation, compounding table, quiz |
+| Budget Detail | `features/dashboard/.../budget_detail_screen.dart` | Zero-based budgeting, quiz |
+| Financial Journal | `features/decisions/.../financial_journal_screen.dart` | Decision history, timeline, pending reviews |
+| Digital Twin | `features/twin/.../digital_twin_screen.dart` | Behavioral parameter visualization (stub data) |
+| Commitments | `features/commitments/.../commitments_screen.dart` | Recurring payment detection from transaction history |
 
-### Screens That Are Stubs / Need Wiring
+### Dashboard Widgets — All Wired
+
+| Widget | File | Data Source |
+|--------|------|-------------|
+| `TodaysBestDecisionCard` | `widgets/todays_best_decision_card.dart` | GET /decisions/today → DecisionResponse v2 |
+| `BankProgramSlider` | `widgets/bank_program_slider.dart` | GetDashboardFeedUseCase → HardcodedPartnerRepository |
+| `HeroCarouselSection` | `widgets/hero_carousel_section.dart` | Local salary data |
+| `MarketDataSection` | `widgets/market_data_section.dart` | Simulated market indices |
+| `FinancialNewsTicker` | `widgets/news_ticker_widget.dart` | Simulated news feed |
+| `FinancialOpportunityCarousel` | `widgets/financial_opportunity_carousel.dart` | Local health score |
+| `GoalPathwayBanner` | `widgets/goal_pathway_banner.dart` | Local goal data |
+| `BehaviorInsightsSection` | `widgets/behavior_insights_section.dart` | Stub behavioral data |
+| `NextBestActionCarousel` | `widgets/next_best_action_carousel.dart` | Stub action data |
+| `AnimatedStatsSection` | `widgets/animated_stats_section.dart` | Computed from salary |
+| `MotivationCardsSection` | `widgets/motivation_cards_section.dart` | Computed from salary |
+| `_CommitmentsCard` (inline) | `dashboard_screen.dart` | CommitmentEngine → transaction history |
+
+### Screens — Stubs / Not Built
+
 | Screen | What's Missing |
 |--------|----------------|
-| Login | ✅ Fully wired — POST /auth/login + JWT save + salary sync from /users/me |
-| Register | ✅ Fully wired — POST /auth/register + JWT save |
-| Splash | ✅ Fully wired — reads URL tokens (web), hasSession() check, routes to /dashboard or /login |
-| Transactions | ✅ Fully wired — GET/POST/PATCH/DELETE, OCR, AI category suggestion |
-| Goals | ✅ Fully wired — GET/POST /goals, animated quest cards, GoalPlanScreen with AI plan |
-| Budget | ✅ Fully wired — GET/POST /budgets, create/edit/delete, donut chart, swipe-to-delete |
-| Profile | ✅ Fully wired — salary, risk appetite, PAN, tax regime all wired to PATCH /users/me |
-| Settings | ✅ Fully wired — logout + JWT clear, navigation to all sub-screens |
-| AI Chat | ❌ Build /ai/chat backend endpoint + wire ChatScreen to OpenAI GPT-4o-mini |
-| Learn | ❌ Full learning academy with lessons, flashcards, daily content |
-| Investments | ❌ Portfolio tracking UI + live data |
-| Reports | ❌ Spending reports + charts (backend endpoint missing) |
-| Notifications | ❌ AI alerts display (backend endpoint missing) |
+| AI Chat | Build /ai/chat backend endpoint + wire ChatScreen to OpenAI GPT-4o-mini |
+| Learn | Full learning academy — lessons, flashcards, daily content |
+| Investments | Portfolio tracking UI + live data |
+| Reports | Spending reports + charts (backend endpoint missing) |
+| Notifications | AI alerts display (backend endpoint missing) |
+
+---
+
+## Flutter Architecture — Key Files
+
+### Application Layer (`mobile/lib/application/`)
+| File | Purpose |
+|------|---------|
+| `decision/get_dashboard_feed_use_case.dart` | Fetches today's decision + ranked partner programs together |
+| `decision/get_today_decision_use_case.dart` | Standalone today's decision fetch |
+| `decision/record_decision_lifecycle_use_case.dart` | Records viewed/accepted/executed/reviewed lifecycle state |
+| `partner/get_partner_programs_use_case.dart` | Standalone partner program fetch |
+| `shared/use_case.dart` | UseCase + NoParamUseCase interfaces |
+
+### Domain Layer (`mobile/lib/domain/`)
+| Package | Key Classes |
+|---------|-------------|
+| `decision/` | `Decision` (aggregate root), `DecisionResponse`, `DecisionFeed`, `Explanation`, `Recommendation`, `TrustMetadata`, `GoalImpact`, `BehavioralContext`, `DecisionAudit` |
+| `partner/` | `PartnerProgram`, `RankedPartnerProgram`, `FinancialInstrument`, `PartnerProgramRepository` (interface) |
+| `behavioral/` | `BehaviorProfile`, `BehavioralVector`, `FinancialPersonality`, `Habit`, `BehaviorRepository` (interface) |
+| `engines/` | `DecisionEngine`, `BehavioralEngine`, `ExplainabilityEngine`, `KnowledgeGraphEngine`, `PartnerMatchingEngine`, `SimulationEngine` (all interfaces) |
+| `events/` | `DomainEvents` — `DecisionGenerated`, `DecisionAccepted`, `DecisionExecuted`, `DecisionObserved`, `DecisionReviewed`, `DecisionLearned`, `TwinUpdated` |
+| `finance/` | `FinancialState`, `FinancialPolicy` |
+| `value_objects/` | `Money`, `Currency`, `RiskLevel`, `TimeHorizon`, `Ids` (DecisionId, UserId, GoalId, etc.) |
+
+### Infrastructure Layer (`mobile/lib/infrastructure/`)
+| File | Purpose |
+|------|---------|
+| `repositories/rest_decision_repository.dart` | Calls GET /decisions/today → maps via DecisionMapper |
+| `repositories/hardcoded_partner_repository.dart` | 6 curated programs (HDFC RD, Nippon SIP, Jar Gold, Axis ELSS, Fi Smart Deposit, ICICI Amazon CC) |
+| `mappers/decision_mapper.dart` | TodayDecisionModel → Flutter DecisionResponse domain object |
+| `mappers/partner_mapper.dart` | PartnerOptionModel / PartnerRecommendation → RankedPartnerProgram |
+
+### Data Models (`mobile/lib/features/decisions/data/models/`)
+`today_decision_model.dart` — parses **both** backend formats:
+- v1 flat (`{ decisionId, headline, reasons, partnerOptions }`) — backward compat
+- v2 nested (`{ decision: {...}, explanation: {...}, partnerPrograms: [...] }`) — current
+
+---
+
+## Backend Architecture — Key Packages
+
+| Package | Purpose |
+|---------|---------|
+| `domain.decision` | Canonical domain records — `DecisionResponse` and all nested types (no Spring/JPA) |
+| `policy` | `FinancialPolicy` — all financial constants, SIP rate lookup, fiduciary statement |
+| `mapper` | `DecisionResponseMapper` — `TodayDecisionResponse` → `DecisionResponse` |
+| `engine.decision` | `DecisionEngine`, `RiskEngine`, `TradeoffEngine`, `ExplainabilityEngine`, `GoalImpactEngine` |
+| `engine.memory` | `DecisionMemoryEngine`, `DecisionRecorder`, `DecisionOutcomeEngine` |
+| `engine.behavioral` | Behavioral pattern detection (scaffolded) |
+| `service` | `TodayDecisionService`, `AffordabilityService`, `DecisionMemoryService`, `HealthScoreService` |
+| `controller` | REST controllers — `TodayDecisionController` now returns `DecisionResponse` |
+| `dto.decision` | `TodayDecisionResponse`, `DecisionImpact`, `RecommendedAction`, `PartnerOption` — legacy, kept for backward compat |
 
 ---
 
 ## Key Local Storage
 `mobile/lib/core/services/storage/user_prefs_storage.dart`
 
-Stores via SharedPreferences:
-- `user_salary` → double (set on onboarding)
-- `user_achievements` → List<String> (badge IDs earned)
+- `user_salary` → double
+- `user_achievements` → List<String>
 - `quiz_total_score` → int (XP points)
-- `completed_quizzes` → List<String> (quiz IDs completed)
+- `completed_quizzes` → List<String>
 
-JWT tokens: `mobile/lib/core/services/storage/token_storage.dart` (Flutter Secure Storage, fully wired — used by login/register/splash)
+JWT tokens: `mobile/lib/core/services/storage/token_storage.dart` (Flutter Secure Storage)
 
 ---
 
-## Achievement IDs (currently in use)
-- `onboarding_complete` — finished onboarding
+## Achievement IDs
+- `onboarding_complete`
 - `salary_quiz_done` → 💰 Salary Scholar
 - `savings_quiz_done` → 🏦 Savings Expert
 - `investment_quiz_done` → 📈 Investment Pro
@@ -145,15 +310,7 @@ JWT tokens: `mobile/lib/core/services/storage/token_storage.dart` (Flutter Secur
 
 ---
 
-## Shared UI Widgets (reusable)
-- `mobile/lib/features/dashboard/presentation/widgets/detail_screen_widgets.dart`
-  → `DetailSectionHeader`, `DetailInfoCard`, `DetailCaseStudyCard`, `DetailFactChip`, `showAchievementSnackbar()`
-- `mobile/lib/features/learn/presentation/widgets/quiz_section.dart`
-  → `QuizSection`, `QuizQuestion` — self-contained quiz widget with XP + achievement hooks
-
----
-
-## App Colors (mobile/lib/core/theme/app_colors.dart)
+## App Colors (`mobile/lib/core/theme/app_colors.dart`)
 - `AppColors.primary` = `#0F9D58` (savings green)
 - `AppColors.secondary` = `#16213E` (trust navy)
 - `AppColors.accent` = `#F2A104` (insight amber)
@@ -168,7 +325,7 @@ JWT tokens: `mobile/lib/core/services/storage/token_storage.dart` (Flutter Secur
 Router file: `mobile/lib/core/router/app_router.dart`
 
 Main tab shell (`/dashboard`, `/transactions`, `/goals`, `/learn`, `/chat`) uses `StatefulShellRoute`.
-Detail screens pushed via `Navigator.of(context).push(MaterialPageRoute(...))` — NOT go_router routes.
+Detail screens pushed via `Navigator.of(context).push(MaterialPageRoute(...))`.
 
 ---
 
@@ -177,156 +334,92 @@ Detail screens pushed via `Navigator.of(context).push(MaterialPageRoute(...))` �
 ### Phase 1 — MVP
 | Item | Status |
 |------|--------|
-| Authentication UI | ✅ Fully wired — login + register + JWT + salary sync |
-| SMS auto-parsing | ❌ 0% |
-| Manual transaction entry | ✅ Fully wired — create/edit/delete + OCR + AI category |
-| Budget tracking | ✅ Fully wired — create/edit/delete, donut chart, progress bars |
-| Dashboard | ✅ Local data (salary from prefs), ❌ no backend sync for live transactions |
-| Goals | ✅ Fully wired — GET/POST, animated cards, GoalPlanScreen with AI plan |
-| Affordability checker | ✅ Fully wired — real POST /affordability/check, salary auto-loads |
-| Reports | ❌ 0% (backend endpoint missing) |
+| Authentication UI | ✅ login + register + JWT + salary sync |
+| SMS auto-parsing | ❌ 0% — another_telephony declared, background listener not implemented |
+| Manual transaction entry | ✅ create/edit/delete + OCR + AI category |
+| Budget tracking | ✅ create/edit/delete, donut chart, progress bars |
+| Dashboard | ✅ Local salary data + backend health score + Today's Best Decision + Bank Program Slider |
+| Goals | ✅ GET/POST, animated cards, GoalPlanScreen, AI plan |
+| Affordability checker | ✅ POST /affordability/check, salary auto-loads |
+| Reports | ❌ 0% — backend endpoint missing |
 
 ### Phase 2
 | Item | Status |
 |------|--------|
 | AI categorization | ❌ 0% |
 | AI spending insights | ❌ 0% |
-| Learning academy | ✅ Quiz system built in card detail screens, ❌ no standalone learn screen |
+| Learning academy | ⚠️ Quiz system in detail screens; no standalone lesson/flashcard screen |
 | Notifications | ❌ 0% |
-| Financial health score (dynamic) | ❌ Hardcoded 82 |
-| Savings recommendations | ❌ 0% |
+| Financial health score (dynamic) | ⚠️ Backend HealthScoreService calculates from transactions/goals; UI shows it |
+| Today's Best Decision | ✅ Rule-based v1 (4 rules); returns DecisionResponse v2 envelope |
+| Decision Memory | ✅ Backend: record + timeline + review + insights; Flutter: Financial Journal screen |
+| Savings recommendations | ❌ 0% — no proactive nudge system yet |
 
 ### Phase 3
 | Item | Status |
 |------|--------|
-| Investment recommendations | ✅ Educational content (detail screen), ❌ no live portfolio |
+| Investment recommendations | ⚠️ Educational content in detail screens; no live portfolio |
 | Portfolio tracking | ❌ 0% |
-| AI chat assistant | ✅ UI only, ❌ no LLM backend |
-| Receipt OCR | ❌ 0% (ML Kit declared) |
-| Full gamification (levels, leaderboard) | ✅ Basic XP + achievements, ❌ levels/leaderboard missing |
+| AI chat assistant | ⚠️ UI only; no LLM backend endpoint |
+| Receipt OCR | ⚠️ ML Kit declared; not wired end-to-end |
+| Gamification | ⚠️ XP + achievements working; levels/leaderboard missing |
 | Spending predictions | ❌ 0% |
+| Commitment Intelligence | ✅ CommitmentEngine detects recurring patterns from transaction history |
+| Digital Twin (stub) | ✅ Screen exists with behavioral parameter visualizations; no real data |
+| Financial Journal | ✅ Decision history, timeline, pending reviews |
 
-### Phase 4
-Everything in Phase 4: ❌ 0%
-
----
-
-## Biggest Next Steps (Priority Order)
-
-1. ~~Wire Login/Register to backend~~ ✅ Done — login + register + JWT save + salary sync
-2. ~~Splash screen session check~~ ✅ Done — hasSession() check, URL token support for web
-3. ~~Wire Affordability screen~~ ✅ Done — real POST /affordability/check, salary auto-loads from prefs
-4. ~~Wire Transactions screen~~ ✅ Done
-5. ~~Wire Goals screen~~ ✅ Done — animated quest cards, GoalPlanScreen, AI plan, create/update
-6. ~~Wire Budget screen~~ ✅ Done — create/edit/delete, donut chart, swipe-to-delete
-7. ~~Wire Profile + Settings~~ ✅ Done — salary, risk appetite, PAN, tax regime, logout
-8. **Build AI chat endpoint** — integrate OpenAI GPT-4o-mini into /ai/chat
-9. **SMS background listener** — implement `another_telephony` real-time detection + upgrade parser for NACH/ECS/UPI AutoPay rails
-10. **Financial health score** — calculate dynamically from transactions/savings/goals
-11. **Learning screen** — standalone lessons, flashcards, daily content
-11. **Merchant Intelligence** — map raw merchant names/VPAs → brand + category + impulse score
-12. **Subscription Intelligence** — detect forgotten/duplicate/price-increased subscriptions
-13. **CommitmentEngine auto-pending** — pre-create expected transactions before they debit
+### Phase 4+
+Everything else: ❌ 0% (Behavioral Engine, Knowledge Graph, Life Event Intelligence, Account Aggregator)
 
 ---
 
-## Financial Data Pipeline — North Star Architecture
+## Next Steps — Priority Order
 
-**Core philosophy:** The user should almost never have to enter a transaction manually. Every debit/credit should be detected, classified, and confirmed with a single tap — or zero taps for high-confidence recurring items.
+### Immediate (Phase 2 continuation)
+1. **Phase 2 Sprint 2** — Affordability → `DecisionResponse`: update `AffordabilityService` and `AffordabilityController` to return `DecisionResponse` via `DecisionResponseMapper`. Wire `FinancialPolicy` constants into `DecisionEngine`.
+2. **Wire FinancialPolicy into TodayDecisionService** — replace hardcoded constants (3, 6, 0.15, etc.) with `FinancialPolicy.*` references.
+3. **Step-Up SIP formula** — replace `targetMonthly = outstanding / monthsToGoal` in `TodayDecisionService.buildStartSipDecision()` with proper SIP formula using `FinancialPolicy.sipRateForHorizon()`.
 
-### The 11-Layer Ingestion Stack (priority order)
+### Data Foundation (unlocks all intelligence engines)
+4. **RBI Account Aggregator** (Setu SDK) — 12 months bank history in one API call
+5. **Android SMS background listener** — `another_telephony` real-time detection + NACH/ECS/UPI AutoPay rail detection
+6. **Financial Knowledge Graph** — PostgreSQL entity graph: Person → Income → Goals → Transactions → Merchants → Subscriptions
 
-| # | Layer | What It Captures | Status |
-|---|-------|-----------------|--------|
-| 1 | **RBI Account Aggregator** | Complete bank history: salary, UPI, NACH, EMIs, credit cards (12–24 months) | ❌ Coming soon (Setu SDK) |
-| 2 | **SMS Intelligence Engine** | Amount, direction, merchant, UPI VPA, balance, payment rail, recurring probability, confidence score | ⚠️ Basic parser done; needs NACH/ECS/UPI AutoPay rail detection + background listener |
-| 3 | **Email Intelligence** | Invoices, refund confirmations, subscription renewals, EMI schedules, tax documents | ❌ Not started |
-| 4 | **Calendar Prediction Engine** | Predict recurring debits before they happen (salary, EMI, rent, subscriptions) | ❌ Not started |
-| 5 | **Subscription Intelligence** | Forgotten subs, duplicates, price increases, inactive, family plans, free-trial-to-paid traps | ❌ Not started |
-| 6 | **Merchant Intelligence Graph** | Map "AMZ PAY INDIA PVT LTD" → Amazon, impulse score, refund frequency, cashback eligibility | ❌ Not started |
-| 7 | **One-Tap Confirmation** | For 80–90% confidence detections — show card, single tap to confirm. Never a form. | ❌ Not started |
-| 8 | **AI Transaction Intelligence** | "ABC PVT LTD" → "Office Lunch" — corrections become training signals for this user | ❌ Not started |
-| 9 | **OCR** | Capture receipts (GST, merchant, items, amount) from camera — google_mlkit declared | ⚠️ ML Kit declared; not wired |
-| 10 | **Voice Entry** | "I paid Rahul ₹500 cash" → structured transaction. Natural language, no form. | ❌ Not started |
-| 11 | **Manual Entry** | Escape hatch only. Must feel like failure if user reaches here. | ✅ Done (3-step stepper) |
-
-### Financial Identity Graph (target state)
-
-```
-User → Salary → Bank Accounts → Transactions → Merchants → Goals
-     ↓                                               ↓
-  Behavior ← Decision History ← Investments ← Subscriptions
-     ↓
-  Digital Twin (AI model of user's financial life)
-```
-
-Every node in this graph should be populated passively. PennyWise builds the graph from signals, not from forms.
-
-### Passive Data Collection Philosophy
-
-Infer recurring patterns without asking:
-- Gym SMS every 5th of the month (₹1,200) → auto-create Health subscription commitment
-- Zomato 3×/week avg ₹340 → suggest Food budget alert threshold
-- Salary credit last Friday of month → lock in salary detection + next-month prediction
-- No manual tagging of "this is my salary" — detect from amount + CREDIT rail + recurrence
-
-### Additional Capabilities (roadmap)
-
-- **WhatsApp integration** — "Paid Rahul ₹200 on Swiggy" messages → transactions
-- **Family financial graph** — split expenses, shared goals, household budget
-- **Predictive missing transaction detection** — "You usually pay electricity around the 12th — not detected yet. Paid?"
-- **Unified commitments calendar** — all upcoming debits visible 30 days ahead (salary in, EMI out, rent out, SIP debit)
-
-### Recommended Implementation Order
-
-```
-Phase A (foundations — do first):
-  1. RBI Account Aggregator (Setu SDK) — unlocks 12 months of history instantly
-  2. Android SMS background listener (another_telephony) — real-time detection
-  3. PDF/CSV statement import — iOS users + any bank AA doesn't cover yet
-
-Phase B (intelligence layer):
-  4. Email Intelligence — catch subscriptions that banks see as generic "RAZORPAY" charges
-  5. Merchant Intelligence Graph — enrich raw merchant strings across all sources
-  6. Commitment + Subscription Engine — identify recurring patterns, pre-create pending txns
-
-Phase C (AI layer):
-  7. Prediction Engine — forecast upcoming debits from calendar + recurrence models
-  8. OCR + Voice Entry — last-mile capture for cash and offline transactions
-
-Phase D (autonomous):
-  9. Behavioral Engine + Digital Twin — model user habits, trigger proactive coaching
-```
-
-### Key Files (ingestion layer)
-
-| File | Purpose |
-|------|---------|
-| `mobile/lib/core/services/ingestion/ingestion_source.dart` | Enum, status, abstract base for all ingestion sources |
-| `mobile/lib/features/sms/presentation/screens/sms_import_screen.dart` | SMS one-time bulk import (manual trigger) |
-| `mobile/lib/features/commitments/` | CommitmentEngine — detects recurring patterns |
-| `mobile/lib/features/documents/` | Document vault (PDF/CSV future home) |
-| `mobile/lib/features/transactions/presentation/screens/add_transaction_sheet.dart` | Manual entry + OCR + AI category suggestion |
+### Intelligence (requires data foundation)
+7. **True Financial Health Engine** — 10-dimensional score (liquidity, debt quality, savings consistency, goal funding, insurance, diversification, behavioral consistency, income stability, anxiety, tax efficiency)
+8. **Decision Engine v2** — multi-axis pipeline: Goal → Cash Flow → Liquidity → Behavior → Health → Opportunity Cost → Tax → Risk → Recommendation
+9. **Close the Decision Memory Loop** — full AAR lifecycle (Recommend → Accept → Execute → Observe → Outcome → Lesson → Twin Update)
+10. **Behavioral Engine** — pattern detection from transaction history; update behavioral vector θ
 
 ---
 
-## Backend AI Engine
-`backend/src/main/java/com/pennywise/ai/AffordabilityEngine.java`
+## Financial Data Pipeline — North Star
 
-Rule-based (not ML) affordability logic:
-- Rule 1: Monthly surplus ≤ 0 → DONT_BUY
-- Rule 2: Emergency fund post-purchase < 6× monthly expenses → WAIT_AND_SAVE
-- Rule 3: Otherwise → SAFE_TO_BUY
-
-OpenAI config ready in `application.yml` (env var: OPENAI_API_KEY, model: gpt-4o-mini)
+### The 11-Layer Ingestion Stack
+| # | Layer | Status |
+|---|-------|--------|
+| 1 | RBI Account Aggregator (Setu SDK) | ❌ Not started |
+| 2 | SMS Intelligence Engine | ⚠️ Basic parser; no background listener |
+| 3 | Email Intelligence | ❌ Not started |
+| 4 | Calendar Prediction Engine | ❌ Not started |
+| 5 | Subscription Intelligence | ❌ Not started |
+| 6 | Merchant Intelligence Graph | ❌ Not started |
+| 7 | One-Tap Confirmation | ❌ Not started |
+| 8 | AI Transaction Intelligence | ❌ Not started |
+| 9 | OCR (google_mlkit declared) | ⚠️ Declared; not wired |
+| 10 | Voice Entry | ❌ Not started |
+| 11 | Manual Entry | ✅ Done (3-step stepper) |
 
 ---
 
 ## Known Issues / Debt
-- `withOpacity()` deprecated Flutter 3.44 — should use `.withValues(alpha: x)` (56 lint warnings, no errors)
-- flutter_bloc imported in pubspec but unused — state management is all StatefulWidget local state for now
-- Dashboard salary derivation is local only — backend User entity has `monthlyIncome` field but it's never POSTed from mobile
-- Affordability screen uses hardcoded emergency fund value — Phase 3 will use real investment portfolio data
+- `withOpacity()` deprecated Flutter 3.44 — should use `.withValues(alpha: x)` (~37 lint infos, no errors)
+- `flutter_bloc` imported in pubspec but unused — state management is StatefulWidget local state
+- Dashboard health score: backend `HealthScoreService` calculates dynamically, but pillars (savings, budget, goals, activity) are rule-based offsets, not computed from real multi-dimensional model
+- `AffordabilityController` still returns `AffordabilityResponse` (pre-migration) — Phase 2 Sprint 2 will migrate to `DecisionResponse`
+- `HardcodedPartnerRepository` — partner data is static; Phase 4 will replace with live backend `/partners` endpoint
+- `TodayDecisionService` still has hardcoded constants (3, 6, 0.15, 0.40) — Phase 2 Sprint 3 will wire `FinancialPolicy`
+- `DecisionLifecycleEvent` POST `/decisions/{id}/lifecycle` is a stub — Decision Memory Engine loop not closed
 
 ---
 
@@ -367,8 +460,6 @@ gstack is installed globally at `~/.claude/skills/gstack`. Use these slash comma
 # frontend-design skill
 
 Installed at `~/.claude/skills/frontend-design`. Invoked automatically when building or redesigning UI screens.
-
-This skill acts as the design lead — makes deliberate, opinionated choices about palette, typography, and layout specific to PennyWise (finance app, trust + clarity as core values). It grounds every design in the subject's real world rather than generic templates.
 
 **App design tokens (from `app_colors.dart`):**
 - Primary: `#0F9D58` (savings green)

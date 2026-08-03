@@ -1,7 +1,7 @@
-import '../../domain/decision/behavioral_context.dart';
 import '../../domain/decision/decision_response.dart';
 import '../../domain/decision/decision_type.dart';
 import '../../domain/decision/repositories/decision_repository.dart';
+import '../../domain/partner/matching_context.dart';
 import '../../domain/partner/ranked_partner_program.dart';
 import '../../domain/partner/repositories/partner_repository.dart';
 import '../../domain/shared/result.dart';
@@ -30,30 +30,17 @@ class GetDashboardFeedUseCase implements NoParamUseCase<DashboardFeedResult> {
       decision = decisionResult.value;
     }
 
-    // Fetch partner programs contextual to the decision type
-    final decisionType = decision?.decision.type;
-    final behavioral = decision?.behavioralContext;
+    // Build MatchingContext from the decision type; fall back to a safe default.
+    final decisionType = decision?.decision.type ?? DecisionType.buildEmergencyFund;
+    final context = MatchingContext(primaryGoal: decisionType);
 
     List<RankedPartnerProgram> programs = [];
-    if (decisionType != null && behavioral != null) {
-      final programsResult = await _partnerRepo.getRankedPrograms(
-        decisionContext: decisionType,
-        behavioral: behavioral,
-        limit: 6,
-      );
-      if (programsResult is Success<List<RankedPartnerProgram>>) {
-        programs = programsResult.value;
-      }
-    } else {
-      // Fallback: fetch default programs with no context
-      final programsResult = await _partnerRepo.getRankedPrograms(
-        decisionContext: DecisionType.buildEmergencyFund, // default context
-        behavioral: BehavioralContext.uncalibrated(),
-        limit: 6,
-      );
-      if (programsResult is Success<List<RankedPartnerProgram>>) {
-        programs = programsResult.value;
-      }
+    final programsResult = await _partnerRepo.getRankedPrograms(
+      context: context,
+      limit: 6,
+    );
+    if (programsResult is Success<List<RankedPartnerProgram>>) {
+      programs = programsResult.value;
     }
 
     return Result.success(DashboardFeedResult(
