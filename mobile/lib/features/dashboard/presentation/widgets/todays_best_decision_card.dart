@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:pennywise_ai/application/decision/record_decision_lifecycle_use_case.dart';
+import 'package:pennywise_ai/core/di/injection.dart';
+import 'package:pennywise_ai/domain/decision/decision.dart';
+import 'package:pennywise_ai/domain/value_objects/ids.dart';
+
 import '../../../../core/services/app_services.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../decisions/data/models/today_decision_model.dart';
@@ -14,6 +19,7 @@ class TodaysBestDecisionCard extends StatefulWidget {
 
 class _TodaysBestDecisionCardState extends State<TodaysBestDecisionCard> {
   TodayDecisionModel? _decision;
+  DecisionId? _decisionId;
   bool _loading = true;
 
   @override
@@ -25,10 +31,30 @@ class _TodaysBestDecisionCardState extends State<TodaysBestDecisionCard> {
   Future<void> _load() async {
     try {
       final d = await AppServices.instance.todayDecision.getToday();
-      if (mounted) setState(() { _decision = d; _loading = false; });
+      if (!mounted) return;
+      setState(() {
+        _decision = d;
+        _decisionId = DecisionId(
+          d.decisionId.isNotEmpty
+              ? d.decisionId
+              : 'local-${DateTime.now().millisecondsSinceEpoch}',
+        );
+        _loading = false;
+      });
+      _recordLifecycle(DecisionLifecycleState.viewed);
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Fire-and-forget lifecycle recording — must never break the UI.
+  void _recordLifecycle(DecisionLifecycleState state) {
+    final id = _decisionId;
+    if (id == null) return;
+    // Do not await; failures are absorbed inside the use case.
+    sl<RecordDecisionLifecycleUseCase>().call(
+      RecordDecisionLifecycleParams(id, state),
+    );
   }
 
   @override
@@ -357,7 +383,10 @@ class _TodaysBestDecisionCardState extends State<TodaysBestDecisionCard> {
           Expanded(
             flex: 2,
             child: GestureDetector(
-              onTap: () => _showOptionsSheet(d),
+              onTap: () {
+                _recordLifecycle(DecisionLifecycleState.accepted);
+                _showOptionsSheet(d);
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 13),
                 decoration: BoxDecoration(

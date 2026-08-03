@@ -15,6 +15,19 @@ class TimeHorizon {
   /// Creates a TimeHorizon from a number of years (converted to months).
   factory TimeHorizon.years(int years) => TimeHorizon._(years * 12);
 
+  /// Parses a human-readable label such as "24 months", "3 years", or "P24M".
+  /// Falls back to 24 months if no valid number is found.
+  factory TimeHorizon.fromLabel(String label) {
+    final match = RegExp(r'(\d+)').firstMatch(label);
+    if (match != null) {
+      final n = int.parse(match.group(1)!);
+      if (n <= 0) return TimeHorizon._(24);
+      if (label.toLowerCase().contains('year')) return TimeHorizon._(n * 12);
+      return TimeHorizon._(n);
+    }
+    return TimeHorizon._(24);
+  }
+
   double get inYears => months / 12.0;
 
   /// Human-readable label: "2 years", "18 months", "1 year".

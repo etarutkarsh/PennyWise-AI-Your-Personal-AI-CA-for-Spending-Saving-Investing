@@ -2,195 +2,91 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:pennywise_ai/domain/partner/ranked_partner_program.dart';
+
 import '../../../../core/theme/app_colors.dart';
 
-// ── Data Model ────────────────────────────────────────────────────────────────
+// ── Local presentation helpers (no business logic, purely display polish) ────
 
-enum _GoalType { emergencyFund, longTermWealth, savingsHabit, taxSaving, goldHedge, spendSmart }
-
-class _BankProgram {
-  final String id;
-  final String bankName;
-  final String bankInitials;
-  final Color bankColor;
-  final Color bankColorDark;
-  final String productName;
-  final String productEmoji;
-  final String keyMetric;       // "7.1% p.a." or "₹1.75 Cr in 20 yrs"
-  final String keyMetricLabel;  // "Guaranteed return" or "SIP projection"
-  final String tagline;
-  final String goalChip;        // "Emergency Fund" / "Long-term Wealth"
-  final _GoalType goalType;
-  final String whatYouGet;
-  final String howItHelps;
-  final List<String> quickFacts;
-  final String ctaLabel;
-
-  const _BankProgram({
-    required this.id,
-    required this.bankName,
-    required this.bankInitials,
-    required this.bankColor,
-    required this.bankColorDark,
-    required this.productName,
-    required this.productEmoji,
-    required this.keyMetric,
-    required this.keyMetricLabel,
-    required this.tagline,
-    required this.goalChip,
-    required this.goalType,
-    required this.whatYouGet,
-    required this.howItHelps,
-    required this.quickFacts,
-    required this.ctaLabel,
-  });
+/// Bank-brand colours by programId — presentation concern only.
+Color _bankColor(String programId) {
+  switch (programId) {
+    case 'hdfc_rd':
+      return const Color(0xFF004C8F);
+    case 'nippon_sip':
+      return const Color(0xFFE63012);
+    case 'jar_gold':
+      return const Color(0xFFB45309);
+    case 'axis_elss':
+      return const Color(0xFF8B0000);
+    case 'fi_auto_save':
+      return const Color(0xFF0D9488);
+    case 'icici_amazon_cc':
+      return const Color(0xFFB44F00);
+    default:
+      return AppColors.secondary;
+  }
 }
 
-const _programs = <_BankProgram>[
-  _BankProgram(
-    id: 'hdfc_rd',
-    bankName: 'HDFC Bank',
-    bankInitials: 'HDFC',
-    bankColor: Color(0xFF004C8F),
-    bankColorDark: Color(0xFF002D57),
-    productName: 'Recurring Deposit',
-    productEmoji: '🏦',
-    keyMetric: '7.1% p.a.',
-    keyMetricLabel: 'Guaranteed return',
-    tagline: 'Safe, predictable savings — zero market risk',
-    goalChip: 'Emergency Fund',
-    goalType: _GoalType.emergencyFund,
-    whatYouGet: 'A fixed monthly deposit for 12–24 months at 7.1% guaranteed interest. Mature into cash you can access the day your emergency hits.',
-    howItHelps: 'Your emergency fund should never fluctuate. An RD locks in growth while keeping the money accessible — ideal for building your 6-month buffer.',
-    quickFacts: [
-      'Open in 5 min via HDFC netbanking',
-      'Min ₹500/month',
-      'Premature withdrawal allowed',
-      'TDS applies above ₹40,000/year',
-    ],
-    ctaLabel: 'Compare RD Rates',
-  ),
-  _BankProgram(
-    id: 'nippon_sip',
-    bankName: 'Nippon India MF',
-    bankInitials: 'NI',
-    bankColor: Color(0xFFE63012),
-    bankColorDark: Color(0xFFAF1C08),
-    productName: 'Nifty 50 Index SIP',
-    productEmoji: '📈',
-    keyMetric: '₹5K → ₹1.75 Cr',
-    keyMetricLabel: '20-year SIP projection',
-    tagline: 'Own all of India\'s top 50 companies for ₹100/day',
-    goalChip: 'Long-term Wealth',
-    goalType: _GoalType.longTermWealth,
-    whatYouGet: 'A monthly SIP into Nippon India Nifty 50 Index Fund — one of India\'s lowest-cost index funds tracking the NSE Nifty 50. Mirrors the entire Indian large-cap market.',
-    howItHelps: 'Index funds outperform 85% of actively managed funds over 10+ years. You capture Indian market growth without paying a fund manager to guess.',
-    quickFacts: [
-      'Expense ratio: 0.20% (lowest tier)',
-      'Start from ₹100/month',
-      'Auto-debit on salary date',
-      '0% entry load, 1% exit load < 1 yr',
-    ],
-    ctaLabel: 'Start SIP',
-  ),
-  _BankProgram(
-    id: 'jar_gold',
-    bankName: 'Jar · Digital Gold',
-    bankInitials: 'JAR',
-    bankColor: Color(0xFFB45309),
-    bankColorDark: Color(0xFF7C3A00),
-    productName: 'Digital Gold SIP',
-    productEmoji: '🥇',
-    keyMetric: '12.4% CAGR',
-    keyMetricLabel: '10-year gold return',
-    tagline: 'Inflation hedge that never rusts or needs a locker',
-    goalChip: 'Wealth Preservation',
-    goalType: _GoalType.goldHedge,
-    whatYouGet: '99.9% pure 24K gold stored in Brink\'s vaults. Buy as little as ₹1. Sell anytime, take delivery, or convert to jewellery.',
-    howItHelps: 'Gold has beaten Indian inflation for 30+ years. A 5–10% gold allocation stabilises your portfolio when equity markets fall. Jar rounds up every UPI transaction to save automatically.',
-    quickFacts: [
-      'Backed by MMTC-PAMP certified gold',
-      'Round-up saving on every transaction',
-      'Free delivery above 1g',
-      'No GST on selling',
-    ],
-    ctaLabel: 'See Gold Price',
-  ),
-  _BankProgram(
-    id: 'axis_elss',
-    bankName: 'Axis Mutual Fund',
-    bankInitials: 'AXIS',
-    bankColor: Color(0xFF8B0000),
-    bankColorDark: Color(0xFF5C0000),
-    productName: 'ELSS Tax Saver Fund',
-    productEmoji: '🧮',
-    keyMetric: '₹46,800 saved',
-    keyMetricLabel: 'Max annual tax saving',
-    tagline: 'Invest ₹1.5L, save ₹46,800 tax — every year',
-    goalChip: 'Tax Saving',
-    goalType: _GoalType.taxSaving,
-    whatYouGet: 'An Equity-Linked Savings Scheme (ELSS) that qualifies for ₹1.5L deduction under Section 80C. Shortest lock-in (3 years) among all 80C options, with equity-linked growth.',
-    howItHelps: 'ELSS gives you the same tax benefit as PPF but with equity returns — historically 12–15% over 10 years. You pay less tax and build more wealth simultaneously.',
-    quickFacts: [
-      '3-year lock-in (shortest in 80C)',
-      'Can redeem in parts after lock-in',
-      'Both lump-sum and SIP allowed',
-      'LTCG tax at 10% above ₹1L gains',
-    ],
-    ctaLabel: 'Check 80C Limit',
-  ),
-  _BankProgram(
-    id: 'fi_auto_save',
-    bankName: 'Fi Money',
-    bankInitials: 'Fi',
-    bankColor: Color(0xFF0D9488),
-    bankColorDark: Color(0xFF0A7570),
-    productName: 'Smart Deposit (Auto-Save)',
-    productEmoji: '⚡',
-    keyMetric: '6.5% p.a.',
-    keyMetricLabel: 'On auto-saved balance',
-    tagline: 'Savings happen automatically — no willpower needed',
-    goalChip: 'Daily Discipline',
-    goalType: _GoalType.savingsHabit,
-    whatYouGet: 'Fi\'s Smart Deposit auto-moves money to a 6.5% FD the moment your salary hits. Round-up savings on every spend. Withdraw anytime with 1-day notice.',
-    howItHelps: 'Automating savings on salary day — before you have a chance to spend — increases your savings rate by 40% compared to saving "what\'s left at month end".',
-    quickFacts: [
-      'Zero penalty for early withdrawal',
-      'Round-up saving on every spend',
-      'Monthly interest credited',
-      'FDIC-equivalent DICGC insured',
-    ],
-    ctaLabel: 'Open Fi Account',
-  ),
-  _BankProgram(
-    id: 'icici_amazon_cc',
-    bankName: 'ICICI Bank',
-    bankInitials: 'ICICI',
-    bankColor: Color(0xFFB44F00),
-    bankColorDark: Color(0xFF7A3500),
-    productName: 'Amazon Pay Credit Card',
-    productEmoji: '💳',
-    keyMetric: 'Up to 5%',
-    keyMetricLabel: 'Cashback on every spend',
-    tagline: 'Earn ₹12,000–18,000/year on money you\'d spend anyway',
-    goalChip: 'Spend Smarter',
-    goalType: _GoalType.spendSmart,
-    whatYouGet: '5% cashback on Amazon + 2% on Prime purchases + 1% everywhere else. No annual fee for Prime members. Cashback credited as Amazon Pay balance.',
-    howItHelps: 'A zero-fee cashback card captures value on existing spending and redirects it toward your goals — only if you pay in full every month.',
-    quickFacts: [
-      'Zero annual fee (lifetime free for Prime)',
-      'Cashback in 3 days, auto-applied',
-      'No forex markup on international spend',
-      'Never carry a balance — always pay in full',
-    ],
-    ctaLabel: 'Check Eligibility',
-  ),
-];
+Color _bankColorDark(String programId) {
+  switch (programId) {
+    case 'hdfc_rd':
+      return const Color(0xFF002D57);
+    case 'nippon_sip':
+      return const Color(0xFFAF1C08);
+    case 'jar_gold':
+      return const Color(0xFF7C3A00);
+    case 'axis_elss':
+      return const Color(0xFF5C0000);
+    case 'fi_auto_save':
+      return const Color(0xFF0A7570);
+    case 'icici_amazon_cc':
+      return const Color(0xFF7A3500);
+    default:
+      return AppColors.textPrimary;
+  }
+}
+
+/// Emoji shown in the visual area — driven by product name / id patterns.
+String _productEmoji(String programId, String productName) {
+  final id = programId.toLowerCase();
+  final pn = productName.toLowerCase();
+  if (id.contains('rd') || pn.contains('recurring')) return '🏦';
+  if (id.contains('sip') && !id.contains('elss')) return '📈';
+  if (id.contains('gold') || pn.contains('gold')) return '🥇';
+  if (id.contains('elss') || pn.contains('elss')) return '🧮';
+  if (id.contains('auto') || pn.contains('smart deposit')) return '⚡';
+  if (id.contains('cc') || pn.contains('credit card')) return '💳';
+  return '💼';
+}
+
+/// Compact bank tag shown on the header — short label derived from partner name.
+String _bankInitials(String partnerName) {
+  final trimmed = partnerName.trim();
+  if (trimmed.isEmpty) return '—';
+  // Prefer first "word" without punctuation.
+  final firstWord = trimmed.split(RegExp(r'[ ·\-]+')).first;
+  if (firstWord.length <= 5) return firstWord.toUpperCase();
+  return firstWord.substring(0, 4).toUpperCase();
+}
+
+/// Best-effort goal chip label — derived from RankedPartnerProgram
+/// matchExplanation which the mapper formats as "Matched to: <goal>".
+String _goalChipFromProgram(RankedPartnerProgram p) {
+  final ex = p.matchExplanation;
+  if (ex.startsWith('Matched to:')) {
+    return ex.substring('Matched to:'.length).trim();
+  }
+  if (ex.isNotEmpty) return ex;
+  return 'Your Goals';
+}
 
 // ── Main Widget ───────────────────────────────────────────────────────────────
 
 class BankProgramSlider extends StatefulWidget {
-  const BankProgramSlider({super.key});
+  const BankProgramSlider({super.key, required this.programs});
+
+  final List<RankedPartnerProgram> programs;
 
   @override
   State<BankProgramSlider> createState() => _BankProgramSliderState();
@@ -217,9 +113,10 @@ class _BankProgramSliderState extends State<BankProgramSlider> {
 
   void _startTimer() {
     _timer?.cancel();
+    if (widget.programs.length <= 1) return;
     _timer = Timer.periodic(const Duration(seconds: 5), (_) {
       if (_dragging || !mounted) return;
-      final next = (_page + 1) % _programs.length;
+      final next = (_page + 1) % widget.programs.length;
       _ctrl.animateToPage(
         next,
         duration: const Duration(milliseconds: 520),
@@ -230,6 +127,10 @@ class _BankProgramSliderState extends State<BankProgramSlider> {
 
   @override
   Widget build(BuildContext context) {
+    final programs = widget.programs;
+    if (programs.isEmpty) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -263,7 +164,7 @@ class _BankProgramSliderState extends State<BankProgramSlider> {
                   ],
                 ),
               ),
-              _PillDots(count: _programs.length, current: _page),
+              _PillDots(count: programs.length, current: _page),
             ],
           ),
         ),
@@ -282,7 +183,7 @@ class _BankProgramSliderState extends State<BankProgramSlider> {
             },
             child: PageView.builder(
               controller: _ctrl,
-              itemCount: _programs.length,
+              itemCount: programs.length,
               onPageChanged: (i) => setState(() => _page = i),
               itemBuilder: (ctx, i) {
                 final active = i == _page;
@@ -291,8 +192,8 @@ class _BankProgramSliderState extends State<BankProgramSlider> {
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOutCubic,
                   child: _ProgramCard(
-                    program: _programs[i],
-                    onLearnMore: () => _openDetail(ctx, _programs[i]),
+                    program: programs[i],
+                    onLearnMore: () => _openDetail(ctx, programs[i]),
                   ),
                 );
               },
@@ -306,7 +207,7 @@ class _BankProgramSliderState extends State<BankProgramSlider> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: _GoalTabs(
-            programs: _programs,
+            programs: programs,
             selected: _page,
             onSelect: (i) {
               _ctrl.animateToPage(
@@ -321,7 +222,7 @@ class _BankProgramSliderState extends State<BankProgramSlider> {
     );
   }
 
-  void _openDetail(BuildContext ctx, _BankProgram p) {
+  void _openDetail(BuildContext ctx, RankedPartnerProgram p) {
     showModalBottomSheet(
       context: ctx,
       isScrollControlled: true,
@@ -335,11 +236,13 @@ class _BankProgramSliderState extends State<BankProgramSlider> {
 
 class _ProgramCard extends StatelessWidget {
   const _ProgramCard({required this.program, required this.onLearnMore});
-  final _BankProgram program;
+  final RankedPartnerProgram program;
   final VoidCallback onLearnMore;
 
   @override
   Widget build(BuildContext context) {
+    final pp = program.program;
+    final bankColor = _bankColor(pp.programId.value);
     return GestureDetector(
       onTap: onLearnMore,
       child: Container(
@@ -350,7 +253,7 @@ class _ProgramCard extends StatelessWidget {
           border: Border.all(color: AppColors.border),
           boxShadow: [
             BoxShadow(
-              color: program.bankColor.withValues(alpha: 0.10),
+              color: bankColor.withValues(alpha: 0.10),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -382,7 +285,7 @@ class _ProgramCard extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        '🎯  ${program.goalChip}',
+                        '🎯  ${_goalChipFromProgram(program)}',
                         style: GoogleFonts.dmSans(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
@@ -396,7 +299,7 @@ class _ProgramCard extends StatelessWidget {
 
                     // Product name
                     Text(
-                      '${program.bankName} · ${program.productName}',
+                      '${pp.partnerName} · ${pp.productName}',
                       style: GoogleFonts.manrope(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
@@ -410,9 +313,9 @@ class _ProgramCard extends StatelessWidget {
 
                     const SizedBox(height: 3),
 
-                    // Tagline
+                    // Trust statement (replaces marketing tagline)
                     Text(
-                      program.tagline,
+                      program.trustStatement,
                       style: GoogleFonts.dmSans(
                         fontSize: 11,
                         color: AppColors.textSecondary,
@@ -431,7 +334,7 @@ class _ProgramCard extends StatelessWidget {
                           child: _CTAButton(
                             label: program.ctaLabel,
                             isPrimary: false,
-                            color: program.bankColor,
+                            color: bankColor,
                             onTap: onLearnMore,
                           ),
                         ),
@@ -439,7 +342,7 @@ class _ProgramCard extends StatelessWidget {
                         _CTAButton(
                           label: 'Learn',
                           isPrimary: true,
-                          color: program.bankColor,
+                          color: bankColor,
                           onTap: onLearnMore,
                         ),
                       ],
@@ -459,17 +362,22 @@ class _ProgramCard extends StatelessWidget {
 
 class _ProgramImageArea extends StatelessWidget {
   const _ProgramImageArea({required this.program});
-  final _BankProgram program;
+  final RankedPartnerProgram program;
 
   @override
   Widget build(BuildContext context) {
+    final pp = program.program;
+    final bankColor = _bankColor(pp.programId.value);
+    final bankColorDark = _bankColorDark(pp.programId.value);
+    final emoji = _productEmoji(pp.programId.value, pp.productName);
+    final initials = _bankInitials(pp.partnerName);
     return Container(
       height: 100,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [program.bankColor, program.bankColorDark],
+          colors: [bankColor, bankColorDark],
         ),
       ),
       child: Stack(
@@ -517,7 +425,7 @@ class _ProgramImageArea extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    program.bankInitials,
+                    initials,
                     style: GoogleFonts.manrope(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
@@ -535,7 +443,7 @@ class _ProgramImageArea extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      program.keyMetric,
+                      pp.keyMetric,
                       style: GoogleFonts.manrope(
                         fontSize: 22,
                         fontWeight: FontWeight.w900,
@@ -544,7 +452,7 @@ class _ProgramImageArea extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      program.keyMetricLabel,
+                      pp.keyMetricLabel,
                       style: GoogleFonts.dmSans(
                         fontSize: 10,
                         color: Colors.white.withValues(alpha: 0.70),
@@ -569,7 +477,7 @@ class _ProgramImageArea extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      program.productEmoji,
+                      emoji,
                       style: const TextStyle(fontSize: 22),
                     ),
                   ),
@@ -634,7 +542,7 @@ class _GoalTabs extends StatelessWidget {
     required this.selected,
     required this.onSelect,
   });
-  final List<_BankProgram> programs;
+  final List<RankedPartnerProgram> programs;
   final int selected;
   final void Function(int) onSelect;
 
@@ -645,7 +553,11 @@ class _GoalTabs extends StatelessWidget {
       child: Row(
         children: List.generate(programs.length, (i) {
           final p = programs[i];
+          final pp = p.program;
           final active = i == selected;
+          final bankColor = _bankColor(pp.programId.value);
+          final emoji = _productEmoji(pp.programId.value, pp.productName);
+          final initials = _bankInitials(pp.partnerName);
           return GestureDetector(
             onTap: () => onSelect(i),
             child: AnimatedContainer(
@@ -655,12 +567,12 @@ class _GoalTabs extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: active
-                    ? p.bankColor.withValues(alpha: 0.10)
+                    ? bankColor.withValues(alpha: 0.10)
                     : AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: active
-                      ? p.bankColor.withValues(alpha: 0.40)
+                      ? bankColor.withValues(alpha: 0.40)
                       : AppColors.border,
                   width: active ? 1.5 : 1.0,
                 ),
@@ -668,16 +580,15 @@ class _GoalTabs extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(p.productEmoji,
-                      style: TextStyle(fontSize: active ? 13 : 12)),
+                  Text(emoji, style: TextStyle(fontSize: active ? 13 : 12)),
                   const SizedBox(width: 6),
                   Text(
-                    p.bankInitials,
+                    initials,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       fontWeight:
                           active ? FontWeight.w700 : FontWeight.w500,
-                      color: active ? p.bankColor : AppColors.textSecondary,
+                      color: active ? bankColor : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -724,10 +635,14 @@ class _PillDots extends StatelessWidget {
 
 class _ProgramDetailSheet extends StatelessWidget {
   const _ProgramDetailSheet({required this.program});
-  final _BankProgram program;
+  final RankedPartnerProgram program;
 
   @override
   Widget build(BuildContext context) {
+    final pp = program.program;
+    final bankColor = _bankColor(pp.programId.value);
+    final bankColorDark = _bankColorDark(pp.programId.value);
+    final emoji = _productEmoji(pp.programId.value, pp.productName);
     return DraggableScrollableSheet(
       initialChildSize: 0.80,
       minChildSize: 0.4,
@@ -757,7 +672,7 @@ class _ProgramDetailSheet extends StatelessWidget {
                 height: 100,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [program.bankColor, program.bankColorDark],
+                    colors: [bankColor, bankColorDark],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -767,10 +682,7 @@ class _ProgramDetailSheet extends StatelessWidget {
                       horizontal: 22, vertical: 14),
                   child: Row(
                     children: [
-                      Text(
-                        program.productEmoji,
-                        style: const TextStyle(fontSize: 38),
-                      ),
+                      Text(emoji, style: const TextStyle(fontSize: 38)),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
@@ -778,7 +690,7 @@ class _ProgramDetailSheet extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text(
-                              program.bankName,
+                              pp.partnerName,
                               style: GoogleFonts.dmSans(
                                 fontSize: 11,
                                 color: Colors.white.withValues(alpha: 0.65),
@@ -788,7 +700,7 @@ class _ProgramDetailSheet extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              program.productName,
+                              pp.productName,
                               style: GoogleFonts.manrope(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,
@@ -804,7 +716,7 @@ class _ProgramDetailSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            program.keyMetric,
+                            pp.keyMetric,
                             style: GoogleFonts.manrope(
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
@@ -813,7 +725,7 @@ class _ProgramDetailSheet extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            program.keyMetricLabel,
+                            pp.keyMetricLabel,
                             style: GoogleFonts.dmSans(
                               fontSize: 9,
                               color: Colors.white.withValues(alpha: 0.65),
@@ -850,7 +762,7 @@ class _ProgramDetailSheet extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Matched to: ${program.goalChip}',
+                                  'Matched to: ${_goalChipFromProgram(program)}',
                                   style: GoogleFonts.dmSans(
                                     fontSize: 11,
                                     fontWeight: FontWeight.w700,
@@ -860,7 +772,7 @@ class _ProgramDetailSheet extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  program.howItHelps,
+                                  program.matchExplanation,
                                   style: GoogleFonts.dmSans(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,
@@ -879,9 +791,10 @@ class _ProgramDetailSheet extends StatelessWidget {
                     // 1. What you get
                     _DetailSection(
                       label: 'WHAT YOU GET',
-                      accentColor: program.bankColor,
+                      accentColor: bankColor,
                       child: Text(
-                        program.whatYouGet,
+                        '${pp.productName} from ${pp.partnerName}. '
+                        'Highlight: ${pp.keyMetric} — ${pp.keyMetricLabel.toLowerCase()}.',
                         style: GoogleFonts.dmSans(
                           fontSize: 14,
                           color: AppColors.textPrimary,
@@ -892,17 +805,31 @@ class _ProgramDetailSheet extends StatelessWidget {
 
                     const SizedBox(height: 18),
 
-                    // 2. Quick facts
+                    // 2. Quick facts (derived from the domain entity)
                     _DetailSection(
                       label: 'QUICK FACTS',
-                      accentColor: program.bankColor,
+                      accentColor: bankColor,
                       child: Column(
-                        children: program.quickFacts
-                            .map((f) => _FactRow(
-                                  text: f,
-                                  color: program.bankColor,
-                                ))
-                            .toList(),
+                        children: [
+                          _FactRow(
+                            text:
+                                'Minimum amount: ₹${pp.minAmount.amount.toStringAsFixed(0)}',
+                            color: bankColor,
+                          ),
+                          _FactRow(
+                            text: 'Instrument: ${pp.instrument.label}',
+                            color: bankColor,
+                          ),
+                          _FactRow(
+                            text: 'Risk level: ${pp.riskLevel.label}',
+                            color: bankColor,
+                          ),
+                          if (pp.taxBenefit)
+                            _FactRow(
+                              text: 'Qualifies for tax benefit (80C)',
+                              color: bankColor,
+                            ),
+                        ],
                       ),
                     ),
 
@@ -1007,10 +934,13 @@ class _FactRow extends StatelessWidget {
 
 class _CTASection extends StatelessWidget {
   const _CTASection({required this.program});
-  final _BankProgram program;
+  final RankedPartnerProgram program;
 
   @override
   Widget build(BuildContext context) {
+    final pp = program.program;
+    final bankColor = _bankColor(pp.programId.value);
+    final bankColorDark = _bankColorDark(pp.programId.value);
     return Column(
       children: [
         // Primary CTA
@@ -1022,7 +952,7 @@ class _CTASection extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [program.bankColor, program.bankColorDark],
+                  colors: [bankColor, bankColorDark],
                 ),
                 borderRadius: BorderRadius.circular(14),
               ),
@@ -1051,10 +981,10 @@ class _CTASection extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 13),
               decoration: BoxDecoration(
-                color: program.bankColor.withValues(alpha: 0.07),
+                color: bankColor.withValues(alpha: 0.07),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: program.bankColor.withValues(alpha: 0.22),
+                  color: bankColor.withValues(alpha: 0.22),
                 ),
               ),
               child: Center(
@@ -1073,9 +1003,9 @@ class _CTASection extends StatelessWidget {
 
         const SizedBox(height: 14),
 
-        // Trust note
+        // Trust note (comes from the domain entity, not hardcoded)
         Text(
-          'PennyWise earns nothing from this. We show this because it matched your goals — not because of a partnership.',
+          program.trustStatement,
           style: GoogleFonts.dmSans(
             fontSize: 11,
             color: AppColors.textMuted,

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import 'core/di/injection.dart';
 import 'core/router/app_router.dart';
 import 'core/services/app_services.dart';
 import 'core/theme/app_theme.dart';
@@ -8,6 +9,7 @@ import 'core/theme/app_theme.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppServices.instance.init();
+  await configureDependencies();
 
   // When the landing page signs in, it passes tokens in the URL fragment:
   //   ./index.html#at=ACCESS_TOKEN&rt=REFRESH_TOKEN

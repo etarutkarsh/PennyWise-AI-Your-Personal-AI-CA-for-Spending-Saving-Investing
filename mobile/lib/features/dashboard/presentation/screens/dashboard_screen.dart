@@ -4,6 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import 'package:pennywise_ai/application/decision/get_dashboard_feed_use_case.dart';
+import 'package:pennywise_ai/core/di/injection.dart';
+import 'package:pennywise_ai/domain/partner/ranked_partner_program.dart';
+
 import '../../../../core/services/app_services.dart';
 import '../../../../core/services/dashboard_cache.dart';
 import '../../../../core/services/storage/user_prefs_storage.dart';
@@ -36,6 +40,7 @@ class _DashboardScreenState extends State<DashboardScreen>
   bool _loadedSalary = false;
   HealthScoreModel? _healthScore;
   String _dailyTip = '';
+  List<RankedPartnerProgram> _partnerPrograms = [];
   late AnimationController _animController;
   late Animation<double> _progressAnim;
 
@@ -76,6 +81,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       }
     }).catchError((_) {});
 
+    // Dashboard feed (today's decision + ranked partner programs) — loaded via
+    // application-layer use case. Non-fatal on failure.
+    _loadDashboardFeed();
+
     if (!forceRefresh && !DashboardCache.isStale) {
       if (mounted) {
         setState(() {
@@ -104,6 +113,19 @@ class _DashboardScreenState extends State<DashboardScreen>
         _loadedSalary = true;
       });
       _animController.forward();
+    }
+  }
+
+  Future<void> _loadDashboardFeed() async {
+    try {
+      final result = await sl<GetDashboardFeedUseCase>().call();
+      if (!mounted) return;
+      final feed = result.valueOrNull;
+      if (feed != null) {
+        setState(() => _partnerPrograms = feed.partnerPrograms);
+      }
+    } catch (_) {
+      // Non-fatal — dashboard still renders without partner programs.
     }
   }
 
@@ -317,7 +339,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               const SizedBox(height: 32),
 
               // ── Bank Program Slider ───────────────────────────────────
-              const RepaintBoundary(child: BankProgramSlider()),
+              RepaintBoundary(
+                child: BankProgramSlider(programs: _partnerPrograms),
+              ),
               const SizedBox(height: 32),
 
               // ── Commitment Intelligence Card ──────────────────────────

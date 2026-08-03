@@ -111,15 +111,15 @@ Default: `http://10.0.2.2:8080/api` (Android emulator) — change to `localhost`
 | Register | ✅ Fully wired — POST /auth/register + JWT save |
 | Splash | ✅ Fully wired — reads URL tokens (web), hasSession() check, routes to /dashboard or /login |
 | Transactions | ✅ Fully wired — GET/POST/PATCH/DELETE, OCR, AI category suggestion |
-| Goals | Wire to GET/POST /goals via GoalsBloc |
-| Budget | Complete UI + wire to GET/POST /budgets |
-| AI Chat | Build /ai/chat backend endpoint + wire ChatScreen |
-| Learn | Full learning academy with lessons, flashcards |
-| Investments | Portfolio tracking UI |
-| Reports | Spending reports + charts |
-| Notifications | AI alerts display |
-| Profile | Edit salary, risk appetite, PATCH /users/me |
-| Settings | Logout (clear JWT), permissions |
+| Goals | ✅ Fully wired — GET/POST /goals, animated quest cards, GoalPlanScreen with AI plan |
+| Budget | ✅ Fully wired — GET/POST /budgets, create/edit/delete, donut chart, swipe-to-delete |
+| Profile | ✅ Fully wired — salary, risk appetite, PAN, tax regime all wired to PATCH /users/me |
+| Settings | ✅ Fully wired — logout + JWT clear, navigation to all sub-screens |
+| AI Chat | ❌ Build /ai/chat backend endpoint + wire ChatScreen to OpenAI GPT-4o-mini |
+| Learn | ❌ Full learning academy with lessons, flashcards, daily content |
+| Investments | ❌ Portfolio tracking UI + live data |
+| Reports | ❌ Spending reports + charts (backend endpoint missing) |
+| Notifications | ❌ AI alerts display (backend endpoint missing) |
 
 ---
 
@@ -132,7 +132,7 @@ Stores via SharedPreferences:
 - `quiz_total_score` → int (XP points)
 - `completed_quizzes` → List<String> (quiz IDs completed)
 
-JWT tokens: `mobile/lib/core/services/storage/token_storage.dart` (Flutter Secure Storage, declared but not yet used by login screen)
+JWT tokens: `mobile/lib/core/services/storage/token_storage.dart` (Flutter Secure Storage, fully wired — used by login/register/splash)
 
 ---
 
@@ -177,14 +177,14 @@ Detail screens pushed via `Navigator.of(context).push(MaterialPageRoute(...))` �
 ### Phase 1 — MVP
 | Item | Status |
 |------|--------|
-| Authentication UI | ✅ UI done, ❌ not wired to backend |
+| Authentication UI | ✅ Fully wired — login + register + JWT + salary sync |
 | SMS auto-parsing | ❌ 0% |
 | Manual transaction entry | ✅ Fully wired — create/edit/delete + OCR + AI category |
-| Budget tracking | ❌ Placeholder only |
-| Dashboard | ✅ Local data, ❌ no backend sync |
-| Goals | ✅ UI scaffold, ❌ not wired |
-| Affordability checker | ✅ UI done, ✅ backend done, ❌ not wired together |
-| Reports | ❌ 0% |
+| Budget tracking | ✅ Fully wired — create/edit/delete, donut chart, progress bars |
+| Dashboard | ✅ Local data (salary from prefs), ❌ no backend sync for live transactions |
+| Goals | ✅ Fully wired — GET/POST, animated cards, GoalPlanScreen with AI plan |
+| Affordability checker | ✅ Fully wired — real POST /affordability/check, salary auto-loads |
+| Reports | ❌ 0% (backend endpoint missing) |
 
 ### Phase 2
 | Item | Status |
@@ -217,12 +217,13 @@ Everything in Phase 4: ❌ 0%
 2. ~~Splash screen session check~~ ✅ Done — hasSession() check, URL token support for web
 3. ~~Wire Affordability screen~~ ✅ Done — real POST /affordability/check, salary auto-loads from prefs
 4. ~~Wire Transactions screen~~ ✅ Done
-5. **Wire Goals screen** — implement GoalsBloc, GET/POST /goals
-6. **Build /users/me endpoint** — so onboarding saves salary to backend too
-7. **Build AI chat endpoint** — integrate OpenAI GPT-4o-mini
-8. **SMS background listener** — implement `another_telephony` real-time detection + upgrade parser for NACH/ECS/UPI AutoPay rails
-9. **Financial health score** — calculate dynamically from transactions/savings/goals
-10. **Learning screen** — standalone lessons, flashcards, daily content
+5. ~~Wire Goals screen~~ ✅ Done — animated quest cards, GoalPlanScreen, AI plan, create/update
+6. ~~Wire Budget screen~~ ✅ Done — create/edit/delete, donut chart, swipe-to-delete
+7. ~~Wire Profile + Settings~~ ✅ Done — salary, risk appetite, PAN, tax regime, logout
+8. **Build AI chat endpoint** — integrate OpenAI GPT-4o-mini into /ai/chat
+9. **SMS background listener** — implement `another_telephony` real-time detection + upgrade parser for NACH/ECS/UPI AutoPay rails
+10. **Financial health score** — calculate dynamically from transactions/savings/goals
+11. **Learning screen** — standalone lessons, flashcards, daily content
 11. **Merchant Intelligence** — map raw merchant names/VPAs → brand + category + impulse score
 12. **Subscription Intelligence** — detect forgotten/duplicate/price-increased subscriptions
 13. **CommitmentEngine auto-pending** — pre-create expected transactions before they debit

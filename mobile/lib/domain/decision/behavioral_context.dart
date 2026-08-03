@@ -48,6 +48,14 @@ class BehavioralContext {
         behavioralNote: 'Derived from uncalibrated behavioral vector.',
       );
 
+  /// Safe default used before the Behavioral Engine has calibrated real values.
+  /// Mirrors [BehavioralVector.uncalibrated] with [FinancialState.stabilize].
+  factory BehavioralContext.uncalibrated() =>
+      BehavioralContext.fromVector(
+        BehavioralVector.uncalibrated,
+        FinancialState.stabilize,
+      );
+
   BehavioralContext copyWith({
     FinancialState? financialState,
     double? lossAversion,
