@@ -22,6 +22,7 @@ import '../../data/repositories/decision_memory_repository.dart';
 import '../../data/repositories/behavior_repository.dart';
 import '../../data/repositories/digital_twin_repository.dart';
 import '../../data/repositories/report_repository.dart';
+import '../../data/repositories/today_decision_repository.dart';
 
 /// Global service locator. Call [AppServices.init()] in main() before runApp.
 /// Access everywhere via [AppServices.instance].
@@ -51,6 +52,7 @@ class AppServices {
   late final BehaviorRepository behavior;
   late final DigitalTwinRepository twin;
   late final ReportRepository reports;
+  late final TodayDecisionRepository todayDecision;
 
   Future<void> init() async {
     const secureStorage = FlutterSecureStorage(
@@ -78,6 +80,7 @@ class AppServices {
     behavior = BehaviorRepository(apiClient);
     twin = DigitalTwinRepository(apiClient);
     reports = ReportRepository(apiClient);
+    todayDecision = TodayDecisionRepository(apiClient);
   }
 }
 

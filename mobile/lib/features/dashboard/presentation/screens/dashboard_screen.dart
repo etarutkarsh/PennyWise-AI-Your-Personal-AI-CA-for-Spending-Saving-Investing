@@ -20,6 +20,7 @@ import '../widgets/motivation_cards_section.dart';
 import '../widgets/financial_opportunity_carousel.dart';
 import '../widgets/goal_pathway_banner.dart';
 import '../widgets/bank_program_slider.dart';
+import '../widgets/todays_best_decision_card.dart';
 import '../../../../core/services/commitment_intelligence/commitment_engine.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -291,6 +292,10 @@ class _DashboardScreenState extends State<DashboardScreen>
                   ],
                 ),
               ),
+
+              // ── Today's Best Decision ─────────────────────────────────
+              const RepaintBoundary(child: TodaysBestDecisionCard()),
+              const SizedBox(height: 32),
 
               // ── Financial Opportunity Engine ──────────────────────────
               Padding(
