@@ -58,6 +58,7 @@ import '../../domain/partner/policies/tax_saving_policy.dart';
 import '../../domain/partner/policies/retirement_policy.dart';
 import '../../domain/partner/policies/insurance_policy.dart';
 import '../../domain/partner/policies/debt_reduction_policy.dart';
+import '../services/sms/sms_capture_service.dart';
 
 final GetIt sl = GetIt.instance;
 
@@ -245,5 +246,13 @@ Future<void> configureDependencies() async {
   );
   sl.registerLazySingleton<GetLearningInsightsUseCase>(
     () => GetLearningInsightsUseCase(sl<DecisionLearningEngine>()),
+  );
+
+  // SMS Capture Service — pipeline bridge: inbox + live listener
+  sl.registerLazySingleton<SmsCaptureService>(
+    () => SmsCaptureService(
+      parserRegistry: sl<SmsParserRegistry>(),
+      validationEngine: sl<SmsValidationEngine>(),
+    ),
   );
 }

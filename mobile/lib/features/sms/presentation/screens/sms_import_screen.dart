@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter_sms_inbox/flutter_sms_inbox.dart';
+import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../../core/services/app_services.dart';
-import '../../../../core/services/sms_parser_service.dart';
+import '../../../../core/services/ingestion/ingestion_source.dart';
+import '../../../../core/services/sms/sms_capture_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/category_model.dart';
 
@@ -15,13 +17,13 @@ import '../../../../data/models/category_model.dart';
 // Data holder for a single parsed row in the bulk-import table
 // ---------------------------------------------------------------------------
 class _ParsedRow {
-  _ParsedRow(this.parsed)
+  _ParsedRow(this.event)
       : selected = true,
         suggestedCategoryId = null,
         selectedCategoryId = null,
         loadingCategory = true;
 
-  final ParsedSmsTransaction parsed;
+  final RawFinancialEvent event;
   bool selected;
   String? suggestedCategoryId;
   String? selectedCategoryId;
@@ -45,6 +47,7 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
   List<CategoryModel> _categories = [];
   bool _importing = false;
   bool _readingPhone = false;
+  StreamSubscription<RawFinancialEvent>? _liveSub;
 
   static final _currency =
       NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
@@ -54,11 +57,21 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
   void initState() {
     super.initState();
     _loadCategories();
+    _liveSub =
+        GetIt.instance<SmsCaptureService>().liveTransactions.listen((event) {
+      if (!mounted) return;
+      final isDupe = _isDuplicate(event);
+      if (isDupe) return;
+      final row = _ParsedRow(event);
+      setState(() => _rows = [row, ..._rows]);
+      _suggestCategory(row);
+    });
   }
 
   @override
   void dispose() {
     _rawController.dispose();
+    _liveSub?.cancel();
     super.dispose();
   }
 
@@ -66,9 +79,16 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
     try {
       final cats = await AppServices.instance.categories.getAll();
       if (mounted) setState(() => _categories = cats);
-    } catch (_) {
-      // silently ignore — categories are optional for import
-    }
+    } catch (_) {}
+  }
+
+  bool _isDuplicate(RawFinancialEvent event) {
+    return _rows.any((r) =>
+        r.event.amount == event.amount &&
+        r.event.direction == event.direction &&
+        r.event.timestamp.year == event.timestamp.year &&
+        r.event.timestamp.month == event.timestamp.month &&
+        r.event.timestamp.day == event.timestamp.day);
   }
 
   // -------------------------------------------------------------------------
@@ -109,37 +129,15 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
 
     setState(() => _readingPhone = true);
     try {
-      final cutoff = DateTime.now().subtract(const Duration(days: 90));
-      final query = SmsQuery();
-      final messages = await query.querySms(
-        kinds: [SmsQueryKind.inbox],
-        count: 500,
+      final events = await GetIt.instance<SmsCaptureService>().fetchInbox(
+        from: DateTime.now().subtract(const Duration(days: 90)),
+        to: DateTime.now(),
       );
 
-      final bankKeywords = ['debited', 'credited', 'inr', 'rs.', '₹', 'upi', 'transaction'];
       final newRows = <_ParsedRow>[];
-
-      for (final msg in messages) {
-        final body = msg.body ?? '';
-        final date = msg.date ?? DateTime.now();
-        if (date.isBefore(cutoff)) continue;
-
-        final bodyLower = body.toLowerCase();
-        if (!bankKeywords.any((k) => bodyLower.contains(k))) continue;
-
-        final parsed = SmsParserService.parse(body);
-        if (parsed == null) continue;
-
-        // Duplicate detection: same direction + amount + date
-        final isDupe = _rows.any((r) =>
-            r.parsed.amount == parsed.amount &&
-            r.parsed.direction == parsed.direction &&
-            r.parsed.transactionDate.year == parsed.transactionDate.year &&
-            r.parsed.transactionDate.month == parsed.transactionDate.month &&
-            r.parsed.transactionDate.day == parsed.transactionDate.day);
-        if (isDupe) continue;
-
-        newRows.add(_ParsedRow(parsed));
+      for (final event in events) {
+        if (_isDuplicate(event)) continue;
+        newRows.add(_ParsedRow(event));
       }
 
       if (!mounted) return;
@@ -161,7 +159,8 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Found ${newRows.length} new transaction${newRows.length == 1 ? '' : 's'} from inbox'),
+            content: Text(
+                'Found ${newRows.length} new transaction${newRows.length == 1 ? '' : 's'} from inbox'),
             backgroundColor: AppColors.primary,
           ),
         );
@@ -181,37 +180,33 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // Parse action
+  // Parse action (paste mode)
   // -------------------------------------------------------------------------
   void _parse() {
     final text = _rawController.text.trim();
     if (text.isEmpty) return;
 
-    final parsed = SmsParserService.parseAll(text);
-    if (parsed.isEmpty) {
+    final chunks = text.split(RegExp(r'\n\n+'));
+    final service = GetIt.instance<SmsCaptureService>();
+
+    final newRows = <_ParsedRow>[];
+    for (final chunk in chunks) {
+      final trimmed = chunk.trim();
+      if (trimmed.isEmpty) continue;
+      final event = service.processMessage(trimmed, '');
+      if (event == null) continue;
+      if (_isDuplicate(event)) continue;
+      newRows.add(_ParsedRow(event));
+    }
+
+    if (newRows.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No transactions found in pasted text.')),
       );
       return;
     }
 
-    final newRows = <_ParsedRow>[];
-    for (final p in parsed) {
-      // Skip duplicates by amount + date (same day)
-      final isDupe = _rows.any((r) =>
-          r.parsed.amount == p.amount &&
-          r.parsed.transactionDate.year == p.transactionDate.year &&
-          r.parsed.transactionDate.month == p.transactionDate.month &&
-          r.parsed.transactionDate.day == p.transactionDate.day);
-      if (isDupe) continue;
-
-      final row = _ParsedRow(p);
-      newRows.add(row);
-    }
-
     setState(() => _rows = [..._rows, ...newRows]);
-
-    // Fire AI category suggestion in background for each new row
     for (final row in newRows) {
       _suggestCategory(row);
     }
@@ -220,7 +215,7 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
   Future<void> _suggestCategory(_ParsedRow row) async {
     try {
       final id = await AppServices.instance.ai
-          .suggestCategory(row.parsed.merchant, _categories);
+          .suggestCategory(row.event.rawMerchant, _categories);
       if (mounted) {
         setState(() {
           row.suggestedCategoryId = id;
@@ -250,12 +245,12 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
     for (final row in selected) {
       try {
         await AppServices.instance.transactions.create(
-          amount: row.parsed.amount,
-          merchant: row.parsed.merchant,
-          direction: row.parsed.direction,
+          amount: row.event.amount,
+          merchant: row.event.rawMerchant,
+          direction: row.event.direction,
           categoryId: row.selectedCategoryId,
-          paymentMethod: row.parsed.paymentMethod,
-          transactionDate: row.parsed.transactionDate,
+          paymentMethod: row.event.paymentRail,
+          transactionDate: row.event.timestamp,
         );
         imported.add(row);
       } catch (e) {
@@ -275,7 +270,8 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
     if (imported.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${imported.length} transaction${imported.length == 1 ? '' : 's'} imported'),
+          content: Text(
+              '${imported.length} transaction${imported.length == 1 ? '' : 's'} imported'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -315,11 +311,9 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                // Info banner
                 _buildInfoBanner(),
                 const SizedBox(height: 20),
 
-                // Paste area
                 TextField(
                   controller: _rawController,
                   maxLines: 6,
@@ -396,7 +390,6 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
                   ),
                 ),
 
-                // Parsed rows section
                 if (_rows.isNotEmpty) ...[
                   const SizedBox(height: 24),
                   Row(
@@ -414,19 +407,19 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
                         onPressed: () => setState(() => _rows.clear()),
                         child: const Text(
                           'Clear all',
-                          style: TextStyle(color: AppColors.danger, fontSize: 13),
+                          style:
+                              TextStyle(color: AppColors.danger, fontSize: 13),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 4),
 
-                  // Table header
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 4),
                     child: Row(
                       children: [
-                        SizedBox(width: 32), // checkbox space
+                        SizedBox(width: 32),
                         Expanded(
                           flex: 3,
                           child: Text('Merchant',
@@ -456,18 +449,16 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
                   ),
                   const SizedBox(height: 6),
 
-                  // Row list
                   ..._rows.map((row) => _buildRow(row)),
                 ],
 
                 const SizedBox(height: 24),
                 const _SupportedFormatsCard(),
-                const SizedBox(height: 80), // space for sticky bottom bar
+                const SizedBox(height: 80),
               ],
             ),
           ),
 
-          // Sticky import button
           if (_rows.isNotEmpty)
             Container(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -485,7 +476,8 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: (selectedCount == 0 || _importing) ? null : _import,
+                  onPressed:
+                      (selectedCount == 0 || _importing) ? null : _import,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -549,14 +541,13 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
   }
 
   Widget _buildRow(_ParsedRow row) {
-    final isDebit = row.parsed.direction == 'DEBIT';
+    final isDebit = row.event.direction == 'DEBIT';
     final amountColor = isDebit ? AppColors.danger : AppColors.success;
     final badgeBg = isDebit
         ? AppColors.danger.withValues(alpha: 0.12)
         : AppColors.success.withValues(alpha: 0.12);
     final badgeText = isDebit ? 'Spent' : 'Received';
 
-    // Filter categories by direction
     final relevantCats = _categories
         .where((c) => isDebit ? c.type == 'EXPENSE' : c.type == 'INCOME')
         .toList();
@@ -587,7 +578,6 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Checkbox
             SizedBox(
               width: 28,
               child: Checkbox(
@@ -601,14 +591,13 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
             ),
             const SizedBox(width: 4),
 
-            // Merchant + date
             Expanded(
               flex: 3,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    row.parsed.merchant,
+                    row.event.rawMerchant,
                     style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
@@ -620,21 +609,22 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
                   Row(
                     children: [
                       Text(
-                        _dateFmt.format(row.parsed.transactionDate),
+                        _dateFmt.format(row.event.timestamp),
                         style: const TextStyle(
                             fontSize: 11, color: AppColors.textSecondary),
                       ),
-                      if (row.parsed.paymentMethod != null) ...[
+                      if (row.event.paymentRail != null) ...[
                         const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 5, vertical: 1),
                           decoration: BoxDecoration(
-                            color: AppColors.secondary.withValues(alpha: 0.08),
+                            color:
+                                AppColors.secondary.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            row.parsed.paymentMethod!,
+                            row.event.paymentRail!.toUpperCase(),
                             style: const TextStyle(
                                 fontSize: 10,
                                 color: AppColors.secondary,
@@ -649,14 +639,13 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
             ),
             const SizedBox(width: 8),
 
-            // Amount + badge
             Expanded(
               flex: 2,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _currency.format(row.parsed.amount),
+                    _currency.format(row.event.amount),
                     style: TextStyle(
                       color: amountColor,
                       fontWeight: FontWeight.w700,
@@ -665,8 +654,8 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
                   ),
                   const SizedBox(height: 2),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: badgeBg,
                       borderRadius: BorderRadius.circular(5),
@@ -684,7 +673,6 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
             ),
             const SizedBox(width: 8),
 
-            // Category widget
             Expanded(
               flex: 2,
               child: row.loadingCategory
@@ -718,22 +706,26 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
                                   color: AppColors.textSecondary)),
                           style: const TextStyle(
                               fontSize: 11, color: AppColors.textPrimary),
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                              size: 14, color: AppColors.textSecondary),
+                          icon: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 14,
+                              color: AppColors.textSecondary),
                           items: [
                             const DropdownMenuItem<String?>(
                               value: null,
                               child: Text('None',
                                   style: TextStyle(fontSize: 11)),
                             ),
-                            ...relevantCats.map((c) => DropdownMenuItem<String?>(
-                                  value: c.id,
-                                  child: Text(
-                                    c.name,
-                                    style: const TextStyle(fontSize: 11),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                )),
+                            ...relevantCats
+                                .map((c) => DropdownMenuItem<String?>(
+                                      value: c.id,
+                                      child: Text(
+                                        c.name,
+                                        style:
+                                            const TextStyle(fontSize: 11),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    )),
                           ],
                           onChanged: (v) =>
                               setState(() => row.selectedCategoryId = v),
@@ -749,7 +741,7 @@ class _SmsImportScreenState extends State<SmsImportScreen> {
 }
 
 // ---------------------------------------------------------------------------
-// Supported formats card (preserved from previous design)
+// Supported formats card
 // ---------------------------------------------------------------------------
 class _SupportedFormatsCard extends StatelessWidget {
   const _SupportedFormatsCard();
