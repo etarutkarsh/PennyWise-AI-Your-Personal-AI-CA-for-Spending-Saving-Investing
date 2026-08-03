@@ -90,19 +90,16 @@ public class TodayDecisionService {
                     currentHealthScore, goalSuccessRate, goals, targetMonthly);
         }
 
-        // Rule 3: Goal without a monthly contribution
-        boolean anyGoalNeedsContribution = goals.stream()
+        // Rule 3: Goal without a monthly contribution (active, unachieved goals only)
+        Goal target = goals.stream()
                 .filter(g -> !"emergency_fund".equalsIgnoreCase(g.getGoalType()))
-                .anyMatch(g -> g.getRecommendedMonthlyContribution() == null
-                        || g.getRecommendedMonthlyContribution().compareTo(BigDecimal.ZERO) == 0);
+                .filter(this::isActiveGoal)
+                .filter(g -> g.getRecommendedMonthlyContribution() == null
+                        || g.getRecommendedMonthlyContribution().compareTo(BigDecimal.ZERO) == 0)
+                .findFirst()
+                .orElse(null);
 
-        if (!goals.isEmpty() && anyGoalNeedsContribution) {
-            Goal target = goals.stream()
-                    .filter(g -> !"emergency_fund".equalsIgnoreCase(g.getGoalType()))
-                    .filter(g -> g.getRecommendedMonthlyContribution() == null
-                            || g.getRecommendedMonthlyContribution().compareTo(BigDecimal.ZERO) == 0)
-                    .findFirst()
-                    .orElse(goals.get(0));
+        if (target != null) {
             return buildStartSipDecision(target, currentHealthScore, goalSuccessRate);
         }
 
@@ -275,6 +272,17 @@ public class TodayDecisionService {
                         && g.getRecommendedMonthlyContribution().compareTo(BigDecimal.ZERO) > 0)
                 .count();
         return (int) (withContribution * 100L / goals.size());
+    }
+
+    private boolean isActiveGoal(Goal g) {
+        if (g.getCurrentSaved() != null && g.getTargetAmount() != null
+                && g.getCurrentSaved().compareTo(g.getTargetAmount()) >= 0) {
+            return false;
+        }
+        if (g.getDeadline() != null && g.getDeadline().isBefore(LocalDate.now())) {
+            return false;
+        }
+        return true;
     }
 
     private double roundToNearest500(double amount) {
