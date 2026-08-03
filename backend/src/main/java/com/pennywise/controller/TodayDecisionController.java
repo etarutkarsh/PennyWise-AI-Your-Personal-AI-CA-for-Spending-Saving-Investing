@@ -1,6 +1,7 @@
 package com.pennywise.controller;
 
-import com.pennywise.dto.decision.TodayDecisionResponse;
+import com.pennywise.domain.decision.DecisionResponse;
+import com.pennywise.mapper.DecisionResponseMapper;
 import com.pennywise.service.TodayDecisionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,14 +22,19 @@ public class TodayDecisionController {
     private static final Logger log = LoggerFactory.getLogger(TodayDecisionController.class);
 
     private final TodayDecisionService todayDecisionService;
+    private final DecisionResponseMapper decisionResponseMapper;
 
-    public TodayDecisionController(TodayDecisionService todayDecisionService) {
+    public TodayDecisionController(
+            TodayDecisionService todayDecisionService,
+            DecisionResponseMapper decisionResponseMapper) {
         this.todayDecisionService = todayDecisionService;
+        this.decisionResponseMapper = decisionResponseMapper;
     }
 
     @GetMapping("/today")
-    public ResponseEntity<TodayDecisionResponse> getToday() {
-        return ResponseEntity.ok(todayDecisionService.compute());
+    public ResponseEntity<DecisionResponse> getToday() {
+        return ResponseEntity.ok(
+                decisionResponseMapper.fromToday(todayDecisionService.compute()));
     }
 
     /**
