@@ -8,6 +8,9 @@ import '../../application/finance/get_health_score_use_case.dart';
 import '../../application/finance/get_momentum_use_case.dart';
 import '../../application/finance/get_resilience_index_use_case.dart';
 import '../../application/ingestion/ingest_transactions_use_case.dart';
+import '../../application/ingestion/merchant/get_merchant_review_queue_use_case.dart';
+import '../../application/ingestion/merchant/ignore_merchant_entry_use_case.dart';
+import '../../application/ingestion/merchant/resolve_merchant_entry_use_case.dart';
 import '../../application/learning/evaluate_outcome_use_case.dart';
 import '../../application/learning/get_learning_insights_use_case.dart';
 import '../../application/learning/record_execution_use_case.dart';
@@ -29,6 +32,7 @@ import '../../domain/engines/transaction_normalizer.dart';
 import '../../domain/ingestion/merchant_learning_entry.dart';
 import '../../domain/partner/product_catalog.dart';
 import '../../infrastructure/engines/hardcoded_merchant_resolver.dart';
+import '../../infrastructure/engines/learning_aware_merchant_resolver.dart';
 import '../../infrastructure/engines/hardcoded_product_knowledge_graph.dart';
 import '../../infrastructure/engines/rule_based_decision_learning_engine.dart';
 import '../../infrastructure/engines/rule_based_duplicate_detector.dart';
@@ -68,8 +72,20 @@ Future<void> configureDependencies() async {
   );
 
   // Financial Identity Resolution — merchant alias → canonical profile
-  sl.registerLazySingleton<MerchantResolver>(
+  // LearningAwareMerchantResolver wraps HardcodedMerchantResolver:
+  //   - auto-records unknown merchants to MerchantLearningQueue
+  //   - accepts runtime additions from resolved queue entries
+  sl.registerLazySingleton<HardcodedMerchantResolver>(
     () => const HardcodedMerchantResolver(),
+  );
+  sl.registerLazySingleton<LearningAwareMerchantResolver>(
+    () => LearningAwareMerchantResolver(
+      baseResolver: sl<HardcodedMerchantResolver>(),
+      learningQueue: sl<MerchantLearningQueue>(),
+    ),
+  );
+  sl.registerLazySingleton<MerchantResolver>(
+    () => sl<LearningAwareMerchantResolver>(),
   );
 
   // Transaction Normalizer — raw event → TransactionCandidate
@@ -204,6 +220,20 @@ Future<void> configureDependencies() async {
       normalizer: sl<TransactionNormalizer>(),
       deduplicator: sl<DuplicateDetector>(),
     ),
+  );
+
+  // Use cases — Merchant Learning Loop (Phase 8.3)
+  sl.registerLazySingleton<GetMerchantReviewQueueUseCase>(
+    () => GetMerchantReviewQueueUseCase(sl<MerchantLearningQueue>()),
+  );
+  sl.registerLazySingleton<ResolveMerchantEntryUseCase>(
+    () => ResolveMerchantEntryUseCase(
+      queue: sl<MerchantLearningQueue>(),
+      resolver: sl<LearningAwareMerchantResolver>(),
+    ),
+  );
+  sl.registerLazySingleton<IgnoreMerchantEntryUseCase>(
+    () => IgnoreMerchantEntryUseCase(sl<MerchantLearningQueue>()),
   );
 
   // Use cases — Learning Loop
