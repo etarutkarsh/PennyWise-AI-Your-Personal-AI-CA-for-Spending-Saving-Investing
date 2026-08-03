@@ -22,7 +22,9 @@ import '../../domain/engines/momentum_engine.dart';
 import '../../domain/engines/partner_matching_engine.dart';
 import '../../domain/engines/product_knowledge_graph.dart';
 import '../../domain/engines/resilience_engine.dart';
+import '../../domain/engines/event_replay_engine.dart';
 import '../../domain/engines/transaction_normalizer.dart';
+import '../../domain/ingestion/merchant_learning_entry.dart';
 import '../../domain/partner/product_catalog.dart';
 import '../../infrastructure/engines/hardcoded_merchant_resolver.dart';
 import '../../infrastructure/engines/hardcoded_product_knowledge_graph.dart';
@@ -34,6 +36,7 @@ import '../../infrastructure/engines/rule_based_momentum_engine.dart';
 import '../../infrastructure/engines/rule_based_partner_matching_engine.dart';
 import '../../infrastructure/engines/rule_based_resilience_engine.dart';
 import '../../infrastructure/engines/rule_based_transaction_normalizer.dart';
+import '../../infrastructure/engines/stub_event_replay_engine.dart';
 import '../../infrastructure/engines/stub_evidence_builder.dart';
 import '../../infrastructure/mappers/decision_mapper.dart';
 import '../../infrastructure/mappers/partner_mapper.dart';
@@ -169,6 +172,16 @@ Future<void> configureDependencies() async {
   );
   sl.registerLazySingleton<GetMomentumUseCase>(
     () => GetMomentumUseCase(sl<MomentumEngine>()),
+  );
+
+  // Merchant Learning Queue — accumulates unresolved merchants across the session
+  sl.registerLazySingleton<MerchantLearningQueue>(
+    () => MerchantLearningQueue(),
+  );
+
+  // Event Replay Engine — stubs until Phase 8.2 wires SmsParserService
+  sl.registerLazySingleton<EventReplayEngine>(
+    () => const StubEventReplayEngine(),
   );
 
   // Use cases — Ingestion Pipeline

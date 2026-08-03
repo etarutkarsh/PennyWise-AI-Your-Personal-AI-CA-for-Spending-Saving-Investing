@@ -56,6 +56,21 @@ class RuleBasedTransactionNormalizer implements TransactionNormalizer {
     );
   }
 
+  @override
+  List<TransactionCandidate> normalizeAll(List<Map<String, dynamic>> rawEvents) =>
+      rawEvents.map((e) => normalize(
+            rawId: e['id'] as String,
+            rawMerchant: e['rawMerchant'] as String,
+            amount: (e['amount'] as num).toDouble(),
+            direction: e['direction'] as String,
+            date: e['date'] as DateTime,
+            source: e['source'] as String,
+            paymentRailHint: e['paymentRailHint'] as String?,
+            confidence: (e['confidence'] as num?)?.toDouble() ?? 0.80,
+            accountLast4: e['accountLast4'] as String?,
+            rawText: e['rawText'] as String?,
+          )).toList();
+
   PaymentRail _classifyRail(String? hint, String? rawText, String rawMerchant) {
     final signals = [
       hint?.toUpperCase() ?? '',

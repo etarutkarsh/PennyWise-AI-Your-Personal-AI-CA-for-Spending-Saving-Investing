@@ -58,6 +58,10 @@ class HardcodedMerchantResolver implements MerchantResolver {
        .trim();
 
   @override
+  List<MerchantProfile> resolveAll(List<String> rawMerchants) =>
+      rawMerchants.map(resolve).toList();
+
+  @override
   List<MerchantProfile> get allProfiles => _profiles;
 
   static final List<MerchantProfile> _profiles = [
