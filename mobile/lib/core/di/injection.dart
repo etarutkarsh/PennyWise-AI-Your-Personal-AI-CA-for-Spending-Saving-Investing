@@ -3,16 +3,37 @@ import 'package:get_it/get_it.dart';
 import '../../application/decision/get_dashboard_feed_use_case.dart';
 import '../../application/decision/get_today_decision_use_case.dart';
 import '../../application/decision/record_decision_lifecycle_use_case.dart';
+import '../../application/finance/get_financial_age_use_case.dart';
 import '../../application/finance/get_health_score_use_case.dart';
+import '../../application/finance/get_momentum_use_case.dart';
+import '../../application/finance/get_resilience_index_use_case.dart';
+import '../../application/ingestion/ingest_transactions_use_case.dart';
+import '../../application/learning/evaluate_outcome_use_case.dart';
+import '../../application/learning/get_learning_insights_use_case.dart';
+import '../../application/learning/record_execution_use_case.dart';
 import '../../application/partner/get_partner_programs_use_case.dart';
+import '../../domain/engines/decision_learning_engine.dart';
+import '../../domain/engines/duplicate_detector.dart';
 import '../../domain/engines/evidence_builder.dart';
+import '../../domain/engines/financial_age_engine.dart';
 import '../../domain/engines/health_score_engine.dart';
+import '../../domain/engines/merchant_resolver.dart';
+import '../../domain/engines/momentum_engine.dart';
 import '../../domain/engines/partner_matching_engine.dart';
 import '../../domain/engines/product_knowledge_graph.dart';
+import '../../domain/engines/resilience_engine.dart';
+import '../../domain/engines/transaction_normalizer.dart';
 import '../../domain/partner/product_catalog.dart';
+import '../../infrastructure/engines/hardcoded_merchant_resolver.dart';
 import '../../infrastructure/engines/hardcoded_product_knowledge_graph.dart';
+import '../../infrastructure/engines/rule_based_decision_learning_engine.dart';
+import '../../infrastructure/engines/rule_based_duplicate_detector.dart';
+import '../../infrastructure/engines/rule_based_financial_age_engine.dart';
 import '../../infrastructure/engines/rule_based_health_score_engine.dart';
+import '../../infrastructure/engines/rule_based_momentum_engine.dart';
 import '../../infrastructure/engines/rule_based_partner_matching_engine.dart';
+import '../../infrastructure/engines/rule_based_resilience_engine.dart';
+import '../../infrastructure/engines/rule_based_transaction_normalizer.dart';
 import '../../infrastructure/engines/stub_evidence_builder.dart';
 import '../../infrastructure/mappers/decision_mapper.dart';
 import '../../infrastructure/mappers/partner_mapper.dart';
@@ -39,6 +60,21 @@ Future<void> configureDependencies() async {
     () => DecisionMapper(sl<PartnerMapper>()),
   );
 
+  // Financial Identity Resolution — merchant alias → canonical profile
+  sl.registerLazySingleton<MerchantResolver>(
+    () => const HardcodedMerchantResolver(),
+  );
+
+  // Transaction Normalizer — raw event → TransactionCandidate
+  sl.registerLazySingleton<TransactionNormalizer>(
+    () => RuleBasedTransactionNormalizer(sl<MerchantResolver>()),
+  );
+
+  // Duplicate Detector — dedup and reconcile across sources
+  sl.registerLazySingleton<DuplicateDetector>(
+    () => const RuleBasedDuplicateDetector(),
+  );
+
   // Knowledge Graph — instrument domain knowledge (hardcoded today, DB-backed in Phase 6)
   sl.registerLazySingleton<ProductKnowledgeGraph>(
     () => const HardcodedProductKnowledgeGraph(),
@@ -52,6 +88,26 @@ Future<void> configureDependencies() async {
   // Health Score Engine — 10-dimension financial health computation
   sl.registerLazySingleton<HealthScoreEngine>(
     () => const RuleBasedHealthScoreEngine(),
+  );
+
+  // Decision Learning Engine — closes the 8-step Decision Learning Loop
+  sl.registerLazySingleton<DecisionLearningEngine>(
+    () => const RuleBasedDecisionLearningEngine(),
+  );
+
+  // Financial Age Engine — chronological vs behavioral financial age
+  sl.registerLazySingleton<FinancialAgeEngine>(
+    () => const RuleBasedFinancialAgeEngine(),
+  );
+
+  // Resilience Engine — shock absorption capacity (distinct from health score)
+  sl.registerLazySingleton<ResilienceEngine>(
+    () => const RuleBasedResilienceEngine(),
+  );
+
+  // Momentum Engine — health score trajectory from snapshots
+  sl.registerLazySingleton<MomentumEngine>(
+    () => const RuleBasedMomentumEngine(),
   );
 
   // Product catalog — pure data, no user context
@@ -82,23 +138,55 @@ Future<void> configureDependencies() async {
     () => RestDecisionRepository(sl<DecisionMapper>()),
   );
 
-  // Use cases
+  // Use cases — Decision
   sl.registerLazySingleton<GetTodayDecisionUseCase>(
     () => GetTodayDecisionUseCase(sl<RestDecisionRepository>()),
   );
   sl.registerLazySingleton<RecordDecisionLifecycleUseCase>(
     () => RecordDecisionLifecycleUseCase(sl<RestDecisionRepository>()),
   );
-  sl.registerLazySingleton<GetPartnerProgramsUseCase>(
-    () => GetPartnerProgramsUseCase(sl<HardcodedPartnerRepository>()),
-  );
-  sl.registerLazySingleton<GetHealthScoreUseCase>(
-    () => GetHealthScoreUseCase(sl<HealthScoreEngine>()),
-  );
   sl.registerLazySingleton<GetDashboardFeedUseCase>(
     () => GetDashboardFeedUseCase(
       sl<RestDecisionRepository>(),
       sl<HardcodedPartnerRepository>(),
     ),
+  );
+
+  // Use cases — Partner
+  sl.registerLazySingleton<GetPartnerProgramsUseCase>(
+    () => GetPartnerProgramsUseCase(sl<HardcodedPartnerRepository>()),
+  );
+
+  // Use cases — Finance
+  sl.registerLazySingleton<GetHealthScoreUseCase>(
+    () => GetHealthScoreUseCase(sl<HealthScoreEngine>()),
+  );
+  sl.registerLazySingleton<GetFinancialAgeUseCase>(
+    () => GetFinancialAgeUseCase(sl<FinancialAgeEngine>()),
+  );
+  sl.registerLazySingleton<GetResilienceIndexUseCase>(
+    () => GetResilienceIndexUseCase(sl<ResilienceEngine>()),
+  );
+  sl.registerLazySingleton<GetMomentumUseCase>(
+    () => GetMomentumUseCase(sl<MomentumEngine>()),
+  );
+
+  // Use cases — Ingestion Pipeline
+  sl.registerLazySingleton<IngestTransactionsUseCase>(
+    () => IngestTransactionsUseCase(
+      normalizer: sl<TransactionNormalizer>(),
+      deduplicator: sl<DuplicateDetector>(),
+    ),
+  );
+
+  // Use cases — Learning Loop
+  sl.registerLazySingleton<RecordExecutionUseCase>(
+    () => const RecordExecutionUseCase(),
+  );
+  sl.registerLazySingleton<EvaluateOutcomeUseCase>(
+    () => EvaluateOutcomeUseCase(sl<DecisionLearningEngine>()),
+  );
+  sl.registerLazySingleton<GetLearningInsightsUseCase>(
+    () => GetLearningInsightsUseCase(sl<DecisionLearningEngine>()),
   );
 }

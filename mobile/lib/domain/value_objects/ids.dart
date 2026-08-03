@@ -155,6 +155,23 @@ class TwinId {
   String toString() => 'TwinId($value)';
 }
 
+/// A learned lesson identifier.
+@immutable
+class LessonId {
+  final String value;
+  const LessonId(this.value);
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || (other is LessonId && other.value == value);
+
+  @override
+  int get hashCode => value.hashCode;
+
+  @override
+  String toString() => 'LessonId($value)';
+}
+
 /// A partner program identifier.
 @immutable
 class ProgramId {
