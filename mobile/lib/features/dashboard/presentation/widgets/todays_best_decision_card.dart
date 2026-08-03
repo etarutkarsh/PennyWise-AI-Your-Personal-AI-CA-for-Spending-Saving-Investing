@@ -442,7 +442,7 @@ class _TodaysBestDecisionCardState extends State<TodaysBestDecisionCard> {
   // ── Bottom sheets ──────────────────────────────────────────────────────────
 
   void _showExplainSheet(TodayDecisionModel d) {
-    showModalBottomSheet(
+    showModalBottomSheet<bool>(
       context: context,
       backgroundColor: const Color(0xFF0D1B2A),
       shape: const RoundedRectangleBorder(
@@ -450,7 +450,9 @@ class _TodaysBestDecisionCardState extends State<TodaysBestDecisionCard> {
       ),
       isScrollControlled: true,
       builder: (_) => _ExplainSheet(decision: d),
-    );
+    ).then((openOptions) {
+      if (mounted && openOptions == true) _showOptionsSheet(d);
+    });
   }
 
   void _showOptionsSheet(TodayDecisionModel d) {
@@ -587,7 +589,7 @@ class _ExplainSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           GestureDetector(
-            onTap: () => Navigator.pop(context),
+            onTap: () => Navigator.pop(context, true),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
