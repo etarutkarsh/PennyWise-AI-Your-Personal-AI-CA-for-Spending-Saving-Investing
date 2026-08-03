@@ -54,6 +54,7 @@ class PartnerMapper {
     required String ctaLabel,
     required int rank,
     required double matchScore,
+    String? logoUrl,
   }) {
     final program = PartnerProgram(
       programId: ProgramId(id),
@@ -69,6 +70,8 @@ class PartnerMapper {
       riskLevel: RiskLevel.low,
       taxBenefit: id.contains('elss') || id.contains('ppf'),
       active: true,
+      tagline: tagline,
+      logoUrl: logoUrl,
       commissionRate: 0.0,
       lastUpdated: DateTime.now(),
     );

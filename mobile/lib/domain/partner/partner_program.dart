@@ -24,6 +24,12 @@ class PartnerProgram {
   final bool taxBenefit;
   final bool active;
 
+  /// One-line product benefit shown on the card face.
+  final String tagline;
+
+  /// CDN or asset URL for the partner logo. Null = use styled text treatment.
+  final String? logoUrl;
+
   /// Fiduciary invariant: PennyWise never earns commission on ranked programs.
   final double commissionRate;
 
@@ -43,6 +49,8 @@ class PartnerProgram {
     required this.riskLevel,
     required this.taxBenefit,
     required this.active,
+    this.tagline = '',
+    this.logoUrl,
     this.commissionRate = 0.0,
     required this.lastUpdated,
   }) : assert(commissionRate == 0.0,
@@ -62,6 +70,8 @@ class PartnerProgram {
     RiskLevel? riskLevel,
     bool? taxBenefit,
     bool? active,
+    String? tagline,
+    String? logoUrl,
     DateTime? lastUpdated,
   }) =>
       PartnerProgram(
@@ -78,6 +88,8 @@ class PartnerProgram {
         riskLevel: riskLevel ?? this.riskLevel,
         taxBenefit: taxBenefit ?? this.taxBenefit,
         active: active ?? this.active,
+        tagline: tagline ?? this.tagline,
+        logoUrl: logoUrl ?? this.logoUrl,
         commissionRate: 0.0,
         lastUpdated: lastUpdated ?? this.lastUpdated,
       );

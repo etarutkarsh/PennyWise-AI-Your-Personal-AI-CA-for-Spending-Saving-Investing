@@ -47,27 +47,28 @@ Color _bankColorDark(String programId) {
   }
 }
 
-/// Emoji shown in the visual area — driven by product name / id patterns.
-String _productEmoji(String programId, String productName) {
-  final id = programId.toLowerCase();
-  final pn = productName.toLowerCase();
-  if (id.contains('rd') || pn.contains('recurring')) return '🏦';
-  if (id.contains('sip') && !id.contains('elss')) return '📈';
-  if (id.contains('gold') || pn.contains('gold')) return '🥇';
-  if (id.contains('elss') || pn.contains('elss')) return '🧮';
-  if (id.contains('auto') || pn.contains('smart deposit')) return '⚡';
-  if (id.contains('cc') || pn.contains('credit card')) return '💳';
-  return '💼';
+/// Two-line brand name split: "HDFC BANK" → ["HDFC", "BANK"].
+/// Used by _PartnerLogoWidget when no logo image is available.
+List<String> _brandNameLines(String partnerName) {
+  final parts = partnerName.trim().split(RegExp(r'[ ·\-]+'));
+  if (parts.length == 1) return [parts.first.toUpperCase(), ''];
+  // First word on top, rest joined on bottom (max 2 lines)
+  final top = parts.first.toUpperCase();
+  final bottom = parts.sublist(1).join(' ').toUpperCase();
+  return [top, bottom];
 }
 
-/// Compact bank tag shown on the header — short label derived from partner name.
-String _bankInitials(String partnerName) {
-  final trimmed = partnerName.trim();
-  if (trimmed.isEmpty) return '—';
-  // Prefer first "word" without punctuation.
-  final firstWord = trimmed.split(RegExp(r'[ ·\-]+')).first;
-  if (firstWord.length <= 5) return firstWord.toUpperCase();
-  return firstWord.substring(0, 4).toUpperCase();
+/// Flutter icon representing the financial instrument — crisper than emoji on all Android versions.
+IconData _productIcon(String programId, String productName) {
+  final id = programId.toLowerCase();
+  final pn = productName.toLowerCase();
+  if (id.contains('rd') || pn.contains('recurring')) return Icons.savings_outlined;
+  if (id.contains('sip') && !id.contains('elss')) return Icons.trending_up_rounded;
+  if (id.contains('gold') || pn.contains('gold')) return Icons.monetization_on_outlined;
+  if (id.contains('elss') || pn.contains('elss')) return Icons.account_balance_outlined;
+  if (id.contains('auto') || pn.contains('smart deposit')) return Icons.flash_on_rounded;
+  if (id.contains('cc') || pn.contains('credit card')) return Icons.credit_card_rounded;
+  return Icons.bar_chart_rounded;
 }
 
 /// Best-effort goal chip label — derived from RankedPartnerProgram
@@ -313,15 +314,15 @@ class _ProgramCard extends StatelessWidget {
 
                     const SizedBox(height: 3),
 
-                    // Trust statement (replaces marketing tagline)
+                    // Product benefit tagline — what this product actually does for you
                     Text(
-                      program.trustStatement,
+                      pp.tagline.isNotEmpty ? pp.tagline : program.trustStatement,
                       style: GoogleFonts.dmSans(
                         fontSize: 11,
                         color: AppColors.textSecondary,
                         height: 1.3,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
 
@@ -358,6 +359,56 @@ class _ProgramCard extends StatelessWidget {
   }
 }
 
+// ── Partner Logo Widget ───────────────────────────────────────────────────────
+// Renders a styled 2-line brand-name treatment. When logoUrl is set (Sprint 4),
+// swap the text treatment for an Image.network() with the same container shape.
+
+class _PartnerLogoWidget extends StatelessWidget {
+  const _PartnerLogoWidget({required this.partnerName, this.logoUrl});
+  final String partnerName;
+  final String? logoUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final lines = _brandNameLines(partnerName);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            lines[0],
+            style: GoogleFonts.manrope(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+              letterSpacing: 0.6,
+              height: 1.1,
+            ),
+          ),
+          if (lines[1].isNotEmpty)
+            Text(
+              lines[1],
+              style: GoogleFonts.manrope(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withValues(alpha: 0.75),
+                letterSpacing: 0.4,
+                height: 1.1,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 // ── Visual Image Area ─────────────────────────────────────────────────────────
 
 class _ProgramImageArea extends StatelessWidget {
@@ -369,8 +420,7 @@ class _ProgramImageArea extends StatelessWidget {
     final pp = program.program;
     final bankColor = _bankColor(pp.programId.value);
     final bankColorDark = _bankColorDark(pp.programId.value);
-    final emoji = _productEmoji(pp.programId.value, pp.productName);
-    final initials = _bankInitials(pp.partnerName);
+    final icon = _productIcon(pp.programId.value, pp.productName);
     return Container(
       height: 100,
       decoration: BoxDecoration(
@@ -413,26 +463,10 @@ class _ProgramImageArea extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Row(
               children: [
-                // Bank logo block
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.28),
-                    ),
-                  ),
-                  child: Text(
-                    initials,
-                    style: GoogleFonts.manrope(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
+                // Partner logo block (2-line brand treatment; swap for image in Sprint 2)
+                _PartnerLogoWidget(
+                  partnerName: pp.partnerName,
+                  logoUrl: pp.logoUrl,
                 ),
 
                 const Spacer(),
@@ -464,7 +498,7 @@ class _ProgramImageArea extends StatelessWidget {
 
                 const SizedBox(width: 12),
 
-                // Product emoji in circle
+                // Product icon in circle (replaces emoji — renders crisply on all Android versions)
                 Container(
                   width: 48,
                   height: 48,
@@ -476,10 +510,7 @@ class _ProgramImageArea extends StatelessWidget {
                     ),
                   ),
                   child: Center(
-                    child: Text(
-                      emoji,
-                      style: const TextStyle(fontSize: 22),
-                    ),
+                    child: Icon(icon, color: Colors.white, size: 22),
                   ),
                 ),
               ],
@@ -556,8 +587,9 @@ class _GoalTabs extends StatelessWidget {
           final pp = p.program;
           final active = i == selected;
           final bankColor = _bankColor(pp.programId.value);
-          final emoji = _productEmoji(pp.programId.value, pp.productName);
-          final initials = _bankInitials(pp.partnerName);
+          final icon = _productIcon(pp.programId.value, pp.productName);
+          final lines = _brandNameLines(pp.partnerName);
+          final shortLabel = lines[0];
           return GestureDetector(
             onTap: () => onSelect(i),
             child: AnimatedContainer(
@@ -580,10 +612,14 @@ class _GoalTabs extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(emoji, style: TextStyle(fontSize: active ? 13 : 12)),
+                  Icon(
+                    icon,
+                    size: active ? 13 : 12,
+                    color: active ? bankColor : AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 6),
                   Text(
-                    initials,
+                    shortLabel,
                     style: GoogleFonts.dmSans(
                       fontSize: 12,
                       fontWeight:
@@ -642,7 +678,7 @@ class _ProgramDetailSheet extends StatelessWidget {
     final pp = program.program;
     final bankColor = _bankColor(pp.programId.value);
     final bankColorDark = _bankColorDark(pp.programId.value);
-    final emoji = _productEmoji(pp.programId.value, pp.productName);
+    final icon = _productIcon(pp.programId.value, pp.productName);
     return DraggableScrollableSheet(
       initialChildSize: 0.80,
       minChildSize: 0.4,
@@ -682,7 +718,7 @@ class _ProgramDetailSheet extends StatelessWidget {
                       horizontal: 22, vertical: 14),
                   child: Row(
                     children: [
-                      Text(emoji, style: const TextStyle(fontSize: 38)),
+                      Icon(icon, color: Colors.white, size: 38),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
