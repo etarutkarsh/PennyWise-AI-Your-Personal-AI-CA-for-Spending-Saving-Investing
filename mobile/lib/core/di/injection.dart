@@ -8,10 +8,14 @@ import '../../infrastructure/mappers/decision_mapper.dart';
 import '../../infrastructure/mappers/partner_mapper.dart';
 import '../../infrastructure/repositories/hardcoded_partner_repository.dart';
 import '../../infrastructure/repositories/rest_decision_repository.dart';
+import '../../infrastructure/services/partner_asset_service.dart';
 
 final GetIt sl = GetIt.instance;
 
 Future<void> configureDependencies() async {
+  // Services — initialized eagerly so manifest is ready before first render
+  await PartnerAssetService.instance.initialize();
+
   // Mappers
   sl.registerLazySingleton<PartnerMapper>(() => const PartnerMapper());
   sl.registerLazySingleton<DecisionMapper>(

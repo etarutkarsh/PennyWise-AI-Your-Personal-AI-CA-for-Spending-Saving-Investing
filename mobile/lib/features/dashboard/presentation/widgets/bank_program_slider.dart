@@ -2,73 +2,34 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:pennywise_ai/domain/partner/partner_assets.dart';
+import 'package:pennywise_ai/domain/partner/partner_brand.dart';
+import 'package:pennywise_ai/domain/partner/partner_icon_type.dart';
 import 'package:pennywise_ai/domain/partner/ranked_partner_program.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
 // ── Local presentation helpers (no business logic, purely display polish) ────
 
-/// Bank-brand colours by programId — presentation concern only.
-Color _bankColor(String programId) {
-  switch (programId) {
-    case 'hdfc_rd':
-      return const Color(0xFF004C8F);
-    case 'nippon_sip':
-      return const Color(0xFFE63012);
-    case 'jar_gold':
-      return const Color(0xFFB45309);
-    case 'axis_elss':
-      return const Color(0xFF8B0000);
-    case 'fi_auto_save':
-      return const Color(0xFF0D9488);
-    case 'icici_amazon_cc':
-      return const Color(0xFFB44F00);
-    default:
-      return AppColors.secondary;
+/// Resolves PartnerIconType → Flutter IconData.
+/// Lives in presentation — domain stays Flutter-free.
+IconData _resolveIcon(PartnerIconType type) {
+  switch (type) {
+    case PartnerIconType.savings:
+      return Icons.savings_outlined;
+    case PartnerIconType.trendingUp:
+      return Icons.trending_up_rounded;
+    case PartnerIconType.gold:
+      return Icons.monetization_on_outlined;
+    case PartnerIconType.tax:
+      return Icons.account_balance_outlined;
+    case PartnerIconType.autoSave:
+      return Icons.flash_on_rounded;
+    case PartnerIconType.creditCard:
+      return Icons.credit_card_rounded;
+    case PartnerIconType.generic:
+      return Icons.bar_chart_rounded;
   }
-}
-
-Color _bankColorDark(String programId) {
-  switch (programId) {
-    case 'hdfc_rd':
-      return const Color(0xFF002D57);
-    case 'nippon_sip':
-      return const Color(0xFFAF1C08);
-    case 'jar_gold':
-      return const Color(0xFF7C3A00);
-    case 'axis_elss':
-      return const Color(0xFF5C0000);
-    case 'fi_auto_save':
-      return const Color(0xFF0A7570);
-    case 'icici_amazon_cc':
-      return const Color(0xFF7A3500);
-    default:
-      return AppColors.textPrimary;
-  }
-}
-
-/// Two-line brand name split: "HDFC BANK" → ["HDFC", "BANK"].
-/// Used by _PartnerLogoWidget when no logo image is available.
-List<String> _brandNameLines(String partnerName) {
-  final parts = partnerName.trim().split(RegExp(r'[ ·\-]+'));
-  if (parts.length == 1) return [parts.first.toUpperCase(), ''];
-  // First word on top, rest joined on bottom (max 2 lines)
-  final top = parts.first.toUpperCase();
-  final bottom = parts.sublist(1).join(' ').toUpperCase();
-  return [top, bottom];
-}
-
-/// Flutter icon representing the financial instrument — crisper than emoji on all Android versions.
-IconData _productIcon(String programId, String productName) {
-  final id = programId.toLowerCase();
-  final pn = productName.toLowerCase();
-  if (id.contains('rd') || pn.contains('recurring')) return Icons.savings_outlined;
-  if (id.contains('sip') && !id.contains('elss')) return Icons.trending_up_rounded;
-  if (id.contains('gold') || pn.contains('gold')) return Icons.monetization_on_outlined;
-  if (id.contains('elss') || pn.contains('elss')) return Icons.account_balance_outlined;
-  if (id.contains('auto') || pn.contains('smart deposit')) return Icons.flash_on_rounded;
-  if (id.contains('cc') || pn.contains('credit card')) return Icons.credit_card_rounded;
-  return Icons.bar_chart_rounded;
 }
 
 /// Best-effort goal chip label — derived from RankedPartnerProgram
@@ -243,7 +204,7 @@ class _ProgramCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pp = program.program;
-    final bankColor = _bankColor(pp.programId.value);
+    final bankColor = Color(pp.brand.primaryColorHex);
     return GestureDetector(
       onTap: onLearnMore,
       child: Container(
@@ -360,17 +321,24 @@ class _ProgramCard extends StatelessWidget {
 }
 
 // ── Partner Logo Widget ───────────────────────────────────────────────────────
-// Renders a styled 2-line brand-name treatment. When logoUrl is set (Sprint 4),
-// swap the text treatment for an Image.network() with the same container shape.
+// Renders a partner logo using the PartnerAssets contract:
+//   1. If a bundled image path is available → Image.asset() (Sprint 2 step 2)
+//   2. If a network URL override is loaded   → Image.network() (Sprint 4)
+//   3. Fallback: styled short-name text treatment (always available)
+// Theme-aware: prefers darkLogoAssetPath in dark mode.
 
 class _PartnerLogoWidget extends StatelessWidget {
-  const _PartnerLogoWidget({required this.partnerName, this.logoUrl});
-  final String partnerName;
-  final String? logoUrl;
+  const _PartnerLogoWidget({required this.brand});
+  final PartnerBrand brand;
 
   @override
   Widget build(BuildContext context) {
-    final lines = _brandNameLines(partnerName);
+    final brightness = Theme.of(context).brightness;
+    final assets = brand.assets;
+    final logoPath = brightness == Brightness.dark
+        ? (assets.darkLogoAssetPath ?? assets.logoAssetPath)
+        : (assets.lightLogoAssetPath ?? assets.logoAssetPath);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
@@ -378,32 +346,34 @@ class _PartnerLogoWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.white.withValues(alpha: 0.28)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            lines[0],
-            style: GoogleFonts.manrope(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              letterSpacing: 0.6,
-              height: 1.1,
-            ),
-          ),
-          if (lines[1].isNotEmpty)
-            Text(
-              lines[1],
-              style: GoogleFonts.manrope(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                color: Colors.white.withValues(alpha: 0.75),
-                letterSpacing: 0.4,
-                height: 1.1,
-              ),
-            ),
-        ],
+      child: logoPath != null
+          ? Image.asset(
+              logoPath,
+              height: 28,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => _FallbackBrandText(brand: brand),
+            )
+          : _FallbackBrandText(brand: brand),
+    );
+  }
+}
+
+/// Text treatment used when no logo image is available.
+/// Uses brand.shortName so the label is always intentional, not auto-derived.
+class _FallbackBrandText extends StatelessWidget {
+  const _FallbackBrandText({required this.brand});
+  final PartnerBrand brand;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      brand.shortName,
+      style: GoogleFonts.manrope(
+        fontSize: 12,
+        fontWeight: FontWeight.w900,
+        color: Colors.white,
+        letterSpacing: 0.6,
+        height: 1.1,
       ),
     );
   }
@@ -418,9 +388,9 @@ class _ProgramImageArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pp = program.program;
-    final bankColor = _bankColor(pp.programId.value);
-    final bankColorDark = _bankColorDark(pp.programId.value);
-    final icon = _productIcon(pp.programId.value, pp.productName);
+    final bankColor = Color(pp.brand.primaryColorHex);
+    final bankColorDark = Color(pp.brand.darkColorHex);
+    final icon = _resolveIcon(pp.brand.assets.fallbackIcon);
     return Container(
       height: 100,
       decoration: BoxDecoration(
@@ -463,11 +433,8 @@ class _ProgramImageArea extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Row(
               children: [
-                // Partner logo block (2-line brand treatment; swap for image in Sprint 2)
-                _PartnerLogoWidget(
-                  partnerName: pp.partnerName,
-                  logoUrl: pp.logoUrl,
-                ),
+                // Partner logo block — resolves via PartnerAssets contract
+                _PartnerLogoWidget(brand: pp.brand),
 
                 const Spacer(),
 
@@ -586,10 +553,9 @@ class _GoalTabs extends StatelessWidget {
           final p = programs[i];
           final pp = p.program;
           final active = i == selected;
-          final bankColor = _bankColor(pp.programId.value);
-          final icon = _productIcon(pp.programId.value, pp.productName);
-          final lines = _brandNameLines(pp.partnerName);
-          final shortLabel = lines[0];
+          final bankColor = Color(pp.brand.primaryColorHex);
+          final icon = _resolveIcon(pp.brand.assets.fallbackIcon);
+          final shortLabel = pp.brand.shortName;
           return GestureDetector(
             onTap: () => onSelect(i),
             child: AnimatedContainer(
@@ -676,9 +642,9 @@ class _ProgramDetailSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pp = program.program;
-    final bankColor = _bankColor(pp.programId.value);
-    final bankColorDark = _bankColorDark(pp.programId.value);
-    final icon = _productIcon(pp.programId.value, pp.productName);
+    final bankColor = Color(pp.brand.primaryColorHex);
+    final bankColorDark = Color(pp.brand.darkColorHex);
+    final icon = _resolveIcon(pp.brand.assets.fallbackIcon);
     return DraggableScrollableSheet(
       initialChildSize: 0.80,
       minChildSize: 0.4,
@@ -975,8 +941,8 @@ class _CTASection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pp = program.program;
-    final bankColor = _bankColor(pp.programId.value);
-    final bankColorDark = _bankColorDark(pp.programId.value);
+    final bankColor = Color(pp.brand.primaryColorHex);
+    final bankColorDark = Color(pp.brand.darkColorHex);
     return Column(
       children: [
         // Primary CTA

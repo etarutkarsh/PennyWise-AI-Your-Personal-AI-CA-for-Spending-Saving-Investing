@@ -5,14 +5,19 @@ import '../value_objects/ids.dart';
 import '../value_objects/money.dart';
 import '../value_objects/risk_level.dart';
 import 'financial_instrument.dart';
+import 'partner_brand.dart';
 
 /// A financial product from a partner that can be recommended to users.
+///
+/// Brand identity (name, colors, logo) lives on [PartnerBrand], not here.
+/// One brand can own many products — this separation keeps product data
+/// clean and avoids duplicating logo/color data per product.
+///
 /// [commissionRate] is always 0.0 — the fiduciary invariant of PennyWise.
 @immutable
 class PartnerProgram {
   final ProgramId programId;
-  final String partnerId;
-  final String partnerName;
+  final PartnerBrand brand;
   final String productName;
   final FinancialInstrument instrument;
   final List<String> suitableDecisionTypes;
@@ -27,9 +32,6 @@ class PartnerProgram {
   /// One-line product benefit shown on the card face.
   final String tagline;
 
-  /// CDN or asset URL for the partner logo. Null = use styled text treatment.
-  final String? logoUrl;
-
   /// Fiduciary invariant: PennyWise never earns commission on ranked programs.
   final double commissionRate;
 
@@ -37,8 +39,7 @@ class PartnerProgram {
 
   const PartnerProgram({
     required this.programId,
-    required this.partnerId,
-    required this.partnerName,
+    required this.brand,
     required this.productName,
     required this.instrument,
     required this.suitableDecisionTypes,
@@ -50,16 +51,23 @@ class PartnerProgram {
     required this.taxBenefit,
     required this.active,
     this.tagline = '',
-    this.logoUrl,
     this.commissionRate = 0.0,
     required this.lastUpdated,
   }) : assert(commissionRate == 0.0,
             'Fiduciary invariant violated: commissionRate must always be 0.0');
 
+  // ── Convenience accessors (delegate to brand) ─────────────────────────────
+
+  /// Short accessor for widgets that display the partner name.
+  String get partnerName => brand.displayName;
+
+  /// Partner identifier — delegates to brand.id.
+  String get partnerId => brand.id;
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   PartnerProgram copyWith({
-    ProgramId? programId,
-    String? partnerId,
-    String? partnerName,
+    PartnerBrand? brand,
     String? productName,
     FinancialInstrument? instrument,
     List<String>? suitableDecisionTypes,
@@ -71,13 +79,11 @@ class PartnerProgram {
     bool? taxBenefit,
     bool? active,
     String? tagline,
-    String? logoUrl,
     DateTime? lastUpdated,
   }) =>
       PartnerProgram(
-        programId: programId ?? this.programId,
-        partnerId: partnerId ?? this.partnerId,
-        partnerName: partnerName ?? this.partnerName,
+        programId: programId,
+        brand: brand ?? this.brand,
         productName: productName ?? this.productName,
         instrument: instrument ?? this.instrument,
         suitableDecisionTypes: suitableDecisionTypes ?? this.suitableDecisionTypes,
@@ -89,7 +95,6 @@ class PartnerProgram {
         taxBenefit: taxBenefit ?? this.taxBenefit,
         active: active ?? this.active,
         tagline: tagline ?? this.tagline,
-        logoUrl: logoUrl ?? this.logoUrl,
         commissionRate: 0.0,
         lastUpdated: lastUpdated ?? this.lastUpdated,
       );

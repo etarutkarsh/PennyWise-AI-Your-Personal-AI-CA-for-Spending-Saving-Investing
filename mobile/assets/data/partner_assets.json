@@ -1,0 +1,48 @@
+{
+  "version": "1.0.0",
+  "note": "Asset paths are null until partner agreements are in place. Sprint 2 scaffolds the manifest structure. Add paths here to override bundled PartnerBrand defaults — no code changes required.",
+  "partners": {
+    "hdfc": {
+      "logoAssetPath": null,
+      "darkLogoAssetPath": null,
+      "lightLogoAssetPath": null,
+      "heroImageAssetPath": null,
+      "bannerAssetPath": null
+    },
+    "nippon": {
+      "logoAssetPath": null,
+      "darkLogoAssetPath": null,
+      "lightLogoAssetPath": null,
+      "heroImageAssetPath": null,
+      "bannerAssetPath": null
+    },
+    "jar": {
+      "logoAssetPath": null,
+      "darkLogoAssetPath": null,
+      "lightLogoAssetPath": null,
+      "heroImageAssetPath": null,
+      "bannerAssetPath": null
+    },
+    "axis": {
+      "logoAssetPath": null,
+      "darkLogoAssetPath": null,
+      "lightLogoAssetPath": null,
+      "heroImageAssetPath": null,
+      "bannerAssetPath": null
+    },
+    "fi": {
+      "logoAssetPath": null,
+      "darkLogoAssetPath": null,
+      "lightLogoAssetPath": null,
+      "heroImageAssetPath": null,
+      "bannerAssetPath": null
+    },
+    "icici": {
+      "logoAssetPath": null,
+      "darkLogoAssetPath": null,
+      "lightLogoAssetPath": null,
+      "heroImageAssetPath": null,
+      "bannerAssetPath": null
+    }
+  }
+}

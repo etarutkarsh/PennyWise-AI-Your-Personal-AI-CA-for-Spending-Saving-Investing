@@ -1,4 +1,7 @@
 import 'package:pennywise_ai/domain/partner/financial_instrument.dart';
+import 'package:pennywise_ai/domain/partner/partner_assets.dart';
+import 'package:pennywise_ai/domain/partner/partner_brand.dart';
+import 'package:pennywise_ai/domain/partner/partner_icon_type.dart';
 import 'package:pennywise_ai/domain/partner/partner_program.dart';
 import 'package:pennywise_ai/domain/partner/ranked_partner_program.dart';
 import 'package:pennywise_ai/domain/value_objects/currency.dart';
@@ -10,41 +13,10 @@ import 'package:pennywise_ai/features/decisions/data/models/today_decision_model
 class PartnerMapper {
   const PartnerMapper();
 
-  /// Maps the REST PartnerOptionModel to a RankedPartnerProgram domain entity.
-  RankedPartnerProgram fromPartnerOptionModel(PartnerOptionModel model) {
-    final program = PartnerProgram(
-      programId: ProgramId(model.partner.toLowerCase().replaceAll(' ', '_')),
-      partnerId: model.partner,
-      partnerName: model.partner,
-      productName: model.feature.isNotEmpty ? model.feature : 'Financial Product',
-      instrument: _instrumentFromFeature(model.feature),
-      suitableDecisionTypes: const [],
-      keyMetric: '${model.rate.toStringAsFixed(1)}%',
-      keyMetricLabel: 'Return rate',
-      returnRate: model.rate,
-      minAmount: Money(amount: model.minAmount, currency: Currency.inr),
-      riskLevel: RiskLevel.low,
-      taxBenefit: false,
-      active: true,
-      commissionRate: 0.0,
-      lastUpdated: DateTime.now(),
-    );
-    return RankedPartnerProgram(
-      program: program,
-      rank: 1,
-      matchScore: 0.8,
-      matchExplanation: model.feature,
-      trustStatement:
-          'Zero commission. Ranked by your goal alignment only.',
-      ctaLabel: model.ctaLabel.isNotEmpty ? model.ctaLabel : 'View',
-    );
-  }
-
-  /// Maps hardcoded bank program data into a RankedPartnerProgram.
-  /// Parameters mirror the fields that used to live in bank_program_slider.dart.
-  RankedPartnerProgram fromHardcodedProgram({
+  /// Maps a hardcoded product entry (with its resolved PartnerBrand) to a RankedPartnerProgram.
+  RankedPartnerProgram fromHardcodedProduct({
     required String id,
-    required String partnerName,
+    required PartnerBrand brand,
     required String productName,
     required String keyMetric,
     required String keyMetricLabel,
@@ -54,12 +26,10 @@ class PartnerMapper {
     required String ctaLabel,
     required int rank,
     required double matchScore,
-    String? logoUrl,
   }) {
     final program = PartnerProgram(
       programId: ProgramId(id),
-      partnerId: partnerName,
-      partnerName: partnerName,
+      brand: brand,
       productName: productName,
       instrument: _instrumentFromProductName(productName),
       suitableDecisionTypes: const [],
@@ -71,7 +41,6 @@ class PartnerMapper {
       taxBenefit: id.contains('elss') || id.contains('ppf'),
       active: true,
       tagline: tagline,
-      logoUrl: logoUrl,
       commissionRate: 0.0,
       lastUpdated: DateTime.now(),
     );
@@ -80,9 +49,58 @@ class PartnerMapper {
       rank: rank,
       matchScore: matchScore,
       matchExplanation: 'Matched to: $goalChip',
-      trustStatement:
-          'PennyWise earns nothing from this. Shown because it matched your goals.',
+      trustStatement: brand.trustStatement,
       ctaLabel: ctaLabel,
+    );
+  }
+
+  /// Maps the REST PartnerOptionModel to a RankedPartnerProgram.
+  /// Builds a minimal PartnerBrand from the partner name string since the
+  /// REST response doesn't carry full brand data yet (Sprint 4 will fix this).
+  RankedPartnerProgram fromPartnerOptionModel(PartnerOptionModel model) {
+    final minimalBrand = PartnerBrand(
+      id: model.partner.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_'),
+      displayName: model.partner,
+      legalName: model.partner,
+      shortName: model.partner.split(' ').first.toUpperCase().substring(
+            0,
+            model.partner.split(' ').first.length.clamp(0, 6),
+          ),
+      primaryColorHex: 0xFF16213E,
+      darkColorHex: 0xFF0A1628,
+      assets: const PartnerAssets(
+        fallbackIcon: PartnerIconType.generic,
+        fallbackLabel: '?',
+      ),
+      trustStatement: 'Zero commission. Ranked by your goal alignment only.',
+      regulatedEntity: false,
+    );
+
+    final program = PartnerProgram(
+      programId: ProgramId(
+          model.partner.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')),
+      brand: minimalBrand,
+      productName: model.feature.isNotEmpty ? model.feature : 'Financial Product',
+      instrument: _instrumentFromFeature(model.feature),
+      suitableDecisionTypes: const [],
+      keyMetric: '${model.rate.toStringAsFixed(1)}%',
+      keyMetricLabel: 'Return rate',
+      returnRate: model.rate,
+      minAmount: Money(amount: model.minAmount, currency: Currency.inr),
+      riskLevel: RiskLevel.low,
+      taxBenefit: false,
+      active: true,
+      tagline: model.feature,
+      commissionRate: 0.0,
+      lastUpdated: DateTime.now(),
+    );
+    return RankedPartnerProgram(
+      program: program,
+      rank: 1,
+      matchScore: 0.8,
+      matchExplanation: model.feature,
+      trustStatement: minimalBrand.trustStatement,
+      ctaLabel: model.ctaLabel.isNotEmpty ? model.ctaLabel : 'View',
     );
   }
 
