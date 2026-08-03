@@ -23,6 +23,8 @@ import '../../domain/engines/partner_matching_engine.dart';
 import '../../domain/engines/product_knowledge_graph.dart';
 import '../../domain/engines/resilience_engine.dart';
 import '../../domain/engines/event_replay_engine.dart';
+import '../../domain/engines/sms_parser_registry.dart';
+import '../../domain/engines/sms_validation_engine.dart';
 import '../../domain/engines/transaction_normalizer.dart';
 import '../../domain/ingestion/merchant_learning_entry.dart';
 import '../../domain/partner/product_catalog.dart';
@@ -38,6 +40,8 @@ import '../../infrastructure/engines/rule_based_resilience_engine.dart';
 import '../../infrastructure/engines/rule_based_transaction_normalizer.dart';
 import '../../infrastructure/engines/stub_event_replay_engine.dart';
 import '../../infrastructure/engines/stub_evidence_builder.dart';
+import '../../infrastructure/ingestion/sms/registry/sms_parser_registry_impl.dart';
+import '../../infrastructure/ingestion/sms/validators/sms_validation_engine_impl.dart';
 import '../../infrastructure/mappers/decision_mapper.dart';
 import '../../infrastructure/mappers/partner_mapper.dart';
 import '../../infrastructure/repositories/hardcoded_partner_repository.dart';
@@ -179,7 +183,17 @@ Future<void> configureDependencies() async {
     () => MerchantLearningQueue(),
   );
 
-  // Event Replay Engine — stubs until Phase 8.2 wires SmsParserService
+  // SMS Parser Registry — routes SMS to bank-specific parser
+  sl.registerLazySingleton<SmsParserRegistry>(
+    () => SmsParserRegistryImpl(),
+  );
+
+  // SMS Validation Engine — pre-debit filter + trusted sender check
+  sl.registerLazySingleton<SmsValidationEngine>(
+    () => const SmsValidationEngineImpl(),
+  );
+
+  // Event Replay Engine — stubs until SmsEventReplayEngine ships in Phase 8.2 upgrade
   sl.registerLazySingleton<EventReplayEngine>(
     () => const StubEventReplayEngine(),
   );
