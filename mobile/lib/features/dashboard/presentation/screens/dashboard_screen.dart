@@ -377,41 +377,38 @@ class _DashboardScreenState extends State<DashboardScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (_loadedSalary) ...[
+                    // Quick Actions — always visible, no salary gate needed
+                    const _SectionHeader(
+                      title: 'Explore',
+                      subtitle: 'Tools to accelerate your financial growth',
+                    ),
+                    const SizedBox(height: 14),
+                    _QuickActions(
+                      onAffordabilityTap: () => context
+                          .push('/affordability?salary=${_salary.toStringAsFixed(2)}')
+                          .then((_) { if (mounted) _load(); }),
+                      onGoalsTap: () => context
+                          .push('/goals')
+                          .then((_) { if (mounted) _load(); }),
+                      onInsightsTap: () => context
+                          .push('/insights?salary=${_salary.toStringAsFixed(2)}')
+                          .then((_) { if (mounted) _load(); }),
+                      onChatTap: () => context
+                          .push('/chat')
+                          .then((_) { if (mounted) _load(); }),
+                      onNetWorthTap: () => context
+                          .push('/net-worth')
+                          .then((_) { if (mounted) _load(); }),
+                      onJournalTap: () => context
+                          .push('/journal')
+                          .then((_) { if (mounted) _load(); }),
+                      onTwinTap: () => context
+                          .push('/twin')
+                          .then((_) { if (mounted) _load(); }),
+                    ),
 
-                      // Quick Actions
-                      const _SectionHeader(
-                        title: 'Explore',
-                        subtitle: 'Tools to accelerate your financial growth',
-                      ),
-                      const SizedBox(height: 14),
-                      _QuickActions(
-                        onAffordabilityTap: () => context
-                            .push('/affordability?salary=${_salary.toStringAsFixed(2)}')
-                            .then((_) { if (mounted) _load(); }),
-                        onGoalsTap: () => context
-                            .push('/goals')
-                            .then((_) { if (mounted) _load(); }),
-                        onInsightsTap: () => context
-                            .push('/insights?salary=${_salary.toStringAsFixed(2)}')
-                            .then((_) { if (mounted) _load(); }),
-                        onChatTap: () => context
-                            .push('/chat')
-                            .then((_) { if (mounted) _load(); }),
-                        onNetWorthTap: () => context
-                            .push('/net-worth')
-                            .then((_) { if (mounted) _load(); }),
-                        onJournalTap: () => context
-                            .push('/journal')
-                            .then((_) { if (mounted) _load(); }),
-                        onTwinTap: () => context
-                            .push('/twin')
-                            .then((_) { if (mounted) _load(); }),
-                      ),
-
-                      const SizedBox(height: 28),
-                      _AIInsightCard(tip: tip),
-                    ],
+                    const SizedBox(height: 28),
+                    _AIInsightCard(tip: tip),
                     const SizedBox(height: 48),
                   ],
                 ),

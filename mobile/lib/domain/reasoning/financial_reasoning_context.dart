@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../behavioral/behavior_interpretation.dart';
 import '../commitments/goal_snapshot.dart';
 import '../learning/learning_snapshot.dart';
+import '../reasoning/policy/decision_policy.dart';
 import '../shared/data_confidence_report.dart';
 import '../shared/financial_facts.dart';
 
@@ -22,6 +23,7 @@ class FinancialReasoningContext {
     this.learningSnapshot,
     this.goals = const [],
     this.contextLabel,
+    this.policy,
   });
 
   /// Computed financial facts — income, expenses, EF, savings rate, etc.
@@ -46,4 +48,9 @@ class FinancialReasoningContext {
 
   /// Optional label for logging ("Today's decision", "Affordability check").
   final String? contextLabel;
+
+  /// The active policy selected by [PolicySelector] for this context.
+  /// Null until Sprint 11A is wired into the reasoning pipeline (Phase 3).
+  /// When present, the engine uses policy weights instead of static axis weights.
+  final DecisionPolicy? policy;
 }

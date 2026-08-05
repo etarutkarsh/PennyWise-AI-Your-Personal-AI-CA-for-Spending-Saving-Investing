@@ -78,6 +78,10 @@ import '../../application/commitments/run_commitment_intelligence_use_case.dart'
 import '../../infrastructure/engines/rule_based_financial_reasoning_engine.dart';
 import '../../domain/engines/financial_reasoning_engine.dart';
 import '../../application/reasoning/run_financial_reasoning_use_case.dart';
+import '../../domain/reasoning/policy/policy_selector.dart';
+import '../../domain/reasoning/policy/policy_state_record.dart';
+import '../../infrastructure/engines/rule_based_policy_selector.dart';
+import '../../infrastructure/repositories/in_memory_policy_state_repository.dart';
 
 final GetIt sl = GetIt.instance;
 
@@ -348,5 +352,15 @@ Future<void> configureDependencies() async {
   );
   sl.registerLazySingleton<RunFinancialReasoningUseCase>(
     () => RunFinancialReasoningUseCase(sl<FinancialReasoningEngine>()),
+  );
+
+  // ── Policy Engine (Sprint 11A) ────────────────────────────────────────────
+  // PolicySelector — deterministic 14-policy rule engine
+  sl.registerLazySingleton<PolicySelector>(
+    () => const RuleBasedPolicySelector(),
+  );
+  // PolicyStateRepository — in-memory session store; replace with SQLite in Sprint 12
+  sl.registerLazySingleton<PolicyStateRepository>(
+    () => InMemoryPolicyStateRepository(),
   );
 }

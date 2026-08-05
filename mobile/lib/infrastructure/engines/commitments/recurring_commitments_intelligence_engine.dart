@@ -43,6 +43,8 @@ class RecurringCommitmentsIntelligenceEngine {
         _changeDeltaAnalyzer = changeDeltaAnalyzer,
         _goalImpactAnalyzer = goalImpactAnalyzer;
 
+  static const engineVersion = 'commitments-rule-v1';
+
   final ForecastAnalyzer _forecastAnalyzer;
   final CalendarAnalyzer _calendarAnalyzer;
   final CashFlowAnalyzer _cashFlowAnalyzer;

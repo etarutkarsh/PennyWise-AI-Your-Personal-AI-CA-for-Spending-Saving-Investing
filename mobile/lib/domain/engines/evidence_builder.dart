@@ -19,6 +19,7 @@ import '../value_objects/ids.dart';
 /// Today: [StubEvidenceBuilder] returns minimal evidence from [MatchingContext].
 /// Phase 6: [GraphBackedEvidenceBuilder] queries the PostgreSQL knowledge graph.
 abstract class EvidenceBuilder {
+  String get engineVersion;
   /// Build evidence items for the given decision context.
   ///
   /// [userId] — the user for whom evidence is assembled.

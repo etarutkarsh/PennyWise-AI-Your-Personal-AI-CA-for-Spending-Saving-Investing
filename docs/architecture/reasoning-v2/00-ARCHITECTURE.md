@@ -4,7 +4,8 @@
 **Authored:** 2026-08-05  
 **Supersedes:** `RuleBasedFinancialReasoningEngine` (v1) single-pass axis scorer  
 **Implements:** Phase 9–12 Intelligence Roadmap — Decision Engine v3  
-**Component specs:** `01-decision-policy-engine.md` through `07-financial-constitution.md`
+**Component specs:** `01-decision-policy-engine.md` through `09-decision-kpis.md`  
+**Pre-11A additions:** `08-reasoning-memory.md` (ReasoningMemory chain-of-reasoning storage), `09-decision-kpis.md` (engine observability KPIs) — delivered in Sprint 11H
 
 ---
 
@@ -37,17 +38,19 @@ PennyWise Financial Reasoning Engine v2 replaces the single-pass, static-weight 
 
 The v1 engine answers "How confident are we about this recommendation?" It cannot answer "Out of all possible financial actions, which produces the most value for this specific person today — and how do we know we chose correctly?" This gap produces four observable failure modes: (1) it cannot return ranked alternatives, (2) it cannot explain what it considered and rejected, (3) it does not enforce prerequisite ordering fiduciarily, and (4) it applies the same axis weights to a 22-year-old student and a 55-year-old pre-retiree.
 
-### The Seven Components and Their Theses
+### The Nine Components and Their Theses
 
-| # | Component | One-Sentence Thesis |
-|---|-----------|---------------------|
-| 1 | **Decision Policy Engine** | Replaces static axis weights with a `DecisionPolicy` selected per user archetype and financial maturity state, making weights explainable and evolvable. |
-| 2 | **Belief Engine** | Inserts a named, confidence-tagged interpretation layer between raw `FinancialFacts` and the decision engines, eliminating redundant threshold logic and enabling semantic explainability. |
-| 3 | **Decision Candidate Generator** | Enumerates all 27 financially applicable actions before scoring begins, enabling prerequisite pruning, ranked portfolios, and "why not that?" explainability. |
-| 4 | **Utility Engine** | Scores each candidate against a personalized preference model (loss aversion, present bias, behavioral resistance, regret, complexity) rather than population averages. |
-| 5 | **Counterfactual Engine** | Projects each surviving candidate forward in time with five scenario types, converting abstract recommendations into concrete rupee stakes ("₹12L less if you wait 6 months"). |
-| 6 | **Challenge Layer** | Runs six adversarial challenges against the top-ranked candidate before it exits the engine — the pipeline's internal devil's advocate. |
-| 7 | **Financial Constitution** | Enforces the user's inviolable financial rules as hard constraints applied before scoring, ensuring no constitutionally prohibited candidate ever reaches the user. |
+| #   | Component                        | Pipeline Step | One-Sentence Thesis                                                                                                                                                                                              |
+| --- | -------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **Decision Policy Engine**       | Step 1        | Replaces static axis weights with a `DecisionPolicy` selected per user archetype and financial maturity state, making weights explainable and evolvable.                                                         |
+| 2   | **Belief Engine**                | Step 2        | Inserts a named, confidence-tagged interpretation layer between raw `FinancialFacts` and the decision engines, eliminating redundant threshold logic and enabling semantic explainability.                       |
+| 3   | **Decision Candidate Generator** | Step 3        | Enumerates all 27 financially applicable actions before scoring begins, enabling prerequisite pruning, ranked portfolios, and "why not that?" explainability.                                                    |
+| 4   | **Financial Constitution**       | Step 4        | Enforces inviolable financial rules as hard constraints applied **before** utility scoring, ensuring no constitutionally prohibited candidate is ever scored.                                                    |
+| 5   | **Utility Engine**               | Step 5        | Scores each constitution-permissible candidate against a personalized preference model (loss aversion, present bias, behavioral resistance, regret, complexity) rather than population averages.                 |
+| 6   | **Counterfactual Engine**        | Step 6        | Projects each surviving candidate forward in time with five scenario types, converting abstract recommendations into concrete rupee stakes ("₹12L less if you wait 6 months").                                   |
+| 7   | **Challenge Layer**              | Step 7        | Runs six adversarial challenges against the top-ranked candidate before it exits the engine — the pipeline's internal devil's advocate.                                                                          |
+| 8   | **Reasoning Memory**             | Side-output   | Stores the full chain of reasoning per pipeline execution — beliefs activated, candidates generated and rejected, utility breakdowns, challenge results — for explainability, ML training, and regulatory audit. |
+| 9   | **Decision KPIs**                | Post-pipeline | Aggregates per-recommendation outcomes into windowed engine observability metrics, measuring whether the pipeline is producing financial improvement at the population level.                                    |
 
 ### What v2 Enables That v1 Cannot
 
@@ -56,6 +59,8 @@ The v1 engine answers "How confident are we about this recommendation?" It canno
 - Constitution enforcement: "This recommendation conflicts with your rule: Never reduce emergency fund below 12 months"
 - Differentiated advice: a freelancer in Survive state and a salaried professional in Optimize state receive structurally different recommendations from the same income level
 - Full explainability of what was considered and rejected — with reasons
+- Complete reasoning chain stored per decision: every belief activated, every candidate scored, every challenge verdict — for user explainability, ML training, and regulatory audit
+- Engine observability: aggregated KPIs measure whether the pipeline is producing real financial improvement at the population level
 
 ---
 
@@ -169,18 +174,18 @@ The pipeline is synchronous, pure-functional, and has no I/O. All inputs arrive 
 
 ### Step-by-Step Reference Table
 
-| Step | Name | Input | Output Domain Type | Component Doc |
-|------|------|-------|--------------------|---------------|
-| 1 | PolicySelector | `FinancialReasoningContext` (`facts`, `behavior`, `userArchetype`) | `DecisionPolicy` (`AxisWeightProfile` + `PolicyThresholds` + evolution rules) | `01-decision-policy-engine.md` |
-| 2 | BeliefInferenceEngine | `FinancialFacts`, `BehaviorInterpretation?`, `List<GoalSnapshot>`, `DataConfidenceReport` | `BeliefSet` (26 named beliefs, 7 categories, each with confidence + evidence) | `02-belief-engine.md` |
-| 3 | CandidateGenerator | `FinancialReasoningContext` (facts + goals + learning) | `CandidateSet` (viable `List<DecisionCandidate>` pyramid-sorted + pruned list with rejection reasons) | `03-decision-candidate-generator.md` |
-| 4 | ConstitutionChecker | `CandidateSet.viable`, `FinancialConstitution` | `permissibleCandidates` (hard violations removed), `List<ConstitutionViolation>` for audit | `07-financial-constitution.md` |
-| 5 | UtilityEngine | `permissibleCandidates`, `FinancialReasoningContext`, `DecisionConfidenceReport`, `UtilityModel` | `UtilityScore` per candidate; `ScoredCandidateSet` ranked by `rankingScore = netUtility × min(1, compoundConf/0.20)` | `04-utility-engine.md` |
-| 6 | CounterfactualEngine | Top 3 scored candidates, `FinancialFacts`, `List<GoalSnapshot>` | `CounterfactualSet` per candidate (action + delay + magnitude + shock + commitment scenarios) | `05-counterfactual-engine.md` |
-| 7 | ChallengeLayer | Top candidate + `FinancialReasoningContext` + `FinancialPolicy` + `DecisionConfidenceReport` | `ChallengeLayerResult` (6 `ChallengeResult` objects; `finalCandidate`; `totalConfidenceDelta`) | `06-challenge-layer.md` |
-| 8 | ConfidenceAggregator | All prior step outputs | `ConfidenceGraph` (multi-dimensional confidence breakdown — data, reasoning, behavioral, historical, challenge-adjusted) | This document |
-| 9 | ExplainabilityEngine | `ConfidenceGraph`, `BeliefSet`, `UtilityScore`, `CounterfactualSet`, `ChallengeLayerResult` | `ExplanationData` (because[], evidence[], alternatives[], limitations[], confidence drivers) | Extended from v1 |
-| 10 | RecommendationPortfolio | All above | `RecommendationPortfolio` → assembled into `DecisionResponse` v2 | This document |
+| Step | Name                    | Input                                                                                            | Output Domain Type                                                                                                       | Component Doc                        |
+| ---- | ----------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
+| 1    | PolicySelector          | `FinancialReasoningContext` (`facts`, `behavior`, `userArchetype`)                               | `DecisionPolicy` (`AxisWeightProfile` + `PolicyThresholds` + evolution rules)                                            | `01-decision-policy-engine.md`       |
+| 2    | BeliefInferenceEngine   | `FinancialFacts`, `BehaviorInterpretation?`, `List<GoalSnapshot>`, `DataConfidenceReport`        | `BeliefSet` (26 named beliefs, 7 categories, each with confidence + evidence)                                            | `02-belief-engine.md`                |
+| 3    | CandidateGenerator      | `FinancialReasoningContext` (facts + goals + learning)                                           | `CandidateSet` (viable `List<DecisionCandidate>` pyramid-sorted + pruned list with rejection reasons)                    | `03-decision-candidate-generator.md` |
+| 4    | ConstitutionChecker     | `CandidateSet.viable`, `FinancialConstitution`                                                   | `permissibleCandidates` (hard violations removed), `List<ConstitutionViolation>` for audit                               | `07-financial-constitution.md`       |
+| 5    | UtilityEngine           | `permissibleCandidates`, `FinancialReasoningContext`, `DecisionConfidenceReport`, `UtilityModel` | `UtilityScore` per candidate; `ScoredCandidateSet` ranked by `rankingScore = netUtility × min(1, compoundConf/0.20)`     | `04-utility-engine.md`               |
+| 6    | CounterfactualEngine    | Top 3 scored candidates, `FinancialFacts`, `List<GoalSnapshot>`                                  | `CounterfactualSet` per candidate (action + delay + magnitude + shock + commitment scenarios)                            | `05-counterfactual-engine.md`        |
+| 7    | ChallengeLayer          | Top candidate + `FinancialReasoningContext` + `FinancialPolicy` + `DecisionConfidenceReport`     | `ChallengeLayerResult` (6 `ChallengeResult` objects; `finalCandidate`; `totalConfidenceDelta`)                           | `06-challenge-layer.md`              |
+| 8    | ConfidenceAggregator    | All prior step outputs                                                                           | `ConfidenceGraph` (multi-dimensional confidence breakdown — data, reasoning, behavioral, historical, challenge-adjusted) | This document                        |
+| 9    | ExplainabilityEngine    | `ConfidenceGraph`, `BeliefSet`, `UtilityScore`, `CounterfactualSet`, `ChallengeLayerResult`      | `ExplanationData` (because[], evidence[], alternatives[], limitations[], confidence drivers)                             | Extended from v1                     |
+| 10   | RecommendationPortfolio | All above                                                                                        | `RecommendationPortfolio` → assembled into `DecisionResponse` v2                                                         | This document                        |
 
 ---
 
@@ -191,6 +196,7 @@ The pipeline is synchronous, pure-functional, and has no I/O. All inputs arrive 
 **Package:** `mobile/lib/domain/reasoning/policy/`
 
 #### `DecisionPolicy`
+
 ```
 id:                 PolicyId        — e.g., "freelancer_survive_v1"
 name:               String          — "Freelancer — Survive"
@@ -204,10 +210,12 @@ selectionReason:    String
 schemaVersion:      String
 effectiveAt:        DateTime
 ```
+
 - **Invariants:** `weights.sum == 1.0 ± 0.001`; no weight < 0.02 or > 0.55; `evolutionRules` non-empty.
 - **Pipeline:** Produced at Step 1 (PolicySelector), consumed at Steps 2–5 (axis analyzers read `thresholds`; utility engine reads `weights`).
 
 #### `AxisWeightProfile`
+
 ```
 cashFlow:         double  — 0.02–0.55
 liquidity:        double
@@ -216,10 +224,12 @@ behavior:         double
 taxes:            double
 opportunityCost:  double
 ```
+
 - **Invariants:** All six sum to 1.0. Covers only the 6 decision axes — `dataConfidence` and `historicalAccuracy` are structural multipliers, never weighted.
 - **Pipeline:** Produced inside `DecisionPolicy` at Step 1; applied at Step 5 (UtilityEngine ranking weights).
 
 #### `PolicyThresholds`
+
 ```
 emergencyFundTargetMonths:   double  — 3.0 (student) to 24.0 (retired)
 minSavingsRate:              double
@@ -229,19 +239,23 @@ taxEfficiencyTarget:         double
 minOpportunityCostRate:      double
 behaviorMinimumConsistency:  double
 ```
+
 - **Pipeline:** Consumed at Step 2 (axis analyzers score against these thresholds, not hardcoded constants) and Step 7 (Challenge triggers use `safeDebtRatio`, `emergencyFundTargetMonths`).
 
 #### `UserArchetype` (enum)
+
 ```
 student | youngProfessional | salariedWithFamily | freelancer | businessOwner | preRetiree | retiree
 ```
 
 #### `LifecycleStage` (enum)
+
 ```
 foundation(18–30) | growth(30–45) | peak(45–55) | preRetirement(55–60) | retirement(60+)
 ```
 
 #### `PolicyEvolutionRule`
+
 ```
 triggerId:       String
 fromPolicy:      PolicyId
@@ -251,9 +265,11 @@ evaluationMode:  AllConditions | AnyCondition
 sustainDuration: Duration?              — 30 days for forward, 7 days for protective downgrade
 graduationLabel: String
 ```
+
 - **Pipeline:** Evaluated by `PolicyEvolutionEngine` (application layer use case) after each reasoning cycle.
 
 #### `PolicyModifier` (behavioral overlay)
+
 ```
 id:                ModifierId
 name:              String
@@ -261,9 +277,11 @@ weightDeltas:      Map<DecisionAxis, double>   — deltas sum to zero
 thresholdOverrides: Map<String, double>
 condition:         String
 ```
+
 - **Invariant:** `weightDeltas` values sum to zero (preserving weight pool total = 1.0).
 
 #### `PolicyStateRecord` (persisted via infrastructure)
+
 ```
 userId:           UserId
 activePolicyId:   PolicyId
@@ -279,9 +297,11 @@ overrideActive:   bool
 **Package:** `mobile/lib/domain/reasoning/beliefs/`
 
 #### `FinancialBeliefType` (enum — 26 values)
+
 Seven categories: Liquidity (5), Debt (5), Investment (5), Insurance (5), Behavioral (5), Life Stage (5), plus per-goal beliefs via `GoalBeliefType`.
 
 #### `FinancialBelief`
+
 ```
 type:                  FinancialBeliefType
 category:              BeliefCategory
@@ -297,10 +317,12 @@ expiresAt:             DateTime   — derivedAt + 24h (SMS/AA connected) or 72h 
 inferenceRuleId:       String     — e.g., "LQ-001"
 engineVersion:         String
 ```
+
 - **Computed:** `effectiveConfidence = confidence × decayFactor` (−0.10/day after 36h, floor 0.20); `isActionable = confidence >= 0.50 && !isExpired`.
 - **Pipeline:** Produced at Step 2 (BeliefInferenceEngine); consumed at Steps 3 (CandidateGenerator uses beliefs for applicability), 5 (UtilityEngine), 6 (CounterfactualEngine context), 9 (ExplainabilityEngine uses `supportingEvidence.narrative`).
 
 #### `BeliefEvidenceItem`
+
 ```
 factKey:   FinancialFactKey
 observed:  String    — "2.1 months"
@@ -310,6 +332,7 @@ direction: BeliefEvidenceDirection   — supporting | contradicting
 ```
 
 #### `GoalBelief`
+
 ```
 goalId:                       GoalId
 type:                         GoalBeliefType
@@ -321,6 +344,7 @@ fundingRatio:                 double   — actual / required
 ```
 
 #### `BeliefSet`
+
 ```
 userId:            UserId
 liquidity:         FinancialBelief?
@@ -334,10 +358,12 @@ allBeliefs:        List<FinancialBelief>
 computedAt:        DateTime
 overallConfidence: double   — bounded by DataConfidenceReport.recommendationConfidenceCap
 ```
+
 - **Invariants:** No two beliefs with same `type`; `lifeStage` derived after all others; `overallConfidence ≤ recommendationConfidenceCap`; `BeliefSet.empty()` always safe to consume.
 - **Pipeline:** Produced at Step 2; attached to `FinancialReasoningContext.beliefs`; consumed at Steps 3, 5, 6, 9.
 
 #### `BeliefInferenceRule`
+
 ```
 ruleId:         String   — e.g., "LQ-001"
 targetBelief:   FinancialBeliefType
@@ -354,6 +380,7 @@ thresholdBasis: String   — references FinancialPolicy constant
 **Package:** `mobile/lib/domain/reasoning/candidates/`
 
 #### `ActionType` (enum — 27 values)
+
 ```
 Liquidity (4):    buildEmergencyFund, increaseShortTermSavings,
                   reduceFixedCommitments, startRecurringDeposit
@@ -376,6 +403,7 @@ Goal (4):         createGoal, increaseGoalContribution,
 ```
 
 #### `DecisionCandidate`
+
 ```
 actionType:             ActionType
 family:                 ActionFamily
@@ -395,10 +423,12 @@ rejectionReason:        String?        — non-null only for pruned candidates
 estimatedGoalAcceleration: int?
 annualTaxSaving:        double?
 ```
+
 - **Invariants:** `rejectionReason` non-empty on all pruned candidates; Layer 3 candidates absent when any Layer 1 is critical; no duplicate `ActionType` in `viable`.
 - **Pipeline:** Produced at Step 3; hard-violation candidates removed at Step 4; scored at Step 5; projected at Step 6; top candidate challenged at Step 7.
 
 #### `CandidateMagnitude`
+
 ```
 monthlyAmount:  double?
 targetAmount:   double?
@@ -407,6 +437,7 @@ basis:          MagnitudeBasis   — surplusBased | gapBased | formulaBased | ru
 ```
 
 #### `CandidateSet`
+
 ```
 viable:              List<DecisionCandidate>   — passed eligibility, pyramid-sorted
 pruned:              List<DecisionCandidate>   — rejected with rejectionReason
@@ -414,6 +445,7 @@ generatedAt:         DateTime
 generatorVersion:    String
 dataCompleteness:    double   — from FinancialFacts.completeness
 ```
+
 - **Invariant:** `viable.length >= 2` always (fallback to ruleOfThumb defaults if needed).
 
 ---
@@ -423,6 +455,7 @@ dataCompleteness:    double   — from FinancialFacts.completeness
 **Package:** `mobile/lib/domain/reasoning/utility/`
 
 #### `UtilityModel`
+
 ```
 userId:                      UserId
 lossAversionCoefficient:     double   — λ, Indian prior 2.5, range 1.0–4.0
@@ -437,10 +470,12 @@ archetype:                   UtilityArchetype
 calibrationSource:           UtilityCalibrationSource   — QUESTIONNAIRE | INFERRED | LEARNED
 learningRate:                double   — default 0.15, decreases as LearningSnapshot.maturity increases
 ```
+
 - **5 archetypes:** GrowthMaximizer, LossAvoider, LiquidityPreserver, TaxOptimizer, BalancedGrowth.
 - **Pipeline:** Consumed at Step 5; parameters updated by DecisionLearningEngine after each completed cycle.
 
 #### `UtilityScore`
+
 ```
 candidateId:                  String
 netUtility:                   double   — ∈ [−1.0, 1.0], after calibrationConfidence adjustment
@@ -462,6 +497,7 @@ sensitivityToLossAversion:    double
 stateModifierApplied:         bool
 stateModifierReason:          String?
 ```
+
 - **Pipeline:** Produced at Step 5 for each permissible candidate; used at Step 8 (ConfidenceAggregator) and Step 9 (ExplainabilityEngine).
 
 ---
@@ -471,11 +507,13 @@ stateModifierReason:          String?
 **Package:** `mobile/lib/domain/simulation/`
 
 #### `CounterfactualType` (enum)
+
 ```
 ACTION | DELAY | MAGNITUDE | SHOCK | COMMITMENT
 ```
 
 #### `ProjectionPoint`
+
 ```
 month:               int      — 0 = today
 value:               double   — INR corpus / EF balance at this month
@@ -484,6 +522,7 @@ event:               String?  — "SIP target reached"
 ```
 
 #### `ScenarioProjection`
+
 ```
 points:      List<ProjectionPoint>
 finalValue:  double
@@ -494,6 +533,7 @@ confidence:  double  — see 4-factor confidence model in Section 8
 ```
 
 #### `CounterfactualDelta`
+
 ```
 rupees:     double   — alternativeProjection.finalValue − baselineProjection.finalValue
 months:     int?     — for goal timeline comparisons
@@ -503,6 +543,7 @@ label:      String           — "₹12L less" / "3 months sooner"
 ```
 
 #### `CounterfactualScenario`
+
 ```
 id:                     String
 type:                   CounterfactualType
@@ -519,6 +560,7 @@ generatedAt:            DateTime
 ```
 
 #### `CounterfactualPair`
+
 ```
 baseline:     CounterfactualScenario
 alternative:  CounterfactualScenario
@@ -527,6 +569,7 @@ callToAction: String
 ```
 
 #### `CounterfactualSet`
+
 ```
 decisionId:                  String
 actionCounterfactual:        CounterfactualPair?
@@ -536,6 +579,7 @@ shockCounterfactuals:        List<CounterfactualPair>   — INCOME_DROP_20/30/50
 commitmentCounterfactuals:   List<CounterfactualPair>
 overallConfidence:           double
 ```
+
 - **Invariants:** `baseline` always represents current trajectory (accept today); `delta.rupees = alt.finalValue − base.finalValue`; `confidence ≤ parent FinancialFacts.overallConfidence`; `assumptions` non-empty.
 - **Pipeline:** Produced at Step 6 for top 3 candidates; narration consumed at Step 9 (ExplainabilityEngine); `CounterfactualPair` surfaces in `RankedRecommendation`.
 
@@ -546,16 +590,19 @@ overallConfidence:           double
 **Package:** `mobile/lib/domain/reasoning/challenge/`
 
 #### `ChallengeType` (enum)
+
 ```
 liquidity | debt | behavior | tax | timing | risk
 ```
 
 #### `ChallengeOutcome` (enum)
+
 ```
 confirmed | replaced | modified
 ```
 
 #### `ChallengeResult`
+
 ```
 challenger:           ChallengeType
 outcome:              ChallengeOutcome
@@ -567,6 +614,7 @@ evidence:             List<String>
 ```
 
 #### `ChallengeLayerResult`
+
 ```
 originalCandidate:  DecisionType
 finalCandidate:     DecisionType
@@ -576,6 +624,7 @@ totalConfidenceDelta: double   — sum of all confidenceDeltas
 activeResults:      List<ChallengeResult>   — non-confirmed results
 challengeReasons:   List<String>
 ```
+
 - **Invariants:** Always 6 results; at most 1 replacement accepted (priority: Liquidity > Debt > Risk > Behavior > Tax > Timing); replacement requires demonstrated utility differential; `totalConfidenceDelta ≤ 0.05`; all results recorded regardless of outcome.
 - **Pipeline:** Produced at Step 7; `totalConfidenceDelta` applied at Step 8; `challengeReasons` surfaced in `ExplanationData.alternatives[]` at Step 9.
 
@@ -586,22 +635,26 @@ challengeReasons:   List<String>
 **Package:** `mobile/lib/domain/reasoning/constitution/`
 
 #### `ConstitutionLevel` (enum)
+
 ```
 system | user | goal
 ```
 
 #### `RuleCategory` (enum)
+
 ```
 ethicalScreen | safetyFloor | assetProtection | debtConstraint | quantitativeCeiling | custom
 ```
 
 #### `ViolationSeverity` (enum)
+
 ```
 hard   — candidate eliminated from pipeline
 soft   — warning added to Explanation.limitations[]
 ```
 
 #### `ConstitutionRule`
+
 ```
 ruleId:             String   — ULID
 level:              ConstitutionLevel
@@ -617,6 +670,7 @@ isActive:           bool
 ```
 
 #### `ConstitutionViolation`
+
 ```
 rule:               ConstitutionRule
 violatingCandidate: String
@@ -626,20 +680,24 @@ detectedAt:         DateTime
 ```
 
 #### `FinancialConstitution`
+
 ```
 userId:   String
 rules:    List<ConstitutionRule>
 ```
+
 - **Accessors:** `systemRules`, `userRules`, `rulesForGoal(goalId)`, `hardRules`, `softRules`.
 - **Pipeline:** Loaded into `FinancialReasoningContext.constitution` before Step 1; consumed at Step 4 (candidate pruning); consumed again at Step 9 (partner program constitution check).
 
 #### `ConstitutionCheckResult`
+
 ```
 candidate:      DecisionType
 isPermissible:  bool   — false if any hard violation
 violations:     List<ConstitutionViolation>
 warningMessages: List<String>   — from soft violations, for Explanation.limitations[]
 ```
+
 - **Invariants:** `reviewPastDecision` always passes all system rules; system rules always apply even when `constitution` is null; hard-violated candidates never receive utility scores; all violations audited in `DecisionAudit.constitutionViolations[]`.
 
 ---
@@ -649,6 +707,7 @@ warningMessages: List<String>   — from soft violations, for Explanation.limita
 **Package:** `mobile/lib/domain/reasoning/output/`
 
 #### `ConfidenceGraph`
+
 ```
 dataConfidenceFactor:          double   — from DataConfidenceReport.recommendationConfidenceCap
 decisionConfidenceFactor:      double   — weighted avg of 6 decision axis scores (v1 preserved)
@@ -669,6 +728,7 @@ constitutionStatement:         String   — "All 8 system rules passed. 0 user r
 ```
 
 #### `RankedRecommendation`
+
 ```
 rank:               int                 — 1 = primary
 candidate:          DecisionCandidate
@@ -679,6 +739,7 @@ challengeResult:    ChallengeLayerResult? — only for rank 1
 ```
 
 #### `RecommendationPortfolio`
+
 ```
 primary:                  RankedRecommendation   — rank 1, fully hydrated
 alternatives:             List<RankedRecommendation>   — ranks 2–4, condensed
@@ -734,12 +795,12 @@ class FinancialReasoningContext {
 
 ### What Is New vs v1
 
-| Field | v1 | v2 Status | Effect When Null |
-|-------|----|-----------|----|
-| `policy` | Not present | Optional → Required in Sprint 11C | Fallback to `DecisionAxis.weight` static constants |
-| `beliefs` | Not present | Optional | Engines use v1 threshold logic directly on `FinancialFacts` |
-| `constitution` | Not present | Optional | Only system rules (`SYS-001` through `SYS-008`) applied |
-| All other fields | Present | Unchanged | — |
+| Field            | v1          | v2 Status                         | Effect When Null                                            |
+| ---------------- | ----------- | --------------------------------- | ----------------------------------------------------------- |
+| `policy`         | Not present | Optional → Required in Sprint 11C | Fallback to `DecisionAxis.weight` static constants          |
+| `beliefs`        | Not present | Optional                          | Engines use v1 threshold logic directly on `FinancialFacts` |
+| `constitution`   | Not present | Optional                          | Only system rules (`SYS-001` through `SYS-008`) applied     |
+| All other fields | Present     | Unchanged                         | —                                                           |
 
 The null-safety design means that a v1 call site that constructs `FinancialReasoningContext` without the new fields compiles and behaves identically to v1. No existing use case, widget, or test breaks at Sprint 11A entry.
 
@@ -841,6 +902,7 @@ COMPOSITE CONTEXTS (read from multiple pure contexts):
 All interfaces live in `mobile/lib/domain/engines/` and follow the canonical PennyWise architecture invariant: domain interfaces, infrastructure implementations.
 
 ### 6.1 PolicySelector
+
 ```
 interface PolicySelector {
   // Selects the appropriate DecisionPolicy for this user context.
@@ -862,6 +924,7 @@ interface PolicySelector {
 ```
 
 ### 6.2 BeliefInferenceEngine
+
 ```
 interface BeliefInferenceEngine {
   // Infers named financial beliefs from raw facts and behavioral signals.
@@ -884,6 +947,7 @@ interface BeliefInferenceEngine {
 ```
 
 ### 6.3 CandidateGenerator
+
 ```
 interface CandidateGenerator {
   // Generates all applicable decision candidates and prunes ineligible ones.
@@ -900,6 +964,7 @@ interface CandidateGenerator {
 ```
 
 ### 6.4 ConstitutionChecker
+
 ```
 interface ConstitutionChecker {
   // Evaluates all active constitution rules against each candidate.
@@ -920,6 +985,7 @@ interface ConstitutionChecker {
 ```
 
 ### 6.5 UtilityEngine
+
 ```
 interface UtilityEngine {
   // Scores each permissible candidate with personalized utility formula:
@@ -942,6 +1008,7 @@ interface UtilityEngine {
 ```
 
 ### 6.6 CounterfactualEngine
+
 ```
 interface CounterfactualEngine {
   // Generates projection scenarios for each candidate.
@@ -965,6 +1032,7 @@ interface CounterfactualEngine {
 ```
 
 ### 6.7 ChallengeLayer
+
 ```
 interface ChallengeLayer {
   // Runs 6 adversarial challenges against the top-ranked candidate.
@@ -986,6 +1054,7 @@ interface ChallengeLayer {
 ```
 
 ### 6.8 ConfidenceAggregator
+
 ```
 interface ConfidenceAggregator {
   // Synthesizes all pipeline stage outputs into a single ConfidenceGraph.
@@ -1016,22 +1085,27 @@ interface ConfidenceAggregator {
 These invariants span ALL components. Any implementation violating them is incorrect regardless of individual component correctness.
 
 ### I-1: Pipeline Always Produces at Least One Recommendation
+
 ```
 assert(portfolio.primary != null,
   'RecommendationPortfolio must always have a primary recommendation. '
   'Fallback: reviewPastDecision is constitutionally permissible under all system rules.')
 ```
+
 When all candidates are constitution-blocked: emit `reviewPastDecision`. When all candidates have negative utility: emit "stay the course" recommendation. The pipeline never returns empty.
 
 ### I-2: Every Primary Recommendation Has a Counterfactual
+
 ```
 assert(portfolio.primary.counterfactualSet != null,
   'Primary recommendation must have a CounterfactualSet. '
   'Minimum viable: one ACTION type scenario with confidence >= 0.30.')
 ```
+
 A recommendation without a counterfactual cannot fulfill the behavioral mission ("tell them what will be true depending on what they do next").
 
 ### I-3: Constitution Violations Never Reach the User
+
 ```
 assert(
   portfolio.primary.candidate.rejectionReason == null,
@@ -1043,6 +1117,7 @@ assert(
 ```
 
 ### I-4: Confidence Never Exceeds the Data Cap
+
 ```
 assert(
   confidenceGraph.compoundConfidence <=
@@ -1055,6 +1130,7 @@ assert(
 ```
 
 ### I-5: No Component Performs I/O
+
 ```
 // All 8 engines (PolicySelector, BeliefInferenceEngine, CandidateGenerator,
 // ConstitutionChecker, UtilityEngine, CounterfactualEngine, ChallengeLayer,
@@ -1068,9 +1144,11 @@ assert(
 ```
 
 ### I-6: All Pipeline Steps Are Synchronous and Pure
+
 The entire pipeline from Step 1 (PolicySelector) to Step 10 (RecommendationPortfolio assembly) executes synchronously. Any future async requirement (e.g., Monte Carlo in Phase 11) must be wrapped at the use case layer — not introduced into engine interfaces.
 
 ### I-7: Axis Weights Always Sum to 1.0
+
 ```
 assert(
   (policy.weights.cashFlow + policy.weights.liquidity + policy.weights.goalImpact +
@@ -1080,18 +1158,23 @@ assert(
 ```
 
 ### I-8: No Single Axis Weight Below 0.02 or Above 0.55
+
 Prevents both degenerate single-axis collapse and effectively silenced axes that lose explainability.
 
 ### I-9: CandidateSet.viable Always Has >= 2 Entries
+
 Ensures the pipeline always has at least two ranked alternatives, preserving the portfolio contract.
 
 ### I-10: UtilityScore.utilityNarrative Is Always Non-Null
+
 A recommendation without a human-readable utility explanation violates Trust Law 1 (Explainability Before Action).
 
 ### I-11: Challenge Layer Runs Exactly 6 Challenges
+
 `ChallengeLayerResult.results.length == 6` always. Confirmed results are included — they are evidence the recommendation survived scrutiny.
 
 ### I-12: Retirement Policy Overrides All User Selections
+
 When `ageYears >= 60` or `lifecycleStage == retirement`: `RetiredPolicy` is selected regardless of user profile, declared archetype, or manual override.
 
 ---
@@ -1118,6 +1201,7 @@ A belief derived from a fact with confidence 0.35 (limited transaction history) 
 ### Layer 2: Belief → Candidate Applicability Confidence
 
 Candidates carry `magnitudeConfidence` derived from the confidence of the facts they depend on:
+
 ```
 magnitudeConfidence = min(requiredFact_1.confidence, requiredFact_2.confidence, ...)
 ```
@@ -1144,6 +1228,7 @@ finalUtility = rawUtility × calibrationConfidence (clamped to [-1.0, 1.0])
 ### Layer 4: Counterfactual Confidence
 
 Four-factor model:
+
 ```
 scenarioConfidence = dataCoverage × assumptionStability × horizonPenalty × behaviorPrior
 
@@ -1318,6 +1403,7 @@ The migration is strictly additive. No existing behavior changes until explicitl
 ### Phase A — Add Domain Types (Sprint 11A)
 
 **What changes:**
+
 - All new domain types added to `mobile/lib/domain/reasoning/` sub-packages (policy, beliefs, candidates, utility, constitution, output)
 - `FinancialReasoningContext` gains `policy?`, `beliefs?`, `constitution?` as nullable fields
 - `BeliefSet.empty()`, `DecisionPolicy.default()`, `FinancialConstitution.systemOnly()` factory constructors ensure null-safe consumption
@@ -1325,6 +1411,7 @@ The migration is strictly additive. No existing behavior changes until explicitl
 - New test suites for all domain invariants
 
 **What does NOT change:**
+
 - `RuleBasedFinancialReasoningEngine` — zero modification
 - `DecisionAxis.weight` static constants — kept as fallback
 - All use cases, widgets, DI registrations
@@ -1337,6 +1424,7 @@ The migration is strictly additive. No existing behavior changes until explicitl
 ### Phase B — Shadow Mode (Sprint 11B–11D)
 
 **What changes:**
+
 - `BeliefInferenceEngine` runs on every `GetDashboardFeedUseCase` call but output is logged only
 - `PolicyAwareReasoningEngine` created — reads from `ctx.policy.weights` when `policy != null`, falls back to `DecisionAxis.weight` when null
 - `CandidateGenerator` runs in parallel — output observable in debug logs
@@ -1344,6 +1432,7 @@ The migration is strictly additive. No existing behavior changes until explicitl
 - DI: `sl.registerLazySingleton<FinancialReasoningEngine>(() => PolicyAwareReasoningEngine(...))`
 
 **What does NOT change:**
+
 - Recommendation selection — still uses v1 axis-score ranking
 - All widget behavior unchanged
 - `DecisionAxis.weight` still provides fallback weights
@@ -1355,6 +1444,7 @@ The migration is strictly additive. No existing behavior changes until explicitl
 ### Phase C — v2 Ranking Active (Sprint 11E–11G)
 
 **What changes:**
+
 - Ranking signal becomes `rankingScore = netUtility × min(1, compoundConf/0.20)` when `utilityEngineOverrideEnabled = true` (feature flag)
 - `FinancialReasoningContext.policy` becomes required (non-nullable)
 - `ConstitutionChecker` active — hard-violation candidates removed before scoring
@@ -1363,6 +1453,7 @@ The migration is strictly additive. No existing behavior changes until explicitl
 - `DecisionConfidenceReport` gains `policyId`, `policyLabel`, `policyReason` fields
 
 **What does NOT change:**
+
 - `RuleBasedFinancialReasoningEngine` available via feature flag as fallback
 - `DecisionAxis.weight` deprecated (`@Deprecated`) but not yet removed
 
@@ -1373,12 +1464,14 @@ The migration is strictly additive. No existing behavior changes until explicitl
 ### Phase D — A/B Test v2 on Percentage of Users (Sprint 11H+)
 
 **What changes:**
+
 - v2 engine is the default path
 - `RecommendationPortfolio` replaces single `Decision` in dashboard rendering
 - `BankProgramSlider` renamed to "Execution Options" sourced from `portfolio.primary`
 - `CandidatePortfolio.considered` populates explainability panel ("We also considered...")
 
 **What does NOT change:**
+
 - `DecisionResponse` envelope remains backward compatible (new fields are additive)
 - Java backend `DecisionResponse` unchanged — Flutter `TodayDecisionModel` parses both formats
 
@@ -1387,6 +1480,7 @@ The migration is strictly additive. No existing behavior changes until explicitl
 ### Phase E — v1 Deprecated, v2 Canonical (Post-Sprint 11H)
 
 **What changes:**
+
 - `DecisionAxis.weight` getter removed
 - `RuleBasedFinancialReasoningEngine` removed from production DI (retained in test utilities as reference)
 - `FinancialReasoningContext.policy` is non-nullable and required at all call sites
@@ -1395,20 +1489,22 @@ The migration is strictly additive. No existing behavior changes until explicitl
 
 ### Migration Compatibility Matrix
 
-| Component | Phase A | Phase B | Phase C | Phase D | Phase E |
-|-----------|---------|---------|---------|---------|---------|
-| `DecisionAxis.weight` | unchanged | unchanged | @Deprecated | @Deprecated | removed |
-| `RuleBasedFinancialReasoningEngine` | unchanged | available | fallback flag | fallback flag | removed |
-| `PolicyAwareReasoningEngine` | domain only | available, fallback | default | default | only option |
-| `BeliefInferenceEngine` | domain only | shadow logs | active | active | active |
-| `CandidateGenerator` | domain only | shadow logs | active | active | active |
-| `UtilityEngine` | domain only | shadow mode | ranking signal | primary | primary |
-| `ChallengeLayer` | domain only | domain only | flagged | active | active |
-| `ConstitutionChecker` | domain only | domain only | active | active | active |
-| `CounterfactualEngine` | domain only | domain only | top candidate | all top 3 | all top 3 |
-| `FinancialReasoningContext.policy` | not present | optional (null safe) | required | required | required |
-| `RecommendationPortfolio` | not present | not present | optional field | primary output | primary output |
-| `flutter analyze` errors | 0 | 0 | 0 | 0 | 0 |
+| Component                           | Phase A     | Phase B              | Phase C        | Phase D        | Phase E        |
+| ----------------------------------- | ----------- | -------------------- | -------------- | -------------- | -------------- |
+| `DecisionAxis.weight`               | unchanged   | unchanged            | @Deprecated    | @Deprecated    | removed        |
+| `RuleBasedFinancialReasoningEngine` | unchanged   | available            | fallback flag  | fallback flag  | removed        |
+| `PolicyAwareReasoningEngine`        | domain only | available, fallback  | default        | default        | only option    |
+| `BeliefInferenceEngine`             | domain only | shadow logs          | active         | active         | active         |
+| `CandidateGenerator`                | domain only | shadow logs          | active         | active         | active         |
+| `ConstitutionChecker`               | domain only | domain only          | active         | active         | active         |
+| `UtilityEngine`                     | domain only | shadow mode          | ranking signal | primary        | primary        |
+| `CounterfactualEngine`              | domain only | domain only          | top candidate  | all top 3      | all top 3      |
+| `ChallengeLayer`                    | domain only | domain only          | flagged        | active         | active         |
+| `FinancialReasoningContext.policy`  | not present | optional (null safe) | required       | required       | required       |
+| `RecommendationPortfolio`           | not present | not present          | optional field | primary output | primary output |
+| `ReasoningMemory`                   | not present | not present          | not present    | stored         | stored         |
+| `DecisionKPIs`                      | not present | not present          | not present    | computed       | computed       |
+| `flutter analyze` errors            | 0           | 0                    | 0              | 0              | 0              |
 
 ---
 
@@ -1423,6 +1519,7 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 **Prerequisite:** Architecture Milestone 07 complete (Sprint 7 decision learning loop done).
 
 **Deliverables:**
+
 - `mobile/lib/domain/reasoning/policy/decision_policy.dart` — `DecisionPolicy`, `AxisWeightProfile`, `PolicyThresholds`
 - `mobile/lib/domain/reasoning/policy/policy_evolution_rule.dart` — `PolicyEvolutionRule`, `PolicyCondition`, `PolicyModifier`
 - `mobile/lib/domain/reasoning/policy/policy_selector.dart` — `PolicySelector` (domain interface + rule-based implementation)
@@ -1434,6 +1531,7 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 - All 14 named policies configured with weight tables from `01-decision-policy-engine.md` Section 6
 
 **Acceptance criteria:**
+
 - All named policy weight tables sum to 1.0 (verified by golden test)
 - `PolicySelector.select()` returns `RetiredPolicy` for `ageYears >= 60` (invariant test)
 - `PolicySelector.select()` returns Survive-category policy when `emergencyFundMonths < 1.0` (invariant test)
@@ -1450,6 +1548,7 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 **Prerequisite:** Sprint 11A complete.
 
 **Deliverables:**
+
 - `mobile/lib/domain/reasoning/beliefs/financial_belief.dart` — `FinancialBelief`, `BeliefSet`, `GoalBelief`, `BeliefEvidenceItem`
 - `mobile/lib/domain/reasoning/beliefs/belief_inference_rule.dart` — `BeliefInferenceRule`, `BeliefInferenceResult`
 - `mobile/lib/domain/engines/belief_inference_engine.dart` — interface
@@ -1459,6 +1558,7 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 - Shadow mode: beliefs computed on every `GetDashboardFeedUseCase` call, logged but not consumed
 
 **Acceptance criteria:**
+
 - All 26 rule confidences respect the fact confidence cap invariant
 - `BeliefSet.empty()` consumed by any engine without null-pointer errors
 - `lifeStage` belief derived after all category beliefs (verified by execution order test)
@@ -1475,6 +1575,7 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 **Prerequisite:** Sprint 11B complete.
 
 **Deliverables:**
+
 - `mobile/lib/domain/reasoning/candidates/action_type.dart` — 27-value `ActionType` enum
 - `mobile/lib/domain/reasoning/candidates/decision_candidate.dart` — `DecisionCandidate`, `CandidateMagnitude`, `CandidateSet`
 - `mobile/lib/domain/reasoning/candidates/candidate_enums.dart` — `ActionFamily`, `RiskClass`, `BehaviorDifficulty`, `MagnitudeBasis`, `PrerequisiteBelief`
@@ -1484,6 +1585,7 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 - DI: `sl.registerLazySingleton<CandidateGenerator>(() => RuleBasedCandidateGenerator())`
 
 **Acceptance criteria:**
+
 - `CandidateSet.viable.length >= 2` for any valid `FinancialReasoningContext` (invariant test)
 - No duplicate `ActionType` in `viable` (invariant test)
 - Layer 3 candidates absent when Layer 1 critical (pyramid invariant test)
@@ -1495,87 +1597,14 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 
 ---
 
-### Sprint 11D — Utility Engine
+### Sprint 11D — Financial Constitution
 
 **Prerequisite:** Sprint 11C complete.
 
-**Deliverables:**
-- `mobile/lib/domain/reasoning/utility/utility_model.dart` — `UtilityModel`, `UtilityArchetype`
-- `mobile/lib/domain/reasoning/utility/utility_score.dart` — `UtilityScore`
-- `mobile/lib/domain/engines/utility_engine.dart` — interface
-- `mobile/lib/infrastructure/engines/rule_based_utility_engine.dart` — 7-term formula from `04-utility-engine.md` Section 3
-- `mobile/lib/infrastructure/engines/behavioral_resistance_calculator.dart` — 6-adjustment resistance model from Section 7
-- Shadow mode: utility scores computed on every `GetDashboardFeedUseCase` call; stored in decision record; do not influence ranking yet
-- Feature flag: `UTILITY_ENGINE_ENABLED` in `FinancialPolicy` (or feature flags config)
-
-**Acceptance criteria:**
-- `netUtility ∈ [-1.0, 1.0]` for all candidates (invariant test — worked example from Section 12 of `04-utility-engine.md`)
-- `calibrationConfidence <= 0.10` for new users with `learningMaturity == 0` (invariant test)
-- `utilityNarrative` always non-null (invariant test)
-- GrowthMaximizer archetype produces higher utility for equity SIP than LossAvoider for identical facts (archetype differentiation test)
-- `resistanceScore ∈ [0.05, 0.95]` (clamp invariant test)
-- `flutter analyze`: 0 errors
-
-**Estimated new files:** 5 domain files, 3 infrastructure files, 6 test files
-
----
-
-### Sprint 11E — Counterfactual Engine
-
-**Prerequisite:** Sprint 11D complete.
+**Rationale for placement:** The Financial Constitution runs at **pipeline Step 4** — immediately after candidate generation and before utility scoring. This is not cosmetic sequencing. It means: constitutionally excluded candidates are never scored, never counterfactually projected, and never challenged. The utility engine receives only permissible candidates. This matches the hard-constraint semantics of the constitution (see `07-financial-constitution.md` Section 2.2) and eliminates wasted computation on ineligible candidates. Sprint order must match pipeline step order.
 
 **Deliverables:**
-- `mobile/lib/domain/simulation/counterfactual_scenario.dart` — `CounterfactualScenario`, `CounterfactualPair`, `CounterfactualSet`, `CounterfactualType`, `CounterfactualDelta`, `DeltaDirection`
-- `mobile/lib/domain/simulation/scenario_projection.dart` — `ScenarioProjection`, `ProjectionPoint`
-- `mobile/lib/domain/simulation/shock_scenario.dart` — `ShockType` enum
-- `mobile/lib/domain/engines/counterfactual_engine.dart` — interface (extends existing `SimulationEngine`)
-- `mobile/lib/infrastructure/engines/simulation/deterministic_counterfactual_engine.dart` — v1 deterministic implementation (all 5 calculators)
-- `mobile/lib/infrastructure/engines/simulation/commitment_counterfactual_adapter.dart` — wraps existing `GoalImpactAnalyzer`
-- `mobile/lib/infrastructure/engines/simulation/narration_engine.dart` — loss-framing templates
-- `mobile/lib/application/simulation/generate_counterfactuals_use_case.dart`
-- DI registration
 
-**Acceptance criteria:**
-- SIP FV golden-value tests pass (7 test cases from `05-counterfactual-engine.md` Section 11.1)
-- `GoalImpactAnalyzer` compatibility: months output matches legacy output (regression test)
-- `CounterfactualScenario.confidence <= FinancialFacts.overallConfidence` (invariant test)
-- `CounterfactualPair.narration` never contains unfilled template variables (integration test)
-- Pipeline completes in < 50ms for all 12 scenario types (performance test)
-- `flutter analyze`: 0 errors
-
-**Estimated new files:** 8 domain files, 6 infrastructure files, 2 application files, 8 test files
-
----
-
-### Sprint 11F — Challenge Layer
-
-**Prerequisite:** Sprint 11E complete.
-
-**Deliverables:**
-- `mobile/lib/domain/reasoning/challenge/challenge_result.dart` — `ChallengeType`, `ChallengeOutcome`, `ChallengeResult`, `ChallengeLayerResult`
-- `mobile/lib/domain/engines/challenge_layer_engine.dart` — interface
-- `mobile/lib/infrastructure/engines/rule_based_challenge_layer_engine.dart` — 6 challenges from `06-challenge-layer.md` Section 6
-- Feature flag: `EngineFlag.challengeLayerEnabled` (default: false)
-- Wire into `FinancialReasoningEngine.reason()` after utility scoring, before Decision assembly
-
-**Acceptance criteria:**
-- Exactly 6 `ChallengeResult` objects always in `ChallengeLayerResult.results` (invariant test)
-- `LiquidityChallenge` fires and proposes `buildEmergencyFund` when `emergencyFundMonths < 1.0` and candidate != `buildEmergencyFund` (fiduciary test)
-- `TaxChallenge` fires in January–March when `taxEfficiency < 0.85` and candidate not tax-related (Q4 urgency test)
-- Priority resolution: when Liquidity and Debt both propose replacements, Liquidity wins (priority test)
-- `totalConfidenceDelta <= +0.05` (invariant test — tax challenge exception allowed)
-- All 6 results visible in `ExplanationData.alternatives[]` (explainability test)
-- `flutter analyze`: 0 errors
-
-**Estimated new files:** 3 domain files, 1 infrastructure file, 3 test files
-
----
-
-### Sprint 11G — Financial Constitution
-
-**Prerequisite:** Sprint 11F complete.
-
-**Deliverables:**
 - `mobile/lib/domain/reasoning/constitution/` — all constitution domain types from `07-financial-constitution.md` Section 4
 - `mobile/lib/domain/engines/constitution_engine.dart` — interface
 - `mobile/lib/infrastructure/engines/rule_based_constitution_engine.dart` — system rules `SYS-001` through `SYS-008` hardcoded; user rules from `FinancialConstitution`
@@ -1586,6 +1615,7 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 - Constitution onboarding flow (schema only, UI in post-sprint)
 
 **Acceptance criteria:**
+
 - `reviewPastDecision` passes all system rules under all conditions (invariant test)
 - System rules apply even when `constitution` is null (invariant test)
 - Hard-violated candidates never appear in `permissibleCandidates` (invariant test)
@@ -1598,14 +1628,120 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 
 ---
 
-### Sprint 11H — RecommendationPortfolio Integration
+### Sprint 11E — Utility Engine
+
+**Prerequisite:** Sprint 11D complete.
+
+**Note:** Receives only constitution-permissible candidates from Step 4. The utility formula is applied exclusively to the filtered candidate set — not to all generated candidates.
+
+**Deliverables:**
+
+- `mobile/lib/domain/reasoning/utility/utility_model.dart` — `UtilityModel`, `UtilityArchetype`
+- `mobile/lib/domain/reasoning/utility/utility_score.dart` — `UtilityScore`
+- `mobile/lib/domain/engines/utility_engine.dart` — interface
+- `mobile/lib/infrastructure/engines/rule_based_utility_engine.dart` — 7-term formula from `04-utility-engine.md` Section 3
+- `mobile/lib/infrastructure/engines/behavioral_resistance_calculator.dart` — 6-adjustment resistance model from Section 7
+- Shadow mode: utility scores computed on every `GetDashboardFeedUseCase` call; stored in decision record; do not influence ranking yet
+- Feature flag: `UTILITY_ENGINE_ENABLED` in `FinancialPolicy` (or feature flags config)
+
+**Acceptance criteria:**
+
+- `netUtility ∈ [-1.0, 1.0]` for all candidates (invariant test — worked example from Section 12 of `04-utility-engine.md`)
+- `calibrationConfidence <= 0.10` for new users with `learningMaturity == 0` (invariant test)
+- `utilityNarrative` always non-null (invariant test)
+- GrowthMaximizer archetype produces higher utility for equity SIP than LossAvoider for identical facts (archetype differentiation test)
+- `resistanceScore ∈ [0.05, 0.95]` (clamp invariant test)
+- `flutter analyze`: 0 errors
+
+**Estimated new files:** 5 domain files, 3 infrastructure files, 6 test files
+
+---
+
+### Sprint 11F — Counterfactual Engine
+
+**Prerequisite:** Sprint 11E complete.
+
+**Deliverables:**
+
+- `mobile/lib/domain/simulation/counterfactual_scenario.dart` — `CounterfactualScenario`, `CounterfactualPair`, `CounterfactualSet`, `CounterfactualType`, `CounterfactualDelta`, `DeltaDirection`
+- `mobile/lib/domain/simulation/scenario_projection.dart` — `ScenarioProjection`, `ProjectionPoint`
+- `mobile/lib/domain/simulation/shock_scenario.dart` — `ShockType` enum
+- `mobile/lib/domain/engines/counterfactual_engine.dart` — interface (extends existing `SimulationEngine`)
+- `mobile/lib/infrastructure/engines/simulation/deterministic_counterfactual_engine.dart` — v1 deterministic implementation (all 5 calculators)
+- `mobile/lib/infrastructure/engines/simulation/commitment_counterfactual_adapter.dart` — wraps existing `GoalImpactAnalyzer`
+- `mobile/lib/infrastructure/engines/simulation/narration_engine.dart` — loss-framing templates
+- `mobile/lib/application/simulation/generate_counterfactuals_use_case.dart`
+- DI registration
+
+**Acceptance criteria:**
+
+- SIP FV golden-value tests pass (7 test cases from `05-counterfactual-engine.md` Section 11.1)
+- `GoalImpactAnalyzer` compatibility: months output matches legacy output (regression test)
+- `CounterfactualScenario.confidence <= FinancialFacts.overallConfidence` (invariant test)
+- `CounterfactualPair.narration` never contains unfilled template variables (integration test)
+- Pipeline completes in < 50ms for all 12 scenario types (performance test)
+- `flutter analyze`: 0 errors
+
+**Estimated new files:** 8 domain files, 6 infrastructure files, 2 application files, 8 test files
+
+---
+
+### Sprint 11G — Challenge Layer
+
+**Prerequisite:** Sprint 11F complete.
+
+**Deliverables:**
+
+- `mobile/lib/domain/reasoning/challenge/challenge_result.dart` — `ChallengeType`, `ChallengeOutcome`, `ChallengeResult`, `ChallengeLayerResult`
+- `mobile/lib/domain/engines/challenge_layer_engine.dart` — interface
+- `mobile/lib/infrastructure/engines/rule_based_challenge_layer_engine.dart` — 6 challenges from `06-challenge-layer.md` Section 6
+- Feature flag: `EngineFlag.challengeLayerEnabled` (default: false)
+- Wire into `FinancialReasoningEngine.reason()` after utility scoring, before Decision assembly
+
+**Acceptance criteria:**
+
+- Exactly 6 `ChallengeResult` objects always in `ChallengeLayerResult.results` (invariant test)
+- `LiquidityChallenge` fires and proposes `buildEmergencyFund` when `emergencyFundMonths < 1.0` and candidate != `buildEmergencyFund` (fiduciary test)
+- `TaxChallenge` fires in January–March when `taxEfficiency < 0.85` and candidate not tax-related (Q4 urgency test)
+- Priority resolution: when Liquidity and Debt both propose replacements, Liquidity wins (priority test)
+- `totalConfidenceDelta <= +0.05` (invariant test — tax challenge exception allowed)
+- All 6 results visible in `ExplanationData.alternatives[]` (explainability test)
+- `flutter analyze`: 0 errors
+
+**Estimated new files:** 3 domain files, 1 infrastructure file, 3 test files
+
+---
+
+### Sprint 11H — RecommendationPortfolio + ReasoningMemory + ConfidenceGraph + DecisionKPIs
 
 **Prerequisite:** Sprints 11A–11G complete.
 
+This is the integration sprint. All seven pipeline components are wired into a single `RecommendationPipeline` orchestrator. Two pre-11A additions — `ReasoningMemory` and `DecisionKPIs` — are delivered here because they depend on every prior step's output.
+
 **Deliverables:**
+
+_Portfolio and Confidence (pipeline output):_
+
 - `mobile/lib/domain/reasoning/output/recommendation_portfolio.dart` — `RecommendationPortfolio`, `RankedRecommendation`, `ConfidenceGraph`
 - `mobile/lib/domain/engines/confidence_aggregator.dart` — interface and implementation
-- `mobile/lib/infrastructure/engines/recommendation_pipeline.dart` — orchestrates all 10 steps
+- `mobile/lib/infrastructure/engines/recommendation_pipeline.dart` — orchestrates all 10 steps in sequence
+
+_Reasoning Memory (chain-of-reasoning storage — see `08-reasoning-memory.md`):_
+
+- `mobile/lib/domain/reasoning/memory/reasoning_memory.dart` — `ReasoningMemory` + all supporting record types (`ActivatedBeliefRecord`, `CandidateRecord`, `PrunedCandidateRecord`, `ConstitutionCheckRecord`, `UtilityBreakdownRecord`, `CounterfactualRecord`, `ChallengeRecord`)
+- `mobile/lib/domain/reasoning/memory/reasoning_memory_repository.dart` — abstract repository interface
+- `mobile/lib/infrastructure/repositories/in_memory_reasoning_memory_repository.dart` — in-memory LRU (max 50 records per session)
+- `mobile/lib/infrastructure/engines/reasoning_memory_assembler.dart` — assembles from per-step outputs; writes async, fire-and-forget
+
+_Decision KPIs (engine observability — see `09-decision-kpis.md`):_
+
+- `mobile/lib/domain/reasoning/kpi/decision_kpis.dart` — `DecisionKPIs`, `DecisionKPISnapshot`, `KPIWindow`
+- `mobile/lib/domain/engines/decision_kpi_engine.dart` — abstract interface
+- `mobile/lib/infrastructure/engines/rule_based_decision_kpi_engine.dart` — computes from `ReasoningMemory` + `LearningSnapshot`
+- `mobile/lib/application/reasoning/get_decision_kpis_use_case.dart`
+
+_Widget integration:_
+
 - `GetDashboardFeedUseCase` updated to invoke full pipeline
 - `TodaysBestDecisionCard` widget updated to display `RecommendationPortfolio.primary` (rank 1 with counterfactual)
 - Alternatives panel: displays `portfolio.alternatives` (ranks 2–4 condensed)
@@ -1613,14 +1749,33 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 - `CandidatePortfolio.considered` available as "considered but not recommended" section
 
 **Acceptance criteria:**
-- Full pipeline benchmark: `< 200ms` end-to-end on mid-range device with all 10 steps active
+
+_Pipeline output:_
+
+- Full pipeline benchmark: `< 200ms` end-to-end on mid-range device with all 10 steps active (memory write is async and excluded from this benchmark)
 - `RecommendationPortfolio.primary != null` always (pipeline always produces output)
 - v2 top recommendation matches v1 type in >= 92% of 100 canonical test profiles (regression suite)
 - All 10 synthetic test user profiles produce valid, non-null portfolios
 - `ConfidenceGraph.compoundConfidence` matches legacy `DecisionConfidenceReport.compoundConfidence` bit-for-bit (backward compatibility test)
+
+_ReasoningMemory:_
+
+- `ReasoningMemory.challengeResults.length == 6` always (RM-1 invariant test)
+- `compoundConfidence == dataConf × decisionConf × behaviorConf × historicalAcc` (RM-2 invariant test)
+- Memory assembly adds `< 2ms` to pipeline execution (performance test — assembly only, excludes async write)
+- Storage failure does not propagate to `GetDashboardFeedUseCase` return path (error isolation test)
+
+_DecisionKPIs:_
+
+- `calibrationError` returns 0.0 for empty record set (edge case test)
+- `engineHealthGrade == 'F'` when `averageHealthScoreDelta < -1.0` regardless of other metrics (Grade F dominance test)
+- KPI computation completes in `< 100ms` for 500 memory records (performance test)
+
+_All:_
+
 - `flutter analyze`: 0 errors
 
-**Estimated new files:** 4 domain files, 2 infrastructure files, 2 widget files, 10 test files (including regression suite)
+**Estimated new files:** 10 domain files, 5 infrastructure files, 2 application files, 3 widget files, 15 test files (including regression suite)
 
 ---
 
@@ -1630,16 +1785,18 @@ Each sprint is self-contained: the codebase compiles and `flutter analyze` passe
 
 Every engine is a pure function and is testable without infrastructure. The test pyramid starts here.
 
-| Component | Test File | Key Test Cases |
-|-----------|-----------|----------------|
-| PolicySelector | `test/domain/reasoning/policy/policy_selector_test.dart` | 14 named policies × selection invariants; all weight tables sum to 1.0; all modifier deltas sum to 0 |
-| BeliefInferenceEngine | `test/infrastructure/engines/belief_inference_engine_test.dart` | Each of 26 rules (confidence formula, evidence assembly, contradiction handling); decay model; TTL expiry |
-| CandidateGenerator | `test/infrastructure/engines/candidate_generator_test.dart` | All 27 applicability conditions; all 7 pruning rules; pyramid invariant; minimum viable set fallback |
-| UtilityEngine | `test/infrastructure/engines/utility_engine_test.dart` | Worked example from `04-utility-engine.md` Section 12; archetype differentiation; boundary conditions |
-| CounterfactualEngine | `test/infrastructure/engines/counterfactual_engine_test.dart` | 7 golden-value SIP formula tests; shock scenarios; narration template completeness |
-| ChallengeLayer | `test/infrastructure/engines/challenge_layer_engine_test.dart` | Each of 6 challenges; priority resolution; invariant compliance |
-| ConstitutionChecker | `test/infrastructure/engines/constitution_engine_test.dart` | Each of 8 system rules; empty-set fallback; `reviewPastDecision` always permissible |
-| ConfidenceAggregator | `test/domain/reasoning/output/confidence_aggregator_test.dart` | v1 `compoundConfidence` preserved; challenge delta applied correctly; constitution compliance |
+| Component                | Test File                                                          | Key Test Cases                                                                                            |
+| ------------------------ | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| PolicySelector           | `test/domain/reasoning/policy/policy_selector_test.dart`           | 14 named policies × selection invariants; all weight tables sum to 1.0; all modifier deltas sum to 0      |
+| BeliefInferenceEngine    | `test/infrastructure/engines/belief_inference_engine_test.dart`    | Each of 26 rules (confidence formula, evidence assembly, contradiction handling); decay model; TTL expiry |
+| CandidateGenerator       | `test/infrastructure/engines/candidate_generator_test.dart`        | All 27 applicability conditions; all 7 pruning rules; pyramid invariant; minimum viable set fallback      |
+| ConstitutionChecker      | `test/infrastructure/engines/constitution_engine_test.dart`        | Each of 8 system rules; empty-set fallback; `reviewPastDecision` always permissible                       |
+| UtilityEngine            | `test/infrastructure/engines/utility_engine_test.dart`             | Worked example from `04-utility-engine.md` Section 12; archetype differentiation; boundary conditions     |
+| CounterfactualEngine     | `test/infrastructure/engines/counterfactual_engine_test.dart`      | 7 golden-value SIP formula tests; shock scenarios; narration template completeness                        |
+| ChallengeLayer           | `test/infrastructure/engines/challenge_layer_engine_test.dart`     | Each of 6 challenges; priority resolution; invariant compliance                                           |
+| ConfidenceAggregator     | `test/domain/reasoning/output/confidence_aggregator_test.dart`     | v1 `compoundConfidence` preserved; challenge delta applied correctly; constitution compliance             |
+| ReasoningMemoryAssembler | `test/infrastructure/engines/reasoning_memory_assembler_test.dart` | RM-1 through RM-6 invariants; storage failure isolation; assembly adds < 2ms                              |
+| DecisionKPIEngine        | `test/infrastructure/engines/decision_kpi_engine_test.dart`        | Grade F dominance; calibration error computation; health score delta averaging                            |
 
 ### 12.2 Integration Testing — Pipeline End-to-End with Synthetic Profiles
 
@@ -1709,37 +1866,38 @@ for_all (candidates, constitution) pairs with at least 1 hard violation:
 
 ### 12.5 Canonical Test Users (10 Profiles)
 
-| Profile | Age | Income/mo | EF Months | Debt Ratio | Savings Rate | Archetype | SMRT State |
-|---------|-----|-----------|-----------|------------|--------------|-----------|------------|
-| **Student** | 22 | ₹15,000 | 0.2 | 0.0 | 0.05 | student | survive |
-| **SalariedSurvive** | 28 | ₹55,000 | 0.8 | 0.15 | 0.08 | salariedWithFamily | survive |
-| **SalariedBuild** | 34 | ₹85,000 | 6.5 | 0.22 | 0.20 | salariedWithFamily | build |
-| **SalariedOptimize** | 42 | ₹1,50,000 | 8.0 | 0.10 | 0.32 | salariedWithFamily | optimize |
-| **Freelancer** | 31 | ₹70,000 (variable) | 4.5 | 0.05 | 0.14 | freelancer | stabilize |
-| **BusinessOwner** | 38 | ₹2,00,000 | 7.0 | 0.28 | 0.18 | businessOwner | build |
-| **PreRetirement** | 57 | ₹1,20,000 | 12.0 | 0.0 | 0.35 | preRetiree | optimize |
-| **Retired** | 65 | ₹40,000 (pension) | 28.0 | 0.0 | 0.0 | retiree | optimize |
-| **HighDebt** | 30 | ₹60,000 | 1.5 | 0.52 | 0.06 | salariedWithFamily | stabilize |
-| **NewParent** | 33 | ₹95,000 | 3.5 | 0.35 | 0.12 | salariedWithFamily | build |
+| Profile              | Age | Income/mo          | EF Months | Debt Ratio | Savings Rate | Archetype          | SMRT State |
+| -------------------- | --- | ------------------ | --------- | ---------- | ------------ | ------------------ | ---------- |
+| **Student**          | 22  | ₹15,000            | 0.2       | 0.0        | 0.05         | student            | survive    |
+| **SalariedSurvive**  | 28  | ₹55,000            | 0.8       | 0.15       | 0.08         | salariedWithFamily | survive    |
+| **SalariedBuild**    | 34  | ₹85,000            | 6.5       | 0.22       | 0.20         | salariedWithFamily | build      |
+| **SalariedOptimize** | 42  | ₹1,50,000          | 8.0       | 0.10       | 0.32         | salariedWithFamily | optimize   |
+| **Freelancer**       | 31  | ₹70,000 (variable) | 4.5       | 0.05       | 0.14         | freelancer         | stabilize  |
+| **BusinessOwner**    | 38  | ₹2,00,000          | 7.0       | 0.28       | 0.18         | businessOwner      | build      |
+| **PreRetirement**    | 57  | ₹1,20,000          | 12.0      | 0.0        | 0.35         | preRetiree         | optimize   |
+| **Retired**          | 65  | ₹40,000 (pension)  | 28.0      | 0.0        | 0.0          | retiree            | optimize   |
+| **HighDebt**         | 30  | ₹60,000            | 1.5       | 0.52       | 0.06         | salariedWithFamily | stabilize  |
+| **NewParent**        | 33  | ₹95,000            | 3.5       | 0.35       | 0.12         | salariedWithFamily | build      |
 
 **Expected primary recommendation type for each profile:**
 
-| Profile | Expected v2 Primary |
-|---------|---------------------|
-| Student | `buildEmergencyFund` |
-| SalariedSurvive | `buildEmergencyFund` |
-| SalariedBuild | `startSip` or `maximize80C` (policy-dependent) |
-| SalariedOptimize | `stepUpSip` or `maximize80CCD` |
-| Freelancer | `buildEmergencyFund` (9-month target not met) |
-| BusinessOwner | `maximize80C` or `startSip` |
-| PreRetirement | `increaseGoalContribution` (retirement corpus) |
-| Retired | `reviewInsurance` or `reviewPastDecision` |
-| HighDebt | `accelerateDebtRepayment` |
-| NewParent | `getHealthInsurance` or `buildEmergencyFund` |
+| Profile          | Expected v2 Primary                            |
+| ---------------- | ---------------------------------------------- |
+| Student          | `buildEmergencyFund`                           |
+| SalariedSurvive  | `buildEmergencyFund`                           |
+| SalariedBuild    | `startSip` or `maximize80C` (policy-dependent) |
+| SalariedOptimize | `stepUpSip` or `maximize80CCD`                 |
+| Freelancer       | `buildEmergencyFund` (9-month target not met)  |
+| BusinessOwner    | `maximize80C` or `startSip`                    |
+| PreRetirement    | `increaseGoalContribution` (retirement corpus) |
+| Retired          | `reviewInsurance` or `reviewPastDecision`      |
+| HighDebt         | `accelerateDebtRepayment`                      |
+| NewParent        | `getHealthInsurance` or `buildEmergencyFund`   |
 
 ### 12.6 Golden File Tests (Policy Weights)
 
 For each of the 14 named policies, a committed golden file captures:
+
 - The `AxisWeightProfile` values
 - Expected `decisionConfidenceFactor` range (±0.02) for the canonical scenario
 - Top contributing axis
@@ -1789,6 +1947,7 @@ The `CounterfactualSet` domain type is stable across both implementations. All w
 v2 `PolicySelector` uses rule-based archetype detection and SMRT state mapping. Phase 12's behavioral intelligence needs a learned policy selector trained on outcome data.
 
 **Extension mechanism:** `PolicySelector` is a domain interface:
+
 ```dart
 abstract class PolicySelector {
   DecisionPolicy select(FinancialFacts facts, BehaviorInterpretation? behavior,
@@ -1826,7 +1985,7 @@ v2 `UtilityModel` parameters are initialized from archetype priors and updated v
 
 **v2:** "Starting ₹2,000 today → ₹1.15Cr in 20 years. Waiting 6 months → ₹1.03Cr. That 6-month delay costs you ₹12L in compounding — permanently."
 
-*What makes this possible:* `CounterfactualEngine` (Component 5), `NarrationEngine` with loss-framing rules, `CounterfactualSet.delayCounterfactuals[]` attached to primary recommendation.
+_What makes this possible:_ `CounterfactualEngine` (Component 5), `NarrationEngine` with loss-framing rules, `CounterfactualSet.delayCounterfactuals[]` attached to primary recommendation.
 
 ---
 
@@ -1836,7 +1995,7 @@ v2 `UtilityModel` parameters are initialized from archetype priors and updated v
 
 **v2:** "This recommendation conflicts with your constitution rule: 'Never reduce emergency fund below 12 months.' The engine considered 5 alternatives. After your constitution check, 4 remained eligible." The audit trail in `DecisionAudit.constitutionViolations[]` answers "why wasn't X recommended?" transparently.
 
-*What makes this possible:* `ConstitutionChecker` (Component 7, Step 4), `FinancialConstitution` in `FinancialReasoningContext`, system rules `SYS-001` through `SYS-008` always active.
+_What makes this possible:_ `ConstitutionChecker` (Component 7, Step 4), `FinancialConstitution` in `FinancialReasoningContext`, system rules `SYS-001` through `SYS-008` always active.
 
 ---
 
@@ -1846,7 +2005,7 @@ v2 `UtilityModel` parameters are initialized from archetype priors and updated v
 
 **v2:** "We considered 7 options. We chose Start SIP over Maximize 80C because: (a) your 80C is 72% utilized and the remaining ₹43,200 saves ₹13,000 in tax, but (b) your retirement goal is 27% underfunded and a ₹2,000 SIP closes ₹8L of the funding gap. The tax saving is real but smaller in magnitude than the goal funding urgency."
 
-*What makes this possible:* `CandidateSet.pruned` (with `rejectionReason`), `UtilityScore.utilityNarrative` for each alternative, `ChallengeLayerResult.challengeReasons` in `ExplanationData.alternatives[]`.
+_What makes this possible:_ `CandidateSet.pruned` (with `rejectionReason`), `UtilityScore.utilityNarrative` for each alternative, `ChallengeLayerResult.challengeReasons` in `ExplanationData.alternatives[]`.
 
 ---
 
@@ -1856,7 +2015,7 @@ v2 `UtilityModel` parameters are initialized from archetype priors and updated v
 
 **v2:** "Your behavioral pattern suggests 73% likelihood of following through on this recommendation (based on your 4 previously accepted recommendations and discipline score of 68/100). We are recommending the 2-step setup path rather than the 5-step AMC account opening because your behavioral resistance score for new-platform SIPs is 0.79 — too high."
 
-*What makes this possible:* `UtilityEngine.resistanceScore` (6-factor behavioral resistance model), `UtilityScore.behavioralResistancePenalty`, `BehaviorDifficulty` on `DecisionCandidate`, `LearningSnapshot.activeLessons` rejection pattern detection.
+_What makes this possible:_ `UtilityEngine.resistanceScore` (6-factor behavioral resistance model), `UtilityScore.behavioralResistancePenalty`, `BehaviorDifficulty` on `DecisionCandidate`, `LearningSnapshot.activeLessons` rejection pattern detection.
 
 ---
 
@@ -1866,7 +2025,7 @@ v2 `UtilityModel` parameters are initialized from archetype priors and updated v
 
 **v2:** "The Challenge Layer tested this recommendation against 6 alternative strategies. It survived all 6 challenges. Specifically: the Debt Challenge confirmed that your 22% EMI ratio does not make debt paydown superior to the SIP. The Liquidity Challenge confirmed your 6.5-month emergency fund is above the target. The Behavior Challenge found moderate resistance and reduced confidence by 0.05."
 
-*What makes this possible:* `ChallengeLayer` (Component 6, Step 7), `ChallengeLayerResult.results` (all 6 always recorded), `challengeReasons` in `ExplanationData.alternatives[]`.
+_What makes this possible:_ `ChallengeLayer` (Component 6, Step 7), `ChallengeLayerResult.results` (all 6 always recorded), `challengeReasons` in `ExplanationData.alternatives[]`.
 
 ---
 
@@ -1876,12 +2035,14 @@ v2 `UtilityModel` parameters are initialized from archetype priors and updated v
 
 **v2:** The student receives `behavior=0.20, goalImpact=0.30, taxes=0.02, opportunityCost=0.03` (habit formation matters most; tax optimization is irrelevant at zero taxable income). The pre-retiree receives `liquidity=0.28, goalImpact=0.22, taxes=0.12, opportunityCost=0.08` (retirement buffer building and NPS efficiency are the dominant axes). Same facts, structurally different recommendations.
 
-*What makes this possible:* `PolicySelector` (Component 1), `AxisWeightProfile` selected per `UserArchetype × FinancialState`, `PolicyThresholds` replacing hardcoded thresholds in axis analyzers.
+_What makes this possible:_ `PolicySelector` (Component 1), `AxisWeightProfile` selected per `UserArchetype × FinancialState`, `PolicyThresholds` replacing hardcoded thresholds in axis analyzers.
 
 ---
 
-*This document is the authoritative master architecture for PennyWise Financial Reasoning Engine v2. It synthesizes component design documents 01 through 07. Implementation proceeds against this document and its referenced component specs without redesign. Any architectural deviation during implementation must be recorded as an amendment to this document with rationale.*
+_This document is the authoritative master architecture for PennyWise Financial Reasoning Engine v2. It synthesizes component design documents 01 through 09. Implementation proceeds against this document and its referenced component specs without redesign. Any architectural deviation during implementation must be recorded as an amendment to this document with rationale._
 
-*Component design documents (`01-decision-policy-engine.md` through `07-financial-constitution.md`) remain authoritative for per-component implementation detail. This master document governs integration, sequencing, interfaces, and invariants.*
+_Component design documents (`01-decision-policy-engine.md` through `09-decision-kpis.md`) remain authoritative for per-component implementation detail. This master document governs integration, sequencing, interfaces, and invariants._
 
-*Authored: 2026-08-05*
+_Sprint order rationale: Sprints 11A–11H follow pipeline step order (Steps 1→10). Financial Constitution (Step 4) is implemented in Sprint 11D — before Utility Engine (Step 5, Sprint 11E) — because the constitution hard-filters candidates before utility scoring begins. This is not a stylistic choice: it is the semantic definition of a hard constraint._
+
+_Authored: 2026-08-05_

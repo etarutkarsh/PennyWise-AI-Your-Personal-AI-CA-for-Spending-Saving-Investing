@@ -31,6 +31,9 @@ class DecisionConfidenceReport {
     required this.topFactors,
     required this.limitations,
     required this.computedAt,
+    this.policyId,
+    this.policyLabel,
+    this.policyReason,
   });
 
   /// Full per-axis evaluation. All 8 axes are always present.
@@ -70,6 +73,15 @@ class DecisionConfidenceReport {
   final List<String> limitations;
 
   final DateTime computedAt;
+
+  /// The active policy ID at time of computation. Null until Policy Engine is wired.
+  final String? policyId;
+
+  /// Human-readable policy label. e.g. 'Salaried — Build'. Null until wired.
+  final String? policyLabel;
+
+  /// Why this policy was selected. Flows from [PolicyDecision.reason].
+  final String? policyReason;
 
   // ─── Convenience accessors ─────────────────────────────────────────────────
 
