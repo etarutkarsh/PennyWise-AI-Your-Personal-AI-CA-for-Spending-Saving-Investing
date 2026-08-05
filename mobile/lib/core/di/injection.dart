@@ -1,5 +1,7 @@
 import 'package:get_it/get_it.dart';
 
+import '../../application/behavioral/run_behavior_analysis_use_case.dart';
+import '../../application/behavioral/run_interpretation_use_case.dart';
 import '../../application/decision/get_dashboard_feed_use_case.dart';
 import '../../application/decision/get_today_decision_use_case.dart';
 import '../../application/decision/record_decision_lifecycle_use_case.dart';
@@ -26,6 +28,9 @@ import '../../domain/engines/partner_matching_engine.dart';
 import '../../domain/engines/product_knowledge_graph.dart';
 import '../../domain/engines/resilience_engine.dart';
 import '../../domain/engines/event_replay_engine.dart';
+import '../../domain/engines/financial_fact_builder.dart';
+import '../../domain/engines/financial_fact_graph.dart';
+import '../../domain/engines/matching_context_builder.dart';
 import '../../domain/engines/sms_parser_registry.dart';
 import '../../domain/engines/sms_validation_engine.dart';
 import '../../domain/engines/transaction_normalizer.dart';
@@ -43,7 +48,12 @@ import '../../infrastructure/engines/rule_based_partner_matching_engine.dart';
 import '../../infrastructure/engines/rule_based_resilience_engine.dart';
 import '../../infrastructure/engines/rule_based_transaction_normalizer.dart';
 import '../../infrastructure/engines/stub_event_replay_engine.dart';
-import '../../infrastructure/engines/stub_evidence_builder.dart';
+import '../../infrastructure/engines/financial_facts_evidence_builder.dart';
+import '../../infrastructure/engines/rule_based_data_confidence_engine.dart';
+import '../../infrastructure/engines/rule_based_financial_fact_builder.dart';
+import '../../infrastructure/engines/rule_based_financial_fact_graph.dart';
+import '../../infrastructure/engines/stub_matching_context_builder.dart';
+import '../../domain/engines/data_confidence_engine.dart';
 import '../../infrastructure/ingestion/sms/registry/sms_parser_registry_impl.dart';
 import '../../infrastructure/ingestion/sms/validators/sms_validation_engine_impl.dart';
 import '../../infrastructure/mappers/decision_mapper.dart';
@@ -59,6 +69,12 @@ import '../../domain/partner/policies/retirement_policy.dart';
 import '../../domain/partner/policies/insurance_policy.dart';
 import '../../domain/partner/policies/debt_reduction_policy.dart';
 import '../services/sms/sms_capture_service.dart';
+import '../../infrastructure/engines/behavior_interpretation_engine.dart';
+import '../../infrastructure/engines/behavior_runtime_engine.dart';
+import '../../infrastructure/engines/behavioral/extractor_registry.dart';
+import '../../infrastructure/engines/behavioral/signal_aggregator.dart';
+import '../../infrastructure/engines/commitments/recurring_commitments_intelligence_engine.dart';
+import '../../application/commitments/run_commitment_intelligence_use_case.dart';
 
 final GetIt sl = GetIt.instance;
 
@@ -104,9 +120,29 @@ Future<void> configureDependencies() async {
     () => const HardcodedProductKnowledgeGraph(),
   );
 
-  // Evidence Builder — assembles EvidenceItems from all data sources
+  // Evidence Builder — assembles EvidenceItems from FinancialFacts + DataConfidenceReport
   sl.registerLazySingleton<EvidenceBuilder>(
-    () => const StubEvidenceBuilder(),
+    () => const FinancialFactsEvidenceBuilder(),
+  );
+
+  // Financial Fact Graph — declarative dependency graph (no computation logic)
+  sl.registerLazySingleton<FinancialFactGraph>(
+    () => const RuleBasedFinancialFactGraph(),
+  );
+
+  // Financial Fact Builder — derives FinancialFacts from StoredFinancialEvents
+  sl.registerLazySingleton<FinancialFactBuilder>(
+    () => RuleBasedFinancialFactBuilder(factGraph: sl<FinancialFactGraph>()),
+  );
+
+  // Data Confidence Engine — assesses data quality and sets recommendationConfidenceCap
+  sl.registerLazySingleton<DataConfidenceEngine>(
+    () => const RuleBasedDataConfidenceEngine(),
+  );
+
+  // Matching Context Builder — derives MatchingContext from FinancialFacts
+  sl.registerLazySingleton<MatchingContextBuilder>(
+    () => const StubMatchingContextBuilder(),
   );
 
   // Health Score Engine — 10-dimension financial health computation
@@ -254,5 +290,49 @@ Future<void> configureDependencies() async {
       parserRegistry: sl<SmsParserRegistry>(),
       validationEngine: sl<SmsValidationEngine>(),
     ),
+  );
+
+  // ── Behavioral Intelligence Pipeline (Sprint 9.2) ─────────────────────────
+
+  // ExtractorRegistry — all 11 implemented signal extractors
+  sl.registerLazySingleton<ExtractorRegistry>(
+    () => ExtractorRegistry.withDefaults(),
+  );
+
+  // SignalAggregator — quality gates: confidence + observation count
+  sl.registerLazySingleton<SignalAggregator>(
+    () => const SignalAggregator(),
+  );
+
+  // BehaviorRuntimeEngine — orchestrates full extractor → signal → rule pipeline
+  sl.registerLazySingleton<BehaviorRuntimeEngine>(
+    () => BehaviorRuntimeEngine(
+      registry: sl<ExtractorRegistry>(),
+      aggregator: sl<SignalAggregator>(),
+    ),
+  );
+
+  // Use cases — Behavioral Analysis
+  sl.registerLazySingleton<RunBehaviorAnalysisUseCase>(
+    () => RunBehaviorAnalysisUseCase(sl<BehaviorRuntimeEngine>()),
+  );
+
+  // BehaviorInterpretationEngine — 5-layer compression pipeline
+  sl.registerLazySingleton<BehaviorInterpretationEngine>(
+    () => BehaviorInterpretationEngine.withDefaults(),
+  );
+
+  // Use cases — Behavior Interpretation
+  sl.registerLazySingleton<RunInterpretationUseCase>(
+    () => RunInterpretationUseCase(sl<BehaviorInterpretationEngine>()),
+  );
+
+  // Recurring Commitments Intelligence Platform
+  sl.registerLazySingleton<RecurringCommitmentsIntelligenceEngine>(
+    () => RecurringCommitmentsIntelligenceEngine.withDefaults(),
+  );
+  sl.registerLazySingleton<RunCommitmentIntelligenceUseCase>(
+    () => RunCommitmentIntelligenceUseCase(
+        sl<RecurringCommitmentsIntelligenceEngine>()),
   );
 }
