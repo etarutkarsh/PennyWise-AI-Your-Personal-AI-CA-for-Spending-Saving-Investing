@@ -75,6 +75,9 @@ import '../../infrastructure/engines/behavioral/extractor_registry.dart';
 import '../../infrastructure/engines/behavioral/signal_aggregator.dart';
 import '../../infrastructure/engines/commitments/recurring_commitments_intelligence_engine.dart';
 import '../../application/commitments/run_commitment_intelligence_use_case.dart';
+import '../../infrastructure/engines/rule_based_financial_reasoning_engine.dart';
+import '../../domain/engines/financial_reasoning_engine.dart';
+import '../../application/reasoning/run_financial_reasoning_use_case.dart';
 
 final GetIt sl = GetIt.instance;
 
@@ -334,5 +337,16 @@ Future<void> configureDependencies() async {
   sl.registerLazySingleton<RunCommitmentIntelligenceUseCase>(
     () => RunCommitmentIntelligenceUseCase(
         sl<RecurringCommitmentsIntelligenceEngine>()),
+  );
+
+  // ── Financial Reasoning Engine (Sprint 10) ────────────────────────────────
+  // Multi-axis pipeline: Cash Flow + Liquidity + Goal Impact + Behavior +
+  // Tax + Opportunity Cost × Data Confidence × Historical Accuracy.
+  // Formula: compoundConfidence = dataConf × decisionConf × behaviorConf × historicalAcc
+  sl.registerLazySingleton<FinancialReasoningEngine>(
+    () => RuleBasedFinancialReasoningEngine.withDefaults(),
+  );
+  sl.registerLazySingleton<RunFinancialReasoningUseCase>(
+    () => RunFinancialReasoningUseCase(sl<FinancialReasoningEngine>()),
   );
 }
