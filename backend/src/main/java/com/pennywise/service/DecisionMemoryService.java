@@ -27,7 +27,7 @@ public class DecisionMemoryService {
     public List<DecisionMemoryDto> listAll() {
         User user = currentUserProvider.get();
         List<DecisionMemory> memories = memoryEngine.timeline(user.getId());
-        return memories.stream().map(m -> toDto(m, outcomeRepository.findByDecisionId(m.getId()).orElse(null))).toList();
+        return memories.stream().map(m -> toDto(m, outcomeRepository.findFirstByDecisionId(m.getId()).orElse(null))).toList();
     }
 
     public DecisionMemoryDto getById(UUID id) {
@@ -35,7 +35,7 @@ public class DecisionMemoryService {
         DecisionMemory m = memoryRepository.findById(id)
             .filter(dm -> dm.getUserId().equals(user.getId()))
             .orElseThrow(() -> new RuntimeException("Decision memory not found"));
-        DecisionOutcome outcome = outcomeRepository.findByDecisionId(id).orElse(null);
+        DecisionOutcome outcome = outcomeRepository.findFirstByDecisionId(id).orElse(null);
         return toDto(m, outcome);
     }
 
@@ -58,7 +58,7 @@ public class DecisionMemoryService {
         User user = currentUserProvider.get();
         List<DecisionMemory> memories = memoryEngine.timeline(user.getId());
         return memories.stream().map(m -> {
-            DecisionOutcome o = outcomeRepository.findByDecisionId(m.getId()).orElse(null);
+            DecisionOutcome o = outcomeRepository.findFirstByDecisionId(m.getId()).orElse(null);
             return TimelineEntryDto.builder()
                 .id(m.getId())
                 .itemName(m.getItemName())

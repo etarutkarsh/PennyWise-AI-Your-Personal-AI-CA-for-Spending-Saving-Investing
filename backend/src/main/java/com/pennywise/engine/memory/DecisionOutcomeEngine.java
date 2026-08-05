@@ -26,7 +26,9 @@ public class DecisionOutcomeEngine {
         List<String> lessons = accuracyEngine.deriveLessons(
             followed, req.getHealthDelta(), memory.getRecommendation(), memory.getItemName());
 
-        DecisionOutcome outcome = new DecisionOutcome();
+        // Upsert: update the existing outcome if one already exists rather than inserting a duplicate.
+        DecisionOutcome outcome = outcomeRepository.findFirstByDecisionId(memory.getId())
+            .orElse(new DecisionOutcome());
         outcome.setDecisionId(memory.getId());
         outcome.setActualChoice(req.getActualChoice());
         outcome.setFollowedRecommendation(followed);

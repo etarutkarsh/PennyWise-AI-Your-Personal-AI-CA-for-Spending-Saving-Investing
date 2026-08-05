@@ -7,6 +7,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface DecisionOutcomeRepository extends JpaRepository<DecisionOutcome, UUID> {
-    Optional<DecisionOutcome> findByDecisionId(UUID decisionId);
+    Optional<DecisionOutcome> findFirstByDecisionId(UUID decisionId);
     List<DecisionOutcome> findByDecisionIdIn(List<UUID> decisionIds);
 }

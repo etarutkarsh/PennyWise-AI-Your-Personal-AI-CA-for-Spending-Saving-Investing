@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import 'decision_policy.dart';
+import 'lifecycle_stage.dart';
 
 /// The result type returned by [PolicySelector.select].
 ///
